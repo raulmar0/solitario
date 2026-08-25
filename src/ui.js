@@ -15,8 +15,7 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   const els = new Map();       // id de carta -> elemento
   let layout = null;
   let drag = null;
-  let selection = null;        // { from, count, ids } al jugar tocando
-  let lastTap = { id: null, at: 0 };
+  let ultimoAuto = { at: 0, x: 0, y: 0 };   // dónde y cuándo se jugó sola la última carta
 
   // --- creación de las cartas (una sola vez) ---
   for (const suit of ['S', 'H', 'D', 'C']) {
@@ -142,7 +141,6 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   function paint() {
     const state = game.state;
     if (!state) return;
-    if (selection && !sigueValida(selection)) { selection = null; clearHighlights(); }
     layout = computeLayout(state);
     const { m, positions } = layout;
 
@@ -176,7 +174,6 @@ export function createBoard({ root, game, onMessage = () => {} }) {
       }
       el.classList.toggle('down', !p.faceUp);
       el.classList.toggle('playable', !!p.playable);
-      el.classList.toggle('picked', !!selection && selection.ids.includes(id));
       if (!drag || !drag.ids.includes(id)) el.classList.remove('dragging');
     }
 
@@ -314,7 +311,7 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     clearHighlights();
     drag = null;
 
-    if (!moved) { tapCard(id, grab); paint(); return; }
+    if (!moved) { tapCard(id, grab, event.clientX, event.clientY); paint(); return; }
 
     if (!sigueValida(grab)) { paint(); return; }   // el tablero cambió mientras arrastrábamos
 
@@ -325,7 +322,6 @@ export function createBoard({ root, game, onMessage = () => {} }) {
       left: event.clientX - 1, top: event.clientY - 1, right: event.clientX + 1, bottom: event.clientY + 1,
     });
 
-    selection = null;
     if (zone) {
       const move = { type: 'move', from: grab.from, to: zone.to, count: grab.count };
       const subeCarta = grab.count === 1 && grab.from.pile !== PILE.FOUNDATION;
@@ -336,58 +332,68 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     paint();
   }
 
-  /** Toque simple: seleccionar, mover a lo seleccionado, o subir si es doble toque. */
-  function tapCard(id, grab) {
-    const now = Date.now();
-    if (lastTap.id === id && now - lastTap.at < DOUBLE_TAP_MS) {
-      lastTap = { id: null, at: 0 };
-      selection = null;
-      if (!grab || grab.from.pile === PILE.FOUNDATION) return;   // de las fundaciones no se sube nada
-      if (!game.sendToFoundation(grab.from, id)) {
-        onMessage(grab.count > 1
-          ? 'Solo puede subir la carta de arriba de la columna.'
-          : 'Esa carta todavía no puede subir.');
-      }
-      return;
-    }
-    lastTap = { id, at: now };
+  /**
+   * De todas las jugadas posibles con esas cartas, la que más suele convenir:
+   * primero la fundación, luego una columna con carta y solo al final un hueco
+   * vacío, que conviene guardar para un rey.
+   */
+  function mejorDestino(ref) {
+    const mismoOrigen = (m) => m.from.pile === ref.from.pile
+      && (m.from.index ?? null) === (ref.from.index ?? null)
+      && (m.count ?? 1) === ref.count;
 
-    const p = layout.positions.get(id);
-    if (selection && !sigueValida(selection)) selection = null;
-    if (selection) {
-      const to = p?.from;
-      if (to && (to.pile === PILE.TABLEAU || to.pile === PILE.FOUNDATION)) {
-        const move = { type: 'move', from: selection.from, to: { pile: to.pile, index: to.index }, count: selection.count };
-        if (game.play(move)) { selection = null; return; }
-      }
-      const mismo = selection.ids.includes(id);
-      selection = null;
-      if (mismo) return;
-    }
-    if (grab) {
-      const ref = { ...grab, ids: grab.ids ?? idsOf(grab) };
-      if (!sigueValida(ref)) return;      // el tablero cambió entre el toque y el dedo levantado
-      selection = ref;
-      highlightTargets(grab);
-      setTimeout(clearHighlights, 900);
-    }
+    // usefulMoves ya descarta pasar una columna entera de un hueco a otro.
+    const candidatos = engine.usefulMoves(game.state).filter(mismoOrigen);
+    if (!candidatos.length) return null;
+
+    const rango = (m) => (m.to.pile === PILE.FOUNDATION ? 0
+      : game.state.tableau[m.to.index].length ? 1 : 2);
+    candidatos.sort((a, b) => rango(a) - rango(b) || a.to.index - b.to.index);
+    return candidatos[0];
   }
 
-  function tapSlot(slot) {
-    const pile = slot.dataset.pile;
-    if (pile === 'stock') {
-      const habia = selection;
-      selection = null;
-      if (!game.stockClick() && habia) paint();   // el mazo no responde: al menos suelta lo marcado
+  function negar(id) {
+    const el = els.get(id);
+    if (!el) return;
+    el.classList.remove('nope');
+    void el.offsetWidth;
+    el.classList.add('nope');
+    setTimeout(() => el.classList.remove('nope'), 400);
+  }
+
+  /**
+   * Picar una carta la lleva sola a donde pueda. Si quieres elegir el sitio —dos
+   * huecos libres, dos columnas donde encaja— arrástrala.
+   */
+  function tapCard(id, grab, x, y) {
+    if (!grab) return;
+    // El segundo clic de un doble clic cae en el mismo sitio, sobre la carta que
+    // acaba de quedar al descubierto: se ignora. Un toque en otro punto, no.
+    if (Date.now() - ultimoAuto.at < DOUBLE_TAP_MS
+      && Math.hypot(x - ultimoAuto.x, y - ultimoAuto.y) < 24) return;
+
+    if (grab.from.pile === PILE.FOUNDATION) {
+      onMessage('Para bajar una carta de las pilas de arriba, arrástrala.');
       return;
     }
-    if (selection && !sigueValida(selection)) selection = null;
-    if (!selection) return;
-    const to = { pile, index: Number(slot.dataset.index || 0) };
-    if (pile === 'waste') { selection = null; paint(); return; }
-    game.play({ type: 'move', from: selection.from, to, count: selection.count });
-    selection = null;
-    paint();
+
+    const ref = { ...grab, ids: grab.ids ?? idsOf(grab) };
+    if (!sigueValida(ref)) return;      // el tablero cambió entre el toque y el dedo levantado
+
+    const move = mejorDestino(ref);
+    if (!move) {
+      negar(id);
+      onMessage(ref.count > 1
+        ? 'Esa secuencia no tiene dónde ir ahora mismo.'
+        : 'Esa carta no tiene jugada ahora mismo.');
+      return;
+    }
+    if (game.play(move)) ultimoAuto = { at: Date.now(), x, y };
+  }
+
+  /** Los huecos ya no reciben cartas por toque; el único que hace algo es el mazo. */
+  function tapSlot(slot) {
+    if (slot.dataset.pile === 'stock') game.stockClick();
   }
 
   // --- eventos ---
@@ -402,11 +408,7 @@ export function createBoard({ root, game, onMessage = () => {} }) {
       if (!grab) {
         // Carta tapada del tableau o del mazo: solo cuenta si es el mazo.
         const p = layout?.positions.get(id);
-        if (p && !p.from) {
-          const habia = selection;
-          selection = null;
-          if (!game.stockClick() && habia) paint();
-        }
+        if (p && !p.from) game.stockClick();     // carta boca abajo del mazo
         return;
       }
       event.preventDefault();
@@ -435,7 +437,8 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   // --- api ---
   const api = {
     paint,
-    clearSelection() { selection = null; cancelDrag(); clearHighlights(); paint(); },
+    /** Corta cualquier gesto a medias (la tecla Escape). */
+    cancel() { cancelDrag(); clearHighlights(); paint(); },
     /** Marca la jugada sugerida para que se vea de un vistazo. */
     flashHint(move) {
       if (!move) return;

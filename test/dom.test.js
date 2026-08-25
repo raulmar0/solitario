@@ -102,7 +102,7 @@ test('tocar el mazo roba una carta y actualiza la cabecera', () => {
 });
 
 test('arrastrar una carta hasta su fundación la sube', () => {
-  board.clearSelection();
+  board.cancel();
   const col = 4;
   game.state.tableau[col].push({ id: 'AD', rank: 1, suit: 'D', faceUp: true });
   board.paint();
@@ -124,7 +124,7 @@ test('arrastrar una carta hasta su fundación la sube', () => {
 });
 
 test('arrastrar una secuencia entera de una columna a otra', () => {
-  board.clearSelection();
+  board.cancel();
   game.state.tableau[5] = [
     { id: '4C', rank: 4, suit: 'C', faceUp: false },
     { id: '9H', rank: 9, suit: 'H', faceUp: true },
@@ -150,7 +150,7 @@ test('arrastrar una secuencia entera de una columna a otra', () => {
 function $$dropOk() { return window.document.querySelectorAll('.slot.drop-ok').length; }
 
 test('soltar en un sitio ilegal devuelve la carta a su columna', () => {
-  board.clearSelection();
+  board.cancel();
   const col = game.state.tableau.findIndex((p) => p.at(-1)?.faceUp && p.at(-1).rank !== 1);
   const carta = game.state.tableau[col].at(-1);
   const el = cartaEl(carta.id);
@@ -168,25 +168,22 @@ test('soltar en un sitio ilegal devuelve la carta a su columna', () => {
   }
 });
 
-test('doble toque sube la carta que puede subir', () => {
-  board.clearSelection();
-  const antes = game.state.foundations.flat().length;
-  // Preparamos una carta que sí puede subir: el 2 del palo del as ya colocado.
+test('picar una carta la sube sola a su fundación', () => {
+  board.cancel();
   const palo = game.state.foundations.findIndex((f) => f.length === 1);
-  if (palo >= 0) {
-    const suit = ['S', 'H', 'D', 'C'][palo];
-    const columna = 2;
-    game.state.tableau[columna].push({ id: `2${suit}`, rank: 2, suit, faceUp: true });
-    board.paint();
-    const el = cartaEl(`2${suit}`);
-    const p = centro(columna, 1);
-    puntero('pointerdown', el, p.x, p.y);
-    puntero('pointerup', el, p.x, p.y);
-    puntero('pointerdown', el, p.x, p.y);
-    puntero('pointerup', el, p.x, p.y);
-    assert.equal(game.state.foundations[palo].length, 2, 'el doble toque la mandó arriba');
-    assert.ok(game.state.foundations.flat().length > antes);
-  }
+  assert.ok(palo >= 0, 'hay un as colocado de la prueba anterior');
+  const suit = ['S', 'H', 'D', 'C'][palo];
+  const columna = 2;
+  game.state.tableau[columna] = [{ id: `2${suit}`, rank: 2, suit, faceUp: true }];
+  board.paint();
+
+  const el = cartaEl(`2${suit}`);
+  const p = centro(columna, 1);
+  puntero('pointerdown', el, p.x, p.y);
+  puntero('pointerup', el, p.x, p.y);
+
+  assert.equal(game.state.foundations[palo].length, 2, 'un solo toque y arriba');
+  assert.equal(game.state.tableau[columna].length, 0);
 });
 
 test('los botones de la barra responden', () => {
@@ -290,7 +287,7 @@ test('los datos siguen en localStorage al recargar', () => {
 function escenario({ tableau = [], waste = [], stock = [], foundations = [[], [], [], []] }) {
   for (const d of window.document.querySelectorAll('dialog')) d.close();
   game.newGame(1);
-  board.clearSelection();
+  board.cancel();
   Object.assign(game.state, {
     tableau: Array.from({ length: 7 }, (_, i) => tableau[i] ?? []),
     waste, stock, foundations,
@@ -319,25 +316,21 @@ test('en tema claro la tinta de los paneles es oscura', () => {
   assert.equal(regla('.dlg').style.getPropertyValue('color'), 'var(--panel-ink)');
 });
 
-test('robar mientras hay una carta seleccionada no mueve otra distinta', () => {
+test('si el tablero cambia entre apretar y soltar, el toque no mueve nada', () => {
   escenario({
     tableau: [[{ id: 'KS', rank: 13, suit: 'S', faceUp: true }]],
-    waste: [{ id: '5H', rank: 5, suit: 'H', faceUp: true }],
-    stock: [{ id: 'QD', rank: 12, suit: 'D', faceUp: false }],
+    waste: [{ id: 'QD', rank: 12, suit: 'D', faceUp: true }],
+    stock: [{ id: '5H', rank: 5, suit: 'H', faceUp: false }],
   });
 
+  const el = cartaEl('QD');
   const p = centro(1, 0);
-  puntero('pointerdown', cartaEl('5H'), p.x, p.y);
-  puntero('pointerup', cartaEl('5H'), p.x, p.y);
-  assert.equal(cartaEl('5H').classList.contains('picked'), true, 'el 5H queda seleccionado');
+  puntero('pointerdown', el, p.x, p.y);
+  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', bubbles: true }));  // roba: la QD deja de ser la de arriba
+  puntero('pointerup', el, p.x, p.y);
 
-  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', bubbles: true }));
-  assert.equal(cartaEl('5H').classList.contains('picked'), false, 'al cambiar el tablero se suelta la selección');
-
-  const q = centro(0, 1);
-  puntero('pointerdown', cartaEl('KS'), q.x, q.y);
-  puntero('pointerup', cartaEl('KS'), q.x, q.y);
-  assert.deepEqual(game.state.tableau[0].map((c) => c.id), ['KS'], 'no se ha colado la QD encima del rey');
+  assert.deepEqual(game.state.tableau[0].map((c) => c.id), ['KS'], 'la QD no se coloca a destiempo');
+  assert.deepEqual(game.state.waste.map((c) => c.id), ['QD', '5H']);
 });
 
 test('si el tablero cambia a mitad de arrastre, no se suelta otra carta', () => {
@@ -377,7 +370,7 @@ test('un segundo dedo cancela el arrastre en vez de duplicar la jugada', () => {
   assert.equal(window.document.querySelectorAll('.card.dragging').length, 0);
 });
 
-test('el doble toque sobre una carta enterrada no sube la de arriba', () => {
+test('picar una carta enterrada mueve su secuencia entera, no la de arriba', () => {
   const picas = Array.from({ length: 7 }, (_, i) => ({ id: `${i + 1}S`, rank: i + 1, suit: 'S', faceUp: true }));
   escenario({
     foundations: [picas, [], [], []],
@@ -391,13 +384,76 @@ test('el doble toque sobre una carta enterrada no sube la de arriba', () => {
   const p = centro(5, 1);
   puntero('pointerdown', cartaEl('9H'), p.x, p.y);
   puntero('pointerup', cartaEl('9H'), p.x, p.y);
+
+  assert.equal(game.state.foundations[0].length, 7, 'el 8S no se cuela a la fundación');
+  assert.deepEqual(game.state.tableau[5].map((c) => c.id), ['4C', '9H', '8S'], 'sin sitio, no se mueve nada');
+  assert.equal(cartaEl('9H').classList.contains('nope'), true, 'y se avisa en la propia carta');
+
+  // Con un 10 negro donde apoyarse, la secuencia entera se va sola.
+  game.state.tableau[0] = [{ id: '10C', rank: 10, suit: 'C', faceUp: true }];
+  board.paint();
   puntero('pointerdown', cartaEl('9H'), p.x, p.y);
   puntero('pointerup', cartaEl('9H'), p.x, p.y);
-
-  assert.equal(game.state.foundations[0].length, 7, 'el 8S sigue en su sitio');
-  assert.deepEqual(game.state.tableau[5].map((c) => c.id), ['4C', '9H', '8S']);
+  assert.deepEqual(game.state.tableau[0].map((c) => c.id), ['10C', '9H', '8S']);
+  assert.deepEqual(game.state.tableau[5].map((c) => c.id), ['4C']);
+  assert.equal(game.state.tableau[5][0].faceUp, true, 'y destapa lo que había debajo');
 });
 
+test('picar prefiere una columna con carta antes que gastar un hueco', () => {
+  escenario({
+    tableau: [
+      [],                                                        // hueco libre
+      [{ id: '7S', rank: 7, suit: 'S', faceUp: true }],           // donde encaja el 6H
+      [{ id: '6H', rank: 6, suit: 'H', faceUp: true }],
+    ],
+  });
+  const p = centro(2, 1);
+  puntero('pointerdown', cartaEl('6H'), p.x, p.y);
+  puntero('pointerup', cartaEl('6H'), p.x, p.y);
+  assert.deepEqual(game.state.tableau[1].map((c) => c.id), ['7S', '6H'], 'se apoya en el 7S');
+  assert.equal(game.state.tableau[0].length, 0, 'el hueco se queda libre para un rey');
+});
+
+test('picar no mueve una columna entera de un hueco a otro', () => {
+  escenario({
+    tableau: [[{ id: 'KS', rank: 13, suit: 'S', faceUp: true }], [], [], [], [], [], []],
+  });
+  const p = centro(0, 1);
+  puntero('pointerdown', cartaEl('KS'), p.x, p.y);
+  puntero('pointerup', cartaEl('KS'), p.x, p.y);
+  assert.deepEqual(game.state.tableau[0].map((c) => c.id), ['KS'], 'el rey se queda donde está');
+  assert.equal(game.moves, 0);
+});
+
+test('un doble clic no dispara dos jugadas seguidas', () => {
+  escenario({
+    foundations: [[{ id: 'AS', rank: 1, suit: 'S', faceUp: true }], [], [], []],
+    tableau: [[
+      { id: '3S', rank: 3, suit: 'S', faceUp: true },
+      { id: '2S', rank: 2, suit: 'S', faceUp: true },
+    ]],
+  });
+  const p = centro(0, 1);
+  for (let i = 0; i < 2; i++) {
+    puntero('pointerdown', cartaEl('2S'), p.x, p.y);
+    puntero('pointerup', cartaEl('2S'), p.x, p.y);
+  }
+  assert.deepEqual(game.state.foundations[0].map((c) => c.id), ['AS', '2S'], 'sube el 2S y ahí se queda');
+  assert.deepEqual(game.state.tableau[0].map((c) => c.id), ['3S'], 'el 3S no se va detrás');
+  assert.equal(game.moves, 1);
+});
+
+test('picar una carta de la fundación no la baja: para eso está el arrastre', () => {
+  escenario({
+    foundations: [[{ id: 'AS', rank: 1, suit: 'S', faceUp: true }, { id: '2S', rank: 2, suit: 'S', faceUp: true }], [], [], []],
+    tableau: [[{ id: '3H', rank: 3, suit: 'H', faceUp: true }]],
+  });
+  const p = centro(3, 0);
+  puntero('pointerdown', cartaEl('2S'), p.x, p.y);
+  puntero('pointerup', cartaEl('2S'), p.x, p.y);
+  assert.equal(game.state.foundations[0].length, 2, 'sigue arriba');
+  assert.deepEqual(game.state.tableau[0].map((c) => c.id), ['3H']);
+});
 
 test('con la partida atascada las cartas siguen cogiéndose', () => {
   const carta = (rank, suit) => ({ id: `${rank}${suit}`, rank, suit, faceUp: true });
@@ -423,22 +479,14 @@ test('con la partida atascada las cartas siguen cogiéndose', () => {
   assert.equal($('#btn-hint').disabled, false);
 });
 
-test('tocar un mazo que no responde suelta lo que hubiera marcado', () => {
-  escenario({
-    tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: true }]],
-    stock: [],
-    waste: [],
-  });
-  const c = cartaEl('9S');
-  const p = centro(0, 1);
-  puntero('pointerdown', c, p.x, p.y);
-  puntero('pointerup', c, p.x, p.y);
-  assert.equal(c.classList.contains('picked'), true);
-
-  const s = centro(0, 0);
-  puntero('pointerdown', $('.slot-stock'), s.x, s.y);
-  assert.equal(c.classList.contains('picked'), false, 'no queda ninguna carta marcada');
-  assert.equal(window.document.querySelectorAll('.card.picked').length, 0);
+test('tocar un mazo agotado no hace nada raro', () => {
+  escenario({ tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: true }]], stock: [], waste: [] });
+  const antes = JSON.stringify(game.state);
+  const p = centro(0, 0);
+  puntero('pointerdown', $('.slot-stock'), p.x, p.y);
+  puntero('pointerup', $('.slot-stock'), p.x, p.y);
+  assert.equal(JSON.stringify(game.state), antes);
+  assert.equal($('.slot-stock').classList.contains('dead'), true, 'el hueco se ve apagado');
 });
 
 test('el zoom con dos dedos no está bloqueado', () => {

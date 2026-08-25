@@ -178,7 +178,7 @@ addEventListener('keydown', (event) => {
   }
 
   switch (tecla.toLowerCase()) {
-    case 'escape': board.clearSelection(); break;
+    case 'escape': board.cancel(); break;
     case 'u': detenerAuto(); game.undo(); break;
     case 'h': $('#btn-hint').click(); break;
     case 'a': autoCompletar(); break;

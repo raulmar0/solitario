@@ -196,8 +196,12 @@ body {
 
 .card.playable { cursor: grab; }
 .card.dragging { cursor: grabbing; box-shadow: var(--shadow-lift); transition: none; }
-.card.picked { box-shadow: 0 0 0 3px var(--accent), var(--shadow-lift); }
 .card.hint { animation: hint 900ms ease 2; }
+.card.nope { animation: nope 380ms ease; }
+@keyframes nope {
+  0%, 100% { box-shadow: var(--shadow); }
+  40% { box-shadow: 0 0 0 3px var(--danger), 0 8px 18px rgba(0, 0, 0, .35); }
+}
 @keyframes hint {
   0%, 100% { box-shadow: var(--shadow); }
   50% { box-shadow: 0 0 0 3px var(--accent), 0 10px 22px rgba(0, 0, 0, .4); }
@@ -414,6 +418,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .anim .card { transition: none; }
-  .card.hint, .stat.bump dd { animation: none; }
+  .card.hint, .card.nope, .stat.bump dd { animation: none; }
   .confetti { display: none; }
 }

@@ -38,8 +38,11 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   reparte siempre las mismas cartas, así que se puede competir con alguien por el
   mismo reparto. Con «solo manos con solución» se reparte de una lista de 150
   semillas resueltas por el buscador de `test/engine.test.js`.
-- Arrastrar, tocar origen y destino, doble clic para subir, atajos de teclado,
-  tema claro/oscuro, y funciona con el dedo en el móvil.
+- **Picar una carta la mueve sola** a su mejor destino: primero la pila de arriba
+  y, si no, la columna que mejor le venga (los huecos vacíos se dejan para el
+  final, que hacen falta para los reyes). Para elegir el sitio a mano —dos huecos
+  libres, dos columnas donde encaja— se arrastra.
+- Atajos de teclado, tema claro/oscuro, y funciona con el dedo en el móvil.
 
 ## Dónde se guarda todo
 
@@ -80,7 +83,7 @@ todo lo de `src/` menos `ui.js` se puede probar en Node sin navegador.
 npm test
 ```
 
-126 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+130 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, una prueba de integración con jsdom que monta la
 página entera y simula arrastrar cartas, una regresión por cada fallo que
@@ -144,4 +147,4 @@ uno a otro.
 | A | subir automáticamente |
 | N / R | partida nueva / repetir reparto |
 | P / , / ? | récords / ajustes / ayuda |
-| Esc | soltar la selección |
+| Esc | cancelar el arrastre |
