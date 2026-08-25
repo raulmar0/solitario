@@ -1,0 +1,18 @@
+{
+  "name": "solitario",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Solitario Klondike en el navegador, con puntuaciones y estadísticas guardadas en local",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "start": "node scripts/dev.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}
