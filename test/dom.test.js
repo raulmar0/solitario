@@ -294,7 +294,7 @@ function escenario({ tableau = [], waste = [], stock = [], foundations = [[], []
     tableau: Array.from({ length: 7 }, (_, i) => tableau[i] ?? []),
     waste, stock, foundations,
   });
-  board.paint();
+  board.settle();
 }
 
 const reglas = () => [...window.document.styleSheets].flatMap((h) => [...h.cssRules]);
@@ -695,4 +695,95 @@ test('sin animaciones no hay reparto animado', () => {
   assert.equal(Math.round(posicion(game.state.tableau[3][0].id).x), Math.round(3 * (cssVar('--cw') + cssVar('--gap'))));
   game.setPrefs({ animations: true });
   board.cancel();
+});
+
+
+// --- capas durante el movimiento ---
+
+const z = (id) => Number(cartaEl(id).style.zIndex);
+// Solo cuentan las cartas que están en juego: las que no aparecen en el tablero
+// de la prueba se ocultan y conservan el z-index que tuvieran de antes.
+const zMaximo = (excepto = []) => Math.max(...[...window.document.querySelectorAll('.card')]
+  .filter((el) => el.style.visibility !== 'hidden' && !excepto.includes(el.dataset.id))
+  .map((el) => Number(el.style.zIndex) || 0));
+
+test('la carta que se mueve va por encima de todas mientras vuela', async () => {
+  // Cruza el tablero entero: de la última columna a la primera, que es justo
+  // donde su z-index de destino es el más bajo de todos.
+  escenario({
+    tableau: [
+      [{ id: '10C', rank: 10, suit: 'C', faceUp: true }],
+      [{ id: '5H', rank: 5, suit: 'H', faceUp: true }],
+      [{ id: '5D', rank: 5, suit: 'D', faceUp: true }],
+      [{ id: '5S', rank: 5, suit: 'S', faceUp: true }],
+      [{ id: '5C', rank: 5, suit: 'C', faceUp: true }],
+      [{ id: '4D', rank: 4, suit: 'D', faceUp: true }],
+      [{ id: '9H', rank: 9, suit: 'H', faceUp: true }],
+    ],
+  });
+  const reposo = z('9H');
+  assert.ok(reposo > z('10C'), 'en reposo, la columna 6 va por encima de la 0');
+
+  const p = centro(6, 1);
+  puntero('pointerdown', cartaEl('9H'), p.x, p.y);
+  puntero('pointerup', cartaEl('9H'), p.x, p.y);
+  assert.deepEqual(game.state.tableau[0].map((c) => c.id), ['10C', '9H'], 'se coloca sobre el 10C');
+
+  assert.ok(z('9H') > zMaximo(['9H']), `en vuelo va arriba del todo (${z('9H')})`);
+  assert.ok(z('9H') >= 1000);
+
+  await new Promise((r) => setTimeout(r, 600));
+  assert.ok(z('9H') < 1000, 'al aterrizar recupera su capa normal');
+  assert.ok(z('9H') > z('10C'), 'y se queda encima de la carta sobre la que cayó');
+  assert.ok(z('9H') < z('5D'), 'pero por debajo de las columnas siguientes, como corresponde');
+});
+
+test('una secuencia en vuelo mantiene su orden interno', async () => {
+  escenario({
+    tableau: [
+      [{ id: '10C', rank: 10, suit: 'C', faceUp: true }],
+      [], [], [], [],
+      [{ id: '4D', rank: 4, suit: 'D', faceUp: true }],
+      [
+        { id: '9H', rank: 9, suit: 'H', faceUp: true },
+        { id: '8S', rank: 8, suit: 'S', faceUp: true },
+        { id: '7H', rank: 7, suit: 'H', faceUp: true },
+      ],
+    ],
+  });
+  const p = centro(6, 1);
+  puntero('pointerdown', cartaEl('9H'), p.x, p.y);
+  puntero('pointerup', cartaEl('9H'), p.x, p.y);
+  assert.deepEqual(game.state.tableau[0].map((c) => c.id), ['10C', '9H', '8S', '7H']);
+
+  assert.ok(z('9H') < z('8S') && z('8S') < z('7H'), 'llegan escalonadas como se apilan');
+  assert.ok(z('9H') > zMaximo(['9H', '8S', '7H']), 'y las tres por encima del resto');
+});
+
+test('la carta que se arrastra va por encima incluso de las que vuelan', () => {
+  escenario({
+    tableau: [
+      [{ id: '10C', rank: 10, suit: 'C', faceUp: true }],
+      [{ id: '2H', rank: 2, suit: 'H', faceUp: true }],
+      [], [], [], [],
+      [{ id: '9H', rank: 9, suit: 'H', faceUp: true }],
+    ],
+  });
+  const p = centro(6, 1);
+  puntero('pointerdown', cartaEl('9H'), p.x, p.y);
+  puntero('pointerup', cartaEl('9H'), p.x, p.y);      // el 9H vuela a la columna 0
+
+  const q = centro(1, 1);
+  puntero('pointerdown', cartaEl('2H'), q.x, q.y);    // y ahora se coge el 2H
+  assert.ok(z('2H') > z('9H'), 'la de la mano manda');
+  assert.ok(z('2H') >= 2000);
+  puntero('pointerup', cartaEl('2H'), q.x, q.y);
+});
+
+test('recolocar por un cambio de tamaño no levanta las cartas', () => {
+  escenario({ tableau: [[{ id: '10C', rank: 10, suit: 'C', faceUp: true }], [], [], [], [], [], [{ id: '9H', rank: 9, suit: 'H', faceUp: true }]] });
+  const antes = z('9H');
+  window.dispatchEvent(new window.Event('resize'));
+  assert.equal(z('9H'), antes, 'siguen en su capa de siempre');
+  assert.ok(z('9H') < 1000);
 });
