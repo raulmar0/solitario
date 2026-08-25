@@ -8,6 +8,8 @@ import { PILE } from './engine.js';
 
 const DRAG_THRESHOLD = 5;     // px antes de considerar que se está arrastrando
 const DOUBLE_TAP_MS = 320;
+const REPARTO_PASO = 65;      // ms entre carta y carta al repartir
+const VUELO_POR_DEFECTO = 432;
 
 /**
  * Reparto de la fila de arriba, en columnas: las cuatro fundaciones a la
@@ -28,6 +30,9 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   let layout = null;
   let drag = null;
   let ultimoAuto = { at: 0, x: 0, y: 0 };   // dónde y cuándo se jugó sola la última carta
+  let enMazo = null;           // ids que aún no se han repartido: se dibujan sobre el mazo
+  let tapadas = null;          // ids que siguen boca abajo mientras vuelan a su sitio
+  let relojes = [];            // temporizadores del reparto
 
   // --- creación de las cartas (una sola vez) ---
   for (const suit of ['S', 'H', 'D', 'C']) {
@@ -176,20 +181,92 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     stock.classList.toggle('empty', state.stock.length === 0);
     stock.classList.toggle('dead', state.stock.length === 0 && !engine.isLegal(state, { type: 'recycle' }));
 
+    const mazoX = colX(COLUMNA.stock, m);
     for (const [id, el] of els) {
       const p = positions.get(id);
       if (!p) { el.style.visibility = 'hidden'; continue; }
       el.style.visibility = '';
+      const sinRepartir = enMazo?.has(id);
       if (!drag || !drag.ids.includes(id)) {
-        el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+        const x = sinRepartir ? mazoX : p.x;
+        const y = sinRepartir ? 0 : p.y;
+        el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         el.style.zIndex = String(p.z);
       }
-      el.classList.toggle('down', !p.faceUp);
+      el.classList.toggle('down', !p.faceUp || !!tapadas?.has(id));
       el.classList.toggle('playable', !!p.playable);
       if (!drag || !drag.ids.includes(id)) el.classList.remove('dragging');
     }
 
     root.style.minHeight = `${Math.max(...layout.columns.map((c) => c.bottom), m.ch)}px`;
+  }
+
+  // --- reparto animado ---
+
+  // Hacen falta las dos: la preferencia manda, y sin la clase `anim` no hay
+  // transición en CSS, así que escalonar las cartas solo daría saltos secos.
+  const animando = () => game.prefs.animations !== false
+    && root.classList.contains('anim')
+    && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /** Cuánto tarda una carta en volar, según la hoja de estilos. */
+  function vueloMs() {
+    const valor = window.getComputedStyle(document.documentElement).getPropertyValue('--card-speed').trim();
+    const numero = parseFloat(valor);
+    if (!Number.isFinite(numero)) return VUELO_POR_DEFECTO;
+    return valor.endsWith('s') && !valor.endsWith('ms') ? numero * 1000 : numero;
+  }
+
+  /** El orden en que se reparte de verdad: por filas, no columna a columna. */
+  function ordenDeReparto(state) {
+    const orden = [];
+    for (let fila = 0; fila < 7; fila++) {
+      for (let col = fila; col < 7; col++) {
+        const card = state.tableau[col][fila];
+        if (card) orden.push(card.id);
+      }
+    }
+    return orden;
+  }
+
+  function cortarReparto({ pintar = true } = {}) {
+    if (!relojes.length && !enMazo && !tapadas) return;
+    relojes.forEach(clearTimeout);
+    relojes = [];
+    enMazo = null;
+    tapadas = null;
+    if (pintar) paint();
+  }
+
+  /**
+   * Las 28 cartas del tableau salen del mazo de una en una, como en la mesa, y
+   * cada una se destapa al llegar. Un toque en cualquier sitio se lo salta.
+   */
+  function repartir() {
+    cortarReparto({ pintar: false });
+    if (!animando()) { paint(); return; }
+
+    const orden = ordenDeReparto(game.state);
+    if (!orden.length) { paint(); return; }
+    enMazo = new Set(orden);
+    tapadas = new Set(orden);
+    paint();                       // todas encima del mazo y boca abajo
+
+    const epoca = game.epoch;
+    const vuelo = vueloMs();
+    const programar = (ms, fn) => relojes.push(setTimeout(() => {
+      if (game.epoch !== epoca) { cortarReparto(); return; }   // el jugador se adelantó
+      fn();
+      paint();
+    }, ms));
+
+    orden.forEach((id, i) => {
+      programar(i * REPARTO_PASO, () => enMazo?.delete(id));
+      programar(i * REPARTO_PASO + vuelo, () => {
+        tapadas?.delete(id);
+        if (tapadas && !tapadas.size) { enMazo = null; tapadas = null; }
+      });
+    });
   }
 
   // --- zonas donde se puede soltar ---
@@ -411,6 +488,7 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   // --- eventos ---
   root.addEventListener('pointerdown', (event) => {
     if (event.button != null && event.button !== 0) return;
+    if (enMazo) { event.preventDefault(); cortarReparto(); return; }   // sin esperar al reparto
     if (drag) { cancelDrag(); return; }     // un segundo dedo cancela, no juega dos veces
     if (game.status !== 'playing' && game.status !== 'stuck') return;
     const cardEl = event.target.closest('.card');
@@ -449,8 +527,9 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   // --- api ---
   const api = {
     paint,
-    /** Corta cualquier gesto a medias (la tecla Escape). */
-    cancel() { cancelDrag(); clearHighlights(); paint(); },
+    /** Corta cualquier gesto o reparto a medias (la tecla Escape, y las pruebas). */
+    cancel() { cortarReparto({ pintar: false }); cancelDrag(); clearHighlights(); paint(); },
+    get repartiendo() { return !!enMazo; },
     /** Marca la jugada sugerida para que se vea de un vistazo. */
     flashHint(move) {
       if (!move) return;
@@ -475,6 +554,13 @@ export function createBoard({ root, game, onMessage = () => {} }) {
       }
     },
   };
+
+  let ultimoReparto = game.dealId;
+  game.subscribe(() => {
+    if (game.dealId === ultimoReparto) return;
+    ultimoReparto = game.dealId;
+    repartir();
+  });
 
   const repaint = () => paint();
   window.addEventListener('resize', repaint);

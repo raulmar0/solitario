@@ -34,6 +34,7 @@ export function createGame({ store, now = () => Date.now() }) {
   let recorded = false;
   let lastResult = null;
   let selectionEpoch = 0;      // sube con cada cambio de estado: sirve para invalidar cachés de la interfaz
+  let dealId = 0;              // sube solo al repartir de nuevo: la interfaz lo usa para animar el reparto
 
   const emit = () => { for (const fn of listeners) fn(api); };
 
@@ -183,6 +184,8 @@ export function createGame({ store, now = () => Date.now() }) {
     get lastResult() { return lastResult; },
     get seed() { return state?.seed ?? null; },
     get epoch() { return selectionEpoch; },
+    /** Cambia cada vez que se reparte de cero (no al retomar una partida guardada). */
+    get dealId() { return dealId; },
     /** Modalidad con la que se repartió, que es la que puntúa (no la preferencia actual). */
     get mode() { return modo(); },
 
@@ -199,6 +202,7 @@ export function createGame({ store, now = () => Date.now() }) {
       if (seed == null) seed = prefs.solvableOnly ? randomSolvableSeed(state?.seed) : randomSeed();
       abandonIfInProgress();
       state = engine.newGame({ seed, drawCount: prefs.drawCount, scoring: prefs.scoring });
+      dealId += 1;
       state.timed = prefs.timed;         // la modalidad se fija al repartir, no al puntuar
       baseScore = initialScore(prefs.scoring);
       moves = 0;

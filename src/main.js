@@ -110,7 +110,7 @@ function autoCompletar() {
   }
   autoTimer = setInterval(() => {
     if (!game.autoCompleteStep()) detenerAuto();
-  }, game.prefs.animations === false ? 0 : 108);   // al ritmo de --card-speed
+  }, game.prefs.animations === false ? 0 : 216);   // al ritmo de --card-speed
 }
 
 // ---------- botones ----------

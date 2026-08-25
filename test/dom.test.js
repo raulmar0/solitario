@@ -49,6 +49,7 @@ globalThis.localStorage = window.localStorage;
 await import('../src/main.js');
 const { game, board, panels } = globalThis.solitario;
 game.newGame(1);          // reparto fijo: las pruebas de interacción deben ser repetibles
+board.cancel();           // sin la animación de reparto por medio
 const $ = (sel) => window.document.querySelector(sel);
 const cssVar = (name) => parseFloat(window.document.documentElement.style.getPropertyValue(name));
 
@@ -602,10 +603,96 @@ test('el descarte se abanica hacia la izquierda, sin meterse bajo el mazo', () =
   game.setPrefs({ drawCount: 1 });
 });
 
-test('la animación de las cartas es más lenta que la del resto de la interfaz', () => {
+test('las cartas vuelan mucho más despacio que el resto de la interfaz', () => {
   const raiz = reglas().find((r) => r.selectorText === ':root').style;
   const ui = parseFloat(raiz.getPropertyValue('--speed'));
   const cartas = parseFloat(raiz.getPropertyValue('--card-speed'));
-  assert.equal(cartas, Math.round(ui * 1.2), 'un 20 % más lenta');
+  assert.equal(cartas, 432, 'el vuelo de las cartas dura 432 ms');
+  assert.ok(cartas >= ui * 2, 'y al menos el doble que las transiciones de la interfaz');
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--card-speed)'), true);
+  assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--speed)'), false,
+    'los botones y los diálogos siguen a su ritmo');
+});
+
+// --- reparto animado ---
+
+const mazoX = () => COLUMNA.stock * (cssVar('--cw') + cssVar('--gap'));
+const posicion = (id) => {
+  const m = /translate3d\(([-\d.]+)px, ([-\d.]+)px/.exec(cartaEl(id).style.transform);
+  return { x: parseFloat(m[1]), y: parseFloat(m[2]) };
+};
+const cartasDelTableau = () => game.state.tableau.flat();
+
+test('al repartir, las 28 cartas arrancan apiladas sobre el mazo y boca abajo', () => {
+  board.cancel();
+  game.newGame(77);
+  assert.equal(board.repartiendo, true);
+
+  const cartas = cartasDelTableau();
+  assert.equal(cartas.length, 28);
+  for (const c of cartas) {
+    const p = posicion(c.id);
+    assert.equal(Math.round(p.x), Math.round(mazoX()), `${c.id} debería salir del mazo`);
+    assert.equal(p.y, 0, `${c.id} debería estar en la fila de arriba`);
+    assert.equal(cartaEl(c.id).classList.contains('down'), true, `${c.id} se reparte boca abajo`);
+  }
+  const arriba = game.state.tableau[6].at(-1);
+  assert.equal(arriba.faceUp, true, 'en el estado ya está boca arriba…');
+  assert.equal(cartaEl(arriba.id).classList.contains('down'), true, '…pero todavía no se ve');
+});
+
+test('un toque durante el reparto se lo salta y coloca todo', () => {
+  board.cancel();
+  game.newGame(78);
+  assert.equal(board.repartiendo, true);
+
+  puntero('pointerdown', $('#board'), 5, 5);
+  assert.equal(board.repartiendo, false, 'se corta el reparto');
+
+  for (const [i, pila] of game.state.tableau.entries()) {
+    for (const [j, c] of pila.entries()) {
+      const p = posicion(c.id);
+      assert.equal(Math.round(p.x), Math.round(i * (cssVar('--cw') + cssVar('--gap'))), `${c.id} en su columna`);
+      assert.ok(p.y > 0, `${c.id} en la fila del tableau`);
+      assert.equal(cartaEl(c.id).classList.contains('down'), j < pila.length - 1, `${c.id} del derecho o del revés`);
+    }
+  }
+});
+
+test('el reparto termina solo y deja el tablero en su sitio', async () => {
+  board.cancel();
+  game.newGame(79);
+  const limite = Date.now() + 6000;
+  while (board.repartiendo && Date.now() < limite) {
+    await new Promise((r) => setTimeout(r, 60));
+  }
+  assert.equal(board.repartiendo, false, 'el reparto acaba por sí solo');
+
+  for (const [i, pila] of game.state.tableau.entries()) {
+    const arriba = pila.at(-1);
+    assert.equal(Math.round(posicion(arriba.id).x), Math.round(i * (cssVar('--cw') + cssVar('--gap'))));
+    assert.equal(cartaEl(arriba.id).classList.contains('down'), false, 'la última de cada columna acaba destapada');
+  }
+  assert.equal(game.moves, 0, 'repartir no cuenta como jugada');
+});
+
+test('jugar durante el reparto lo cancela en vez de dejar cartas en el aire', async () => {
+  board.cancel();
+  game.newGame(80);
+  assert.equal(board.repartiendo, true);
+  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', bubbles: true }));   // robar
+  await new Promise((r) => setTimeout(r, 120));
+  assert.equal(board.repartiendo, false);
+  assert.equal(game.state.waste.length, 1);
+  const arriba = game.state.tableau[0].at(-1);
+  assert.equal(cartaEl(arriba.id).classList.contains('down'), false, 'todo queda como debe');
+});
+
+test('sin animaciones no hay reparto animado', () => {
+  game.setPrefs({ animations: false });
+  game.newGame(81);
+  assert.equal(board.repartiendo, false, 'las cartas aparecen ya colocadas');
+  assert.equal(Math.round(posicion(game.state.tableau[3][0].id).x), Math.round(3 * (cssVar('--cw') + cssVar('--gap'))));
+  game.setPrefs({ animations: true });
+  board.cancel();
 });

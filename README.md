@@ -42,6 +42,8 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   y, si no, la columna que mejor le venga (los huecos vacíos se dejan para el
   final, que hacen falta para los reyes). Para elegir el sitio a mano —dos huecos
   libres, dos columnas donde encaja— se arrastra.
+- **Reparto animado**: las 28 cartas del tableau salen del mazo de una en una y
+  se destapan al llegar, como en la mesa. Dura unos 2 s y un toque se lo salta.
 - Atajos de teclado, tema claro/oscuro, y funciona con el dedo en el móvil.
 
 ## Dónde se guarda todo
@@ -83,7 +85,7 @@ todo lo de `src/` menos `ui.js` se puede probar en Node sin navegador.
 npm test
 ```
 
-130 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+138 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, una prueba de integración con jsdom que monta la
 página entera y simula arrastrar cartas, una regresión por cada fallo que
