@@ -9,7 +9,9 @@ import { PILE } from './engine.js';
 const DRAG_THRESHOLD = 5;     // px antes de considerar que se está arrastrando
 const DOUBLE_TAP_MS = 320;
 const REPARTO_PASO = 65;      // ms entre carta y carta al repartir
-const VUELO_POR_DEFECTO = 432;
+// Reserva por si el navegador no sabe resolver la variable de CSS. Tiene que
+// coincidir con --card-speed en styles.css; hay una prueba que lo vigila.
+export const VUELO_POR_DEFECTO = 864;
 const Z_VUELO = 1000;         // una carta en movimiento va por encima del tablero
 const Z_ARRASTRE = 2000;      // y la que lleva el jugador en la mano, por encima de todo
 
@@ -586,6 +588,8 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     },
     /** Deja el tablero colocado ya, sin nada en el aire. */
     settle() { repintarSinVuelo(); },
+    /** Lo que tarda una carta en ir de un sitio a otro, según la hoja de estilos. */
+    get flightMs() { return vueloMs(); },
     get repartiendo() { return !!enMazo; },
     /** Marca la jugada sugerida para que se vea de un vistazo. */
     flashHint(move) {

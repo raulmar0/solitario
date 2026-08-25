@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
-import { COLUMNA } from '../src/ui.js';
+import { COLUMNA, VUELO_POR_DEFECTO } from '../src/ui.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
@@ -47,7 +47,7 @@ globalThis.addEventListener = window.addEventListener.bind(window);
 globalThis.localStorage = window.localStorage;
 
 await import('../src/main.js');
-const { game, board, panels } = globalThis.solitario;
+const { game, board, panels, refresh } = globalThis.solitario;
 game.newGame(1);          // reparto fijo: las pruebas de interacción deben ser repetibles
 board.cancel();           // sin la animación de reparto por medio
 const $ = (sel) => window.document.querySelector(sel);
@@ -607,8 +607,9 @@ test('las cartas vuelan mucho más despacio que el resto de la interfaz', () => 
   const raiz = reglas().find((r) => r.selectorText === ':root').style;
   const ui = parseFloat(raiz.getPropertyValue('--speed'));
   const cartas = parseFloat(raiz.getPropertyValue('--card-speed'));
-  assert.equal(cartas, 432, 'el vuelo de las cartas dura 432 ms');
-  assert.ok(cartas >= ui * 2, 'y al menos el doble que las transiciones de la interfaz');
+  assert.equal(cartas, 864, 'el vuelo de las cartas dura 864 ms');
+  assert.ok(cartas >= ui * 4, 'y muy por encima de las transiciones de la interfaz');
+  assert.equal(board.flightMs, 864, 'y el JS lee ese mismo valor de la hoja de estilos');
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--card-speed)'), true);
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--speed)'), false,
     'los botones y los diálogos siguen a su ritmo');
@@ -732,7 +733,7 @@ test('la carta que se mueve va por encima de todas mientras vuela', async () => 
   assert.ok(z('9H') > zMaximo(['9H']), `en vuelo va arriba del todo (${z('9H')})`);
   assert.ok(z('9H') >= 1000);
 
-  await new Promise((r) => setTimeout(r, 600));
+  await new Promise((r) => setTimeout(r, board.flightMs + 200));
   assert.ok(z('9H') < 1000, 'al aterrizar recupera su capa normal');
   assert.ok(z('9H') > z('10C'), 'y se queda encima de la carta sobre la que cayó');
   assert.ok(z('9H') < z('5D'), 'pero por debajo de las columnas siguientes, como corresponde');
@@ -821,4 +822,86 @@ test('solo se levanta la carta que se mueve, no el tablero entero', () => {
   comoElNavegador();
   assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 6 }, to: { pile: 'tableau', index: 0 }, count: 1 }), true);
   assert.deepEqual(elevadas(), ['9H'], 'solo vuela la que se ha movido');
+});
+
+
+// --- botón de rematar la partida ---
+
+const botonFinal = () => $('#btn-finish');
+
+/** Deja la partida a un paso: todo boca arriba, sin mazo y sin decisiones. */
+function partidaResuelta(quedan = 3) {
+  const palos = ['S', 'H', 'D', 'C'];
+  const foundations = palos.map((suit) => Array.from({ length: 13 - (suit === 'S' ? quedan : 0) },
+    (_, i) => ({ id: `${i + 1}${suit}`, rank: i + 1, suit, faceUp: true })));
+  const sueltas = Array.from({ length: quedan }, (_, i) => ({
+    id: `${13 - i}S`, rank: 13 - i, suit: 'S', faceUp: true,
+  }));
+  escenario({ foundations, tableau: sueltas.map((c) => [c]) });
+  refresh();          // tocar el estado a mano no dispara la suscripción de la interfaz
+  board.settle();
+}
+
+test('el botón de rematar solo aparece cuando ya no queda nada que decidir', () => {
+  escenario({ tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: true }]], stock: [{ id: '2H', rank: 2, suit: 'H', faceUp: false }] });
+  assert.equal(game.canAutoComplete, false, 'con cartas en el mazo todavía no');
+  assert.equal(botonFinal().hidden, true);
+
+  partidaResuelta();
+  assert.equal(game.canAutoComplete, true);
+  assert.equal(botonFinal().hidden, false, 'ahora sí se ofrece');
+  assert.match(botonFinal().textContent, /Rematar/);
+});
+
+test('el botón remata la partida carta a carta y la da por ganada', async () => {
+  partidaResuelta(3);
+  const subidas = game.state.foundations.flat().length;
+  assert.equal(subidas, 49);
+
+  botonFinal().click();
+  assert.equal(botonFinal().dataset.corriendo, 'si', 'mientras corre ofrece detenerse');
+  assert.match(botonFinal().textContent, /Detener/);
+
+  const limite = Date.now() + 8000;
+  while (game.status !== 'won' && Date.now() < limite) await new Promise((r) => setTimeout(r, 60));
+
+  assert.equal(game.status, 'won');
+  assert.equal(game.state.foundations.flat().length, 52);
+  assert.equal(botonFinal().hidden, true, 'y desaparece al acabar');
+  $('#dlg-win').close();
+});
+
+test('el remate se puede detener a media cascada', async () => {
+  partidaResuelta(6);
+  botonFinal().click();
+  await new Promise((r) => setTimeout(r, board.flightMs / 2));
+  botonFinal().click();                       // detener
+  const congelado = game.state.foundations.flat().length;
+  assert.equal(botonFinal().dataset.corriendo, 'no');
+  await new Promise((r) => setTimeout(r, 400));
+  assert.equal(game.state.foundations.flat().length, congelado, 'no sube ninguna más');
+  assert.equal(game.status, 'playing');
+  assert.equal(botonFinal().hidden, false, 'sigue ofreciéndose por si cambias de idea');
+});
+
+test('el ritmo de la cascada sale de la duración del vuelo', () => {
+  assert.equal(Math.round(board.flightMs / 4), 216, 'una carta cada cuarto de vuelo');
+});
+
+test('la duración de reserva del JS coincide con la hoja de estilos', () => {
+  // Si se descuelgan, un navegador que no resuelva la variable bajaría la carta
+  // de su capa a mitad de vuelo.
+  const enCss = parseFloat(/--card-speed:\s*([\d.]+)ms/.exec(css)[1]);
+  assert.equal(VUELO_POR_DEFECTO, enCss);
+});
+
+test('deshacer durante el remate lo corta', async () => {
+  partidaResuelta(5);
+  botonFinal().click();
+  await new Promise((r) => setTimeout(r, board.flightMs / 3));
+  $('#btn-undo').click();
+  const tras = game.state.foundations.flat().length;
+  await new Promise((r) => setTimeout(r, 400));
+  assert.equal(game.state.foundations.flat().length, tras, 'la cascada se paró');
+  assert.equal(botonFinal().dataset.corriendo, 'no');
 });

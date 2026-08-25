@@ -66,6 +66,7 @@ function refreshHeader() {
   const jugando = game.status === 'playing' || game.status === 'stuck';
   $('#btn-hint').disabled = !jugando;
   $('#btn-auto').disabled = game.status !== 'playing';
+  pintarBotonFinal();
 }
 
 function refresh() {
@@ -80,7 +81,7 @@ function refresh() {
   if (game.status === 'stuck') {
     message('No veo jugadas útiles. Puedes bajar una carta de las pilas de arriba, deshacer o repartir.', true);
   } else if (game.canAutoComplete && !autoTimer) {
-    message('Ya está resuelto: pulsa «Auto» para colocar el resto.');
+    message('Ya no queda nada que decidir: dale a «Rematar la partida».');
   }
 }
 
@@ -99,7 +100,26 @@ addEventListener('pagehide', () => game.flush());
 addEventListener('beforeunload', () => game.flush());
 
 // ---------- autocompletar ----------
-function detenerAuto() { clearInterval(autoTimer); autoTimer = null; }
+function detenerAuto() {
+  clearInterval(autoTimer);
+  autoTimer = null;
+  pintarBotonFinal();
+}
+
+/** El botón de rematar solo tiene sentido cuando ya no queda nada que decidir. */
+function pintarBotonFinal() {
+  const btn = $('#btn-finish');
+  const corriendo = !!autoTimer;
+  const visible = game.canAutoComplete || corriendo;
+  const estado = `${visible}·${corriendo}`;
+  if (btn.dataset.estado === estado) return;   // el reloj pasa por aquí dos veces por segundo
+  btn.dataset.estado = estado;
+  btn.hidden = !visible;
+  btn.dataset.corriendo = corriendo ? 'si' : 'no';
+  btn.innerHTML = corriendo
+    ? '<span aria-hidden="true">■</span> Detener'
+    : '<span aria-hidden="true">✨</span> Rematar la partida';
+}
 
 function autoCompletar() {
   if (autoTimer) { detenerAuto(); return; }
@@ -108,9 +128,12 @@ function autoCompletar() {
     message(subidas ? `${subidas} carta${subidas === 1 ? '' : 's'} arriba.` : 'De momento no hay ninguna carta que subir sin riesgo.');
     return;
   }
+  // Una carta cada cuarto de vuelo: se solapan lo justo para que parezca una cascada.
+  const ritmo = game.prefs.animations === false ? 0 : Math.round(board.flightMs / 4);
   autoTimer = setInterval(() => {
     if (!game.autoCompleteStep()) detenerAuto();
-  }, game.prefs.animations === false ? 0 : 216);   // al ritmo de --card-speed
+  }, ritmo);
+  pintarBotonFinal();
 }
 
 // ---------- botones ----------
@@ -143,6 +166,7 @@ $('#btn-hint').addEventListener('click', () => {
 });
 
 $('#btn-auto').addEventListener('click', autoCompletar);
+$('#btn-finish').addEventListener('click', autoCompletar);
 $('#btn-stats').addEventListener('click', () => panels.openStats());
 $('#btn-settings').addEventListener('click', () => panels.openSettings());
 $('#btn-help').addEventListener('click', () => panels.openHelp());
@@ -192,7 +216,7 @@ addEventListener('keydown', (event) => {
 });
 
 // Punto de entrada para la consola del navegador y para las pruebas.
-globalThis.solitario = { game, store, board, panels, message };
+globalThis.solitario = { game, store, board, panels, message, refresh };
 
 // ---------- en marcha ----------
 applyPrefs();

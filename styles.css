@@ -6,7 +6,7 @@
   --gap: 12px;
   --radius: 9px;
   --speed: 180ms;         /* transiciones de la interfaz */
-  --card-speed: 432ms;    /* el vuelo de las cartas: lento a propósito, para que se vea */
+  --card-speed: 864ms;    /* el vuelo de las cartas: lento a propósito, para que se vea */
 
   --felt-1: #14663f;
   --felt-2: #0b3f28;
@@ -275,6 +275,32 @@ body {
   text-align: center;
 }
 .banner:empty { padding: 0; background: none; }
+
+/* Botón de rematar la partida: solo aparece cuando ya no queda nada que decidir. */
+.finish {
+  margin: 12px auto 0;
+  padding: 11px 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .32);
+  animation: latido 1.9s ease-in-out infinite;
+}
+.finish:hover { filter: brightness(1.08); }
+.finish:active { transform: translateY(1px); }
+.finish:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.finish[data-corriendo="si"] { animation: none; background: var(--fill-strong); color: var(--ink); }
+@keyframes latido {
+  50% { transform: scale(1.045); box-shadow: 0 10px 26px rgba(0, 0, 0, .38); }
+}
 .banner.warn { color: #ffd97a; font-weight: 600; }
 
 /* ---------- diálogos ---------- */
@@ -419,6 +445,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .anim .card { transition: none; }
-  .card.hint, .card.nope, .stat.bump dd { animation: none; }
+  .card.hint, .card.nope, .stat.bump dd, .finish { animation: none; }
   .confetti { display: none; }
 }

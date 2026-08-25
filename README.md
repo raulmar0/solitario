@@ -43,7 +43,10 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   final, que hacen falta para los reyes). Para elegir el sitio a mano —dos huecos
   libres, dos columnas donde encaja— se arrastra.
 - **Reparto animado**: las 28 cartas del tableau salen del mazo de una en una y
-  se destapan al llegar, como en la mesa. Dura unos 2 s y un toque se lo salta.
+  se destapan al llegar, como en la mesa. Dura unos 2,6 s y un toque se lo salta.
+- **Botón de rematar**: en cuanto la partida ya no tiene decisiones (todo boca
+  arriba y sin mazo) aparece un botón que sube el resto en cascada, una carta
+  cada 216 ms. Se puede detener a media cascada.
 - Atajos de teclado, tema claro/oscuro, y funciona con el dedo en el móvil.
 
 ## Dónde se guarda todo
