@@ -7,6 +7,8 @@ import { createPanels } from './panels.js';
 import { formatScore } from './scoring.js';
 import { isKnownSolvable } from './solvable-seeds.js';
 import { PILE } from './engine.js';
+import { VERSION } from './version.js';
+import { registrarServiceWorker, crearInstalador, esStandalone, esIos } from './pwa.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -14,11 +16,77 @@ const store = createStore(globalThis.localStorage);
 const game = createGame({ store });
 const board = createBoard({ root: $('#board'), game, onMessage: message });
 
+// ---------- aplicación instalable ----------
+
+const pwa = registrarServiceWorker({
+  onVersionNueva: () => { $('#btn-update-pill').hidden = false; },
+});
+const instalador = crearInstalador({ onCambio: () => pintarAjustesApp() });
+
+function pintarAjustesApp() {
+  $('#app-version').textContent = `v${VERSION}`;
+  const fila = $('#install-row');
+  const boton = $('#btn-install');
+  if (instalador.puede) {
+    fila.hidden = false;
+    boton.hidden = false;
+    $('#install-hint').textContent = 'Se abre a pantalla completa, como una aplicación más.';
+  } else if (instalador.pistaIos) {
+    fila.hidden = false;
+    boton.hidden = true;
+    $('#install-hint').textContent = 'En iPhone o iPad: Compartir → «Añadir a pantalla de inicio».';
+  } else {
+    fila.hidden = !esStandalone();
+    boton.hidden = true;
+    if (esStandalone()) $('#install-hint').textContent = 'Ya la tienes instalada.';
+  }
+  $('#btn-update').disabled = !pwa.soportado;
+  if (!pwa.soportado) $('#update-hint').textContent = 'Este navegador no guarda la aplicación para jugar sin conexión.';
+}
+
 const panels = createPanels({
   game,
   store,
   onMessage: message,
   onPrefsChanged: () => { applyPrefs(); refresh(); },
+  onOpenSettings: pintarAjustesApp,
+});
+
+async function buscarActualizacion(boton, textoOriginal) {
+  boton.disabled = true;
+  boton.textContent = 'Buscando…';
+  try {
+    const resultado = await pwa.actualizar();
+    if (resultado === 'aldia') message(`Ya tienes la última versión (v${VERSION}).`);
+    else if (resultado === 'primera-vez') message('Guardando la aplicación para jugar sin conexión. Esta ya es la última versión.');
+    else if (resultado === 'instalando') message('Descargando la versión nueva. Cuando esté lista te aviso aquí arriba.');
+    else if (resultado === 'error') message('No se pudo comprobar si hay versión nueva.', true);
+    // 'actualizando' recarga la página, no hace falta decir nada
+  } catch {
+    message('No se pudo comprobar si hay versión nueva.', true);
+  } finally {
+    boton.disabled = false;
+    boton.textContent = textoOriginal;
+  }
+}
+
+$('#btn-update').addEventListener('click', (event) => buscarActualizacion(event.currentTarget, 'Buscar actualización'));
+
+$('#btn-update-pill').addEventListener('click', async (event) => {
+  const pill = event.currentTarget;
+  pill.disabled = true;
+  game.flush();                       // la partida se guarda antes de recargar
+  const resultado = await pwa.actualizar();
+  if (resultado === 'instalando') message('Descargando la versión nueva. Cuando esté lista te aviso aquí arriba.');
+  else if (resultado === 'error') { pill.disabled = false; message('No se pudo saltar a la versión nueva.', true); }
+  else if (resultado !== 'actualizando') { pill.disabled = false; pill.hidden = true; }
+});
+
+$('#btn-install').addEventListener('click', async () => {
+  const salida = await instalador.instalar();
+  if (salida === 'accepted') message('Instalada. Búscala entre tus aplicaciones.');
+  else if (salida === 'error') message('El navegador no dejó abrir el diálogo de instalación.', true);
+  pintarAjustesApp();
 });
 
 let bannerTimer = null;
@@ -216,10 +284,12 @@ addEventListener('keydown', (event) => {
 });
 
 // Punto de entrada para la consola del navegador y para las pruebas.
-globalThis.solitario = { game, store, board, panels, message, refresh };
+globalThis.solitario = { game, store, board, panels, message, refresh, pwa, instalador, VERSION };
 
 // ---------- en marcha ----------
 applyPrefs();
+pintarAjustesApp();
+if (esStandalone() || esIos()) document.documentElement.dataset.instalada = String(esStandalone());
 matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyPrefs);
 
 if (game.resume()) {

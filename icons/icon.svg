@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Solitario">
+  <defs>
+    <linearGradient id="fieltro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#18764a"/>
+      <stop offset="1" stop-color="#093a24"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="113" fill="url(#fieltro)"/>
+  <g fill="#fdfcf8">
+    <circle cx="191.8" cy="289.8" r="71"/>
+    <circle cx="320.2" cy="289.8" r="71"/>
+    <polygon points="256,87 357.4,289.8 154.6,289.8"/>
+    <path d="M240.8 289.8 Q 240.8 380 166.4 418.2 L 345.6 418.2 Q 271.2 380 271.2 289.8 Z"/>
+  </g>
+</svg>

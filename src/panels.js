@@ -19,7 +19,7 @@ const fecha = (iso) => {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' });
 };
 
-export function createPanels({ game, store, onMessage, onPrefsChanged }) {
+export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSettings = () => {} }) {
   const dlgWin = $('#dlg-win');
   const dlgStats = $('#dlg-stats');
   const dlgSettings = $('#dlg-settings');
@@ -292,7 +292,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged }) {
       renderStats();
       dlgStats.showModal();
     },
-    openSettings() { renderSettings(); dlgSettings.showModal(); },
+    openSettings() { renderSettings(); onOpenSettings(); dlgSettings.showModal(); },
     openHelp() { dlgHelp.showModal(); },
     showWin,
     renderSettings,

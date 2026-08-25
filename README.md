@@ -49,6 +49,42 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   cada 216 ms. Se puede detener a media cascada.
 - Atajos de teclado, tema claro/oscuro, y funciona con el dedo en el móvil.
 
+## Aplicación instalable (PWA)
+
+Se instala en el móvil o en el escritorio y funciona **sin conexión**: el service
+worker precarga los 20 ficheros que necesita la aplicación, así que después del
+primer arranque no hace falta internet para nada. Tampoco lo hacía antes: el
+juego nunca ha hablado con ningún servidor.
+
+- **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
+  botón (Safari no lo permite), así que se explica el camino: Compartir →
+  «Añadir a pantalla de inicio».
+- **Versión**: Ajustes enseña la que está corriendo, `v1.1.0`.
+- **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
+  nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
+
+El worker **no se cuela solo**: al instalarse se queda esperando y solo toma el
+control cuando el jugador lo pide. Cambiar la aplicación debajo de los pies a
+media partida sería peor que esperar.
+
+### Sacar una versión nueva
+
+```bash
+npm run version -- 1.2.0      # sube package.json, src/version.js y sw.js
+npm test                      # hay pruebas que fallan si algo se descuelga
+git commit -am "…" && git push
+```
+
+`sw.js` lleva la versión, una huella del contenido y la lista de ficheros a
+precargar en tres bloques marcados que escribe `scripts/version.js`. El nombre
+de la caché es `solitario-v<versión>-<huella>`, y eso resuelve dos cosas: la
+versión nueva nunca escribe encima de la caja que está sirviendo la anterior, y
+si alguien toca código sin subir la versión la huella cambia igual, así que los
+que ya la tienen instalada no se quedan atrapados en lo viejo.
+
+Los iconos se generan con `npm run icons` (`scripts/iconos.py`, PNG escritos a
+mano con zlib: no hacen falta ni ImageMagick ni Pillow).
+
 ## Dónde se guarda todo
 
 En `localStorage`, bajo el prefijo `solitario.v1.`:
@@ -76,7 +112,12 @@ src/game.js            partida: motor + puntos + reloj + guardado + deshacer
 src/ui.js              tablero: dibujo y gestos
 src/panels.js          diálogos (récords, ajustes, ayuda, victoria)
 src/main.js            arranque, cabecera y teclado
+src/pwa.js             service worker, actualización e instalación
+src/version.js         la versión, generada desde package.json
 src/solvable-seeds.js  150 repartos con solución comprobada
+sw.js                  service worker: precarga y caché
+manifest.webmanifest   nombre, iconos, colores y modo de la aplicación
+icons/                 iconos generados por scripts/iconos.py
 ```
 
 El motor no sabe nada del DOM y la interfaz no sabe nada de las reglas: por eso
@@ -88,12 +129,13 @@ todo lo de `src/` menos `ui.js` se puede probar en Node sin navegador.
 npm test
 ```
 
-138 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+199 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, una prueba de integración con jsdom que monta la
 página entera y simula arrastrar cartas, una regresión por cada fallo que
-encontró la revisión del código, y comprobaciones de contraste (WCAG AA) de los dos
-temas.
+encontró la revisión del código, comprobaciones de contraste (WCAG AA) de los dos
+temas, y el service worker ejecutado dentro de un entorno fingido para comprobar
+la precarga, el borrado de cachés viejas y el funcionamiento sin conexión.
 
 `jsdom` es la única dependencia y solo para las pruebas: lo que se despliega no
 lleva ni una línea de código ajeno.

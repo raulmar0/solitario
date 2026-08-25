@@ -86,7 +86,9 @@ body {
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 10px max(12px, env(safe-area-inset-left)) 10px max(12px, env(safe-area-inset-right));
+  /* Instalada en iPhone la barra de estado se superpone (black-translucent +
+     viewport-fit=cover), así que hay que dejarle su hueco. */
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-left)) 10px max(12px, env(safe-area-inset-right));
   background: var(--topbar-veil);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(6px);
@@ -102,6 +104,25 @@ body {
 }
 
 .scoreboard { display: flex; gap: 6px; margin: 0; flex: 1 1 auto; }
+
+/* Aviso de versión nueva: solo aparece cuando hay un worker esperando. */
+.update-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  animation: latido 2.4s ease-in-out infinite;
+}
+.update-pill:hover { filter: brightness(1.08); }
+.update-pill:disabled { opacity: .6; cursor: progress; animation: none; }
 .stat {
   min-width: 62px;
   padding: 3px 10px;
@@ -391,6 +412,22 @@ body {
 .grid-stats dt { font-size: 11px; color: var(--panel-ink-soft); text-transform: uppercase; letter-spacing: .5px; }
 .grid-stats dd { margin: 2px 0 0; font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
 
+.app-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+}
+.app-row-info { min-width: 0; }
+.app-row-info strong { font-size: 14px; font-variant-numeric: tabular-nums; }
+.app-row .hint-text { margin-top: 2px; }
+.app-row .btn { flex: 0 0 auto; }
+
 .bank-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin-top: 12px; padding: 9px 12px;
@@ -445,6 +482,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .anim .card { transition: none; }
-  .card.hint, .card.nope, .stat.bump dd, .finish { animation: none; }
+  .card.hint, .card.nope, .stat.bump dd, .finish, .update-pill { animation: none; }
   .confetti { display: none; }
 }

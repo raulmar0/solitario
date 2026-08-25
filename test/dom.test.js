@@ -47,7 +47,7 @@ globalThis.addEventListener = window.addEventListener.bind(window);
 globalThis.localStorage = window.localStorage;
 
 await import('../src/main.js');
-const { game, board, panels, refresh } = globalThis.solitario;
+const { game, board, panels, refresh, instalador, VERSION } = globalThis.solitario;
 game.newGame(1);          // reparto fijo: las pruebas de interacción deben ser repetibles
 board.cancel();           // sin la animación de reparto por medio
 const $ = (sel) => window.document.querySelector(sel);
@@ -904,4 +904,46 @@ test('deshacer durante el remate lo corta', async () => {
   await new Promise((r) => setTimeout(r, 400));
   assert.equal(game.state.foundations.flat().length, tras, 'la cascada se paró');
   assert.equal(botonFinal().dataset.corriendo, 'no');
+});
+
+
+// --- aplicación instalable ---
+
+test('los ajustes enseñan la versión que se está ejecutando', () => {
+  panels.openSettings();
+  assert.equal($('#app-version').textContent, `v${VERSION}`);
+  assert.match(VERSION, /^\d+\.\d+\.\d+$/);
+  $('#dlg-settings').close();
+});
+
+test('sin service worker, el botón de actualizar se desactiva y se explica', () => {
+  // jsdom no trae navigator.serviceWorker, que es justo el caso de un navegador viejo.
+  assert.equal(globalThis.solitario.pwa.soportado, false);
+  panels.openSettings();
+  assert.equal($('#btn-update').disabled, true);
+  assert.match($('#update-hint').textContent, /sin conexión/i);
+  $('#dlg-settings').close();
+});
+
+test('la fila de instalar aparece solo cuando el navegador la ofrece', () => {
+  panels.openSettings();
+  assert.equal($('#install-row').hidden, true, 'sin oferta no se enseña nada');
+  assert.equal(instalador.puede, false);
+
+  const evento = new window.Event('beforeinstallprompt', { cancelable: true });
+  let pedido = 0;
+  evento.prompt = async () => { pedido += 1; };
+  evento.userChoice = Promise.resolve({ outcome: 'dismissed', platform: 'web' });
+  window.dispatchEvent(evento);
+
+  assert.equal(evento.defaultPrevented, true, 'se le quita el cartel automático al navegador');
+  assert.equal(instalador.puede, true);
+  assert.equal($('#install-row').hidden, false);
+  assert.equal($('#btn-install').hidden, false);
+  assert.equal(pedido, 0, 'todavía no se ha pedido nada');
+  $('#dlg-settings').close();
+});
+
+test('el aviso de versión nueva empieza escondido', () => {
+  assert.equal($('#btn-update-pill').hidden, true);
 });

@@ -7,10 +7,16 @@
 <meta name="color-scheme" content="light dark">
 <!-- GitHub Pages no deja poner cabeceras: la misma política que sirve nginx, aquí en meta.
      El juego no pide nada a ningún servidor, así que puede ser así de cerrada. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' blob:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0f5132">
 <title>Solitario</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230f5132'/><text x='16' y='24' font-size='22' text-anchor='middle' fill='%23fff'>%E2%99%A0</text></svg>">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Solitario">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -39,6 +45,10 @@
     <button id="btn-settings" class="tool" title="Ajustes (,)"><span aria-hidden="true">⚙</span> Ajustes</button>
     <button id="btn-help" class="tool" title="Ayuda (?)" aria-label="Ayuda"><span aria-hidden="true">?</span></button>
   </nav>
+
+  <button type="button" class="update-pill" id="btn-update-pill" hidden>
+    <span aria-hidden="true">↑</span> Versión nueva · Actualizar
+  </button>
 </header>
 
 <main class="table" id="table">
@@ -165,6 +175,26 @@
       <button class="btn" id="btn-seed-go">Repartir</button>
     </div>
     <p class="hint-text">El mismo número reparte siempre las mismas cartas. Útil para competir con alguien.</p>
+  </div>
+
+  <div class="field">
+    <span class="field-label">Aplicación</span>
+
+    <div class="app-row">
+      <div class="app-row-info">
+        <strong id="app-version">v—</strong>
+        <p class="hint-text" id="update-hint">Se instala en el dispositivo y funciona sin conexión.</p>
+      </div>
+      <button class="btn small" id="btn-update" type="button">Buscar actualización</button>
+    </div>
+
+    <div class="app-row" id="install-row" hidden>
+      <div class="app-row-info">
+        <strong>Instalar en el dispositivo</strong>
+        <p class="hint-text" id="install-hint">Se abre a pantalla completa, como una aplicación más.</p>
+      </div>
+      <button class="btn small primary" id="btn-install" type="button">Instalar</button>
+    </div>
   </div>
 
   <footer class="dlg-foot"><button class="btn primary" data-close>Listo</button></footer>
