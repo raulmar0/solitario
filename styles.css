@@ -5,7 +5,8 @@
   --ch: 126px;
   --gap: 12px;
   --radius: 9px;
-  --speed: 180ms;
+  --speed: 180ms;         /* transiciones de la interfaz */
+  --card-speed: 216ms;    /* el vuelo de las cartas, más lento a propósito para que se vea */
 
   --felt-1: #14663f;
   --felt-2: #0b3f28;
@@ -192,7 +193,7 @@ body {
   will-change: transform;
   cursor: default;
 }
-.anim .card { transition: transform var(--speed) cubic-bezier(.22, .68, .35, 1.02), box-shadow var(--speed); }
+.anim .card { transition: transform var(--card-speed) cubic-bezier(.22, .68, .35, 1.02), box-shadow var(--card-speed); }
 
 .card.playable { cursor: grab; }
 .card.dragging { cursor: grabbing; box-shadow: var(--shadow-lift); transition: none; }

@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
+import { COLUMNA } from '../src/ui.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
@@ -91,7 +92,7 @@ test('cada carta se coloca en su sitio y las de la misma columna se escalonan', 
 
 test('tocar el mazo roba una carta y actualiza la cabecera', () => {
   const antes = game.state.stock.length;
-  const p = centro(0);
+  const p = centro(COLUMNA.stock, 0);
   puntero('pointerdown', $('.slot-stock'), p.x, p.y);
   assert.equal(game.state.stock.length, antes - 1);
   assert.equal(game.state.waste.length, 1);
@@ -109,7 +110,7 @@ test('arrastrar una carta hasta su fundación la sube', () => {
 
   const el = cartaEl('AD');
   const desde = centro(col, 1);
-  const hasta = centro(3 + 2, 0);          // fundación de diamantes
+  const hasta = centro(COLUMNA.foundation(2), 0);   // fundación de diamantes
 
   puntero('pointerdown', el, desde.x, desde.y);
   assert.equal(el.classList.contains('dragging'), true, 'la carta se levanta');
@@ -156,7 +157,7 @@ test('soltar en un sitio ilegal devuelve la carta a su columna', () => {
   const el = cartaEl(carta.id);
   const antes = JSON.stringify(game.state);
   const desde = centro(col, 1);
-  const hasta = centro(3, 0);   // fundación de picas, casi seguro que no le toca
+  const hasta = centro(COLUMNA.foundation(0), 0);   // fundación de picas, casi seguro que no le toca
 
   puntero('pointerdown', el, desde.x, desde.y);
   puntero('pointermove', el, hasta.x, hasta.y);
@@ -324,7 +325,7 @@ test('si el tablero cambia entre apretar y soltar, el toque no mueve nada', () =
   });
 
   const el = cartaEl('QD');
-  const p = centro(1, 0);
+  const p = centro(COLUMNA.waste, 0);
   puntero('pointerdown', el, p.x, p.y);
   window.dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', bubbles: true }));  // roba: la QD deja de ser la de arriba
   puntero('pointerup', el, p.x, p.y);
@@ -340,7 +341,7 @@ test('si el tablero cambia a mitad de arrastre, no se suelta otra carta', () => 
     stock: [{ id: 'QD', rank: 12, suit: 'D', faceUp: false }],
   });
 
-  const desde = centro(1, 0);
+  const desde = centro(COLUMNA.waste, 0);
   const hasta = centro(0, 1);
   puntero('pointerdown', cartaEl('5H'), desde.x, desde.y);
   puntero('pointermove', cartaEl('5H'), hasta.x, hasta.y);
@@ -448,7 +449,7 @@ test('picar una carta de la fundación no la baja: para eso está el arrastre', 
     foundations: [[{ id: 'AS', rank: 1, suit: 'S', faceUp: true }, { id: '2S', rank: 2, suit: 'S', faceUp: true }], [], [], []],
     tableau: [[{ id: '3H', rank: 3, suit: 'H', faceUp: true }]],
   });
-  const p = centro(3, 0);
+  const p = centro(COLUMNA.foundation(0), 0);
   puntero('pointerdown', cartaEl('2S'), p.x, p.y);
   puntero('pointerup', cartaEl('2S'), p.x, p.y);
   assert.equal(game.state.foundations[0].length, 2, 'sigue arriba');
@@ -467,7 +468,7 @@ test('con la partida atascada las cartas siguen cogiéndose', () => {
 
   const rescate = cartaEl('5S');
   assert.equal(rescate.classList.contains('playable'), true, 'la carta de la fundación se puede coger');
-  const desde = centro(3, 0);
+  const desde = centro(COLUMNA.foundation(0), 0);
   const hasta = centro(1, 1);
   puntero('pointerdown', rescate, desde.x, desde.y);
   assert.equal(rescate.classList.contains('dragging'), true);
@@ -482,7 +483,7 @@ test('con la partida atascada las cartas siguen cogiéndose', () => {
 test('tocar un mazo agotado no hace nada raro', () => {
   escenario({ tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: true }]], stock: [], waste: [] });
   const antes = JSON.stringify(game.state);
-  const p = centro(0, 0);
+  const p = centro(COLUMNA.stock, 0);
   puntero('pointerdown', $('.slot-stock'), p.x, p.y);
   puntero('pointerup', $('.slot-stock'), p.x, p.y);
   assert.equal(JSON.stringify(game.state), antes);
@@ -563,4 +564,48 @@ test('el marcador se lee sobre el tapete en los dos temas', () => {
     const aviso = sobre(v['--ink-soft'], chip);
     assert.ok(contraste(aviso, chip) >= 4.5, `${tema}: mensajes del tablero ${contraste(aviso, chip).toFixed(2)}:1`);
   }
+});
+
+
+test('las fundaciones van a la izquierda y el mazo a la derecha', () => {
+  game.newGame(1);
+  board.paint();
+  const x = (el) => parseFloat(/translate3d\(([-\d.]+)px/.exec(el.style.transform)[1]);
+  const slot = (sel) => x($(sel));
+
+  const fundaciones = [...window.document.querySelectorAll('.slot-foundation')].map(x);
+  assert.deepEqual(fundaciones, [...fundaciones].sort((a, b) => a - b), 'las cuatro, en orden, a la izquierda');
+  assert.equal(fundaciones[0], 0, 'la primera pega al borde izquierdo');
+  assert.ok(slot('.slot-stock') > fundaciones[3], 'el mazo queda a la derecha de las fundaciones');
+  assert.ok(slot('.slot-stock') > slot('.slot-waste'), 'y a la derecha de su descarte');
+
+  const cw = cssVar('--cw');
+  const gap = cssVar('--gap');
+  assert.equal(Math.round(slot('.slot-stock')), Math.round(6 * (cw + gap)), 'el mazo, en la última columna');
+  assert.ok(slot('.slot-waste') - fundaciones[3] > cw, 'queda un hueco de respiro entre los dos grupos');
+});
+
+test('el descarte se abanica hacia la izquierda, sin meterse bajo el mazo', () => {
+  game.setPrefs({ drawCount: 3 });
+  game.newGame(1);
+  game.draw();
+  board.paint();
+  assert.equal(game.state.waste.length, 3);
+
+  const x = (id) => parseFloat(/translate3d\(([-\d.]+)px/.exec(cartaEl(id).style.transform)[1]);
+  const [fondo, medio, arriba] = game.state.waste.map((c) => x(c.id));
+  assert.ok(arriba < medio && medio < fondo, 'la carta jugable es la de más a la izquierda');
+
+  const mazo = parseFloat(/translate3d\(([-\d.]+)px/.exec($('.slot-stock').style.transform)[1]);
+  const cw = cssVar('--cw');
+  assert.ok(fondo + cw <= mazo + 1, 'ninguna carta del descarte pisa el mazo');
+  game.setPrefs({ drawCount: 1 });
+});
+
+test('la animación de las cartas es más lenta que la del resto de la interfaz', () => {
+  const raiz = reglas().find((r) => r.selectorText === ':root').style;
+  const ui = parseFloat(raiz.getPropertyValue('--speed'));
+  const cartas = parseFloat(raiz.getPropertyValue('--card-speed'));
+  assert.equal(cartas, Math.round(ui * 1.2), 'un 20 % más lenta');
+  assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--card-speed)'), true);
 });

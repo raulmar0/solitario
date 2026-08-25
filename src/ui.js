@@ -9,6 +9,18 @@ import { PILE } from './engine.js';
 const DRAG_THRESHOLD = 5;     // px antes de considerar que se está arrastrando
 const DOUBLE_TAP_MS = 320;
 
+/**
+ * Reparto de la fila de arriba, en columnas: las cuatro fundaciones a la
+ * izquierda, un hueco de respiro, y el mazo con su descarte a la derecha (que
+ * es donde cae el pulgar). El descarte se abanica hacia la izquierda, hacia el
+ * hueco, para no meterse debajo del mazo.
+ */
+export const COLUMNA = {
+  foundation: (index) => index,   // 0, 1, 2 y 3
+  waste: 5,
+  stock: 6,
+};
+
 export function createBoard({ root, game, onMessage = () => {} }) {
   const layer = root.querySelector('#cards');
   const slots = [...root.querySelectorAll('.slot')];
@@ -72,21 +84,21 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     const columns = [];
     let z = 0;
 
-    const stockX = colX(0, m);
+    const stockX = colX(COLUMNA.stock, m);
     state.stock.forEach((card, i) => {
       positions.set(card.id, {
         x: stockX, y: Math.min(i, 6) * 0.6, z: z++, faceUp: false, playable: false,
       });
     });
 
-    const wasteX = colX(1, m);
+    const wasteX = colX(COLUMNA.waste, m);
     const visible = Math.min(state.drawCount === 3 ? 3 : 1, state.waste.length);
     const wasteFan = Math.min(m.cw * 0.3, m.gap + m.cw * 0.24);
     state.waste.forEach((card, i) => {
       const fromTop = state.waste.length - 1 - i;
       const slotIdx = Math.max(0, visible - 1 - fromTop);
       positions.set(card.id, {
-        x: wasteX + slotIdx * wasteFan,
+        x: wasteX - slotIdx * wasteFan,   // el abanico crece hacia la izquierda
         y: 0,
         z: z++,
         faceUp: true,
@@ -96,7 +108,7 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     });
 
     state.foundations.forEach((pile, index) => {
-      const x = colX(3 + index, m);
+      const x = colX(COLUMNA.foundation(index), m);
       pile.forEach((card, i) => {
         positions.set(card.id, {
           x, y: 0, z: z++, faceUp: true,
@@ -152,9 +164,9 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     for (const slot of slots) {
       const pile = slot.dataset.pile;
       const index = Number(slot.dataset.index || 0);
-      const x = pile === 'stock' ? colX(0, m)
-        : pile === 'waste' ? colX(1, m)
-          : pile === 'foundation' ? colX(3 + index, m)
+      const x = pile === 'stock' ? colX(COLUMNA.stock, m)
+        : pile === 'waste' ? colX(COLUMNA.waste, m)
+          : pile === 'foundation' ? colX(COLUMNA.foundation(index), m)
             : colX(index, m);
       const y = pile === 'tableau' ? m.tableauY : 0;
       slot.style.transform = `translate3d(${x}px, ${y}px, 0)`;
@@ -188,8 +200,8 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     for (let i = 0; i < 4; i++) {
       zones.push({
         to: { pile: PILE.FOUNDATION, index: i },
-        left: rect.left + colX(3 + i, m), top: rect.top,
-        right: rect.left + colX(3 + i, m) + m.cw, bottom: rect.top + m.ch,
+        left: rect.left + colX(COLUMNA.foundation(i), m), top: rect.top,
+        right: rect.left + colX(COLUMNA.foundation(i), m) + m.cw, bottom: rect.top + m.ch,
       });
     }
     for (const c of columns) {
