@@ -36,6 +36,7 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   let tapadas = null;          // ids que siguen boca abajo mientras vuelan a su sitio
   let relojes = [];            // temporizadores del reparto
   let volando = new Map();     // id -> temporizador; mientras vuela, la carta va arriba del todo
+  let posiciones = new Map();  // id -> {x, y} del último pintado, para saber qué se ha movido
 
   // --- creación de las cartas (una sola vez) ---
   for (const suit of ['S', 'H', 'D', 'C']) {
@@ -208,9 +209,15 @@ export function createBoard({ root, game, onMessage = () => {} }) {
       if (!drag || !drag.ids.includes(id)) {
         const x = sinRepartir ? mazoX : p.x;
         const y = sinRepartir ? 0 : p.y;
-        const destino = `translate3d(${x}px, ${y}px, 0)`;
-        if (vuelo && el.style.transform && el.style.transform !== destino && animando()) alzar(id);
-        el.style.transform = destino;
+        // Se comparan números y no `style.transform`: el navegador reescribe lo
+        // que le pasas (el `0` sale como `0px`), así que comparar cadenas daba
+        // siempre "se ha movido" y levantaba las 52 cartas a la vez, que es como
+        // no levantar ninguna.
+        const antes = posiciones.get(id);
+        const seMueve = antes && (Math.abs(antes.x - x) > 0.5 || Math.abs(antes.y - y) > 0.5);
+        if (vuelo && seMueve && animando()) alzar(id);
+        posiciones.set(id, { x, y });
+        el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         // Sumar p.z mantiene el orden entre las cartas que vuelan a la vez
         // (una secuencia arrastrada llega en el mismo orden en que iba).
         el.style.zIndex = String(volando.has(id) ? Z_VUELO + p.z : p.z);
@@ -264,6 +271,7 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   function repintarSinVuelo() {
     for (const reloj of volando.values()) clearTimeout(reloj);
     volando = new Map();
+    posiciones = new Map();
     paint({ vuelo: false });
   }
 
@@ -423,7 +431,10 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   /** Se suelta fuera, el sistema se queda el puntero o llega otro dedo: no se juega nada. */
   function cancelDrag() {
     if (!drag) return;
-    drag.ids.forEach((cid) => els.get(cid)?.classList.remove('dragging'));
+    drag.ids.forEach((cid) => {
+      els.get(cid)?.classList.remove('dragging');
+      if (animando()) alzar(cid);       // vuelve volando desde donde estuviera el dedo
+    });
     clearHighlights();
     drag = null;
     paint();
@@ -431,7 +442,10 @@ export function createBoard({ root, game, onMessage = () => {} }) {
 
   function endDrag(event) {
     const { ids, grab, moved, id } = drag;
-    ids.forEach((cid) => els.get(cid).classList.remove('dragging'));
+    ids.forEach((cid) => {
+      els.get(cid).classList.remove('dragging');
+      if (moved && animando()) alzar(cid);   // el trayecto de vuelta también va por arriba
+    });
     clearHighlights();
     drag = null;
 

@@ -787,3 +787,38 @@ test('recolocar por un cambio de tamaño no levanta las cartas', () => {
   assert.equal(z('9H'), antes, 'siguen en su capa de siempre');
   assert.ok(z('9H') < 1000);
 });
+
+
+test('solo se levanta la carta que se mueve, no el tablero entero', () => {
+  escenario({
+    tableau: [
+      [{ id: '10C', rank: 10, suit: 'C', faceUp: true }],
+      [{ id: '5H', rank: 5, suit: 'H', faceUp: true }],
+      [{ id: '5D', rank: 5, suit: 'D', faceUp: true }],
+      [{ id: '5S', rank: 5, suit: 'S', faceUp: true }],
+      [{ id: '5C', rank: 5, suit: 'C', faceUp: true }],
+      [{ id: '4D', rank: 4, suit: 'D', faceUp: true }],
+      [{ id: '9H', rank: 9, suit: 'H', faceUp: true }],
+    ],
+  });
+
+  // Los navegadores reescriben lo que les pasas: el `0` de translate3d vuelve
+  // como `0px`. jsdom no lo hace, así que aquí se imita a mano; sin esto, un
+  // paint() que compare cadenas parecería correcto en las pruebas y no lo sería.
+  const comoElNavegador = () => {
+    for (const el of window.document.querySelectorAll('.card')) {
+      el.style.transform = el.style.transform.replace(/,\s*0\)$/, ', 0px)');
+    }
+  };
+  const elevadas = () => [...window.document.querySelectorAll('.card')]
+    .filter((el) => el.style.visibility !== 'hidden' && Number(el.style.zIndex) >= 1000)
+    .map((el) => el.dataset.id);
+
+  comoElNavegador();
+  board.paint();
+  assert.deepEqual(elevadas(), [], 'repintar sin mover nada no levanta ninguna carta');
+
+  comoElNavegador();
+  assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 6 }, to: { pile: 'tableau', index: 0 }, count: 1 }), true);
+  assert.deepEqual(elevadas(), ['9H'], 'solo vuela la que se ha movido');
+});
