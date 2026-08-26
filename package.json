@@ -1,6 +1,6 @@
 {
   "name": "solitario",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Solitario Klondike en el navegador, con puntuaciones y estadísticas guardadas en local",
   "type": "module",

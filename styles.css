@@ -6,7 +6,7 @@
   --gap: 12px;
   --radius: 9px;
   --speed: 180ms;         /* transiciones de la interfaz */
-  --card-speed: 864ms;    /* el vuelo de las cartas: lento a propósito, para que se vea */
+  --card-speed: 648ms;    /* el vuelo de las cartas: despacio a propósito, para que se vea */
 
   --felt-1: #14663f;
   --felt-2: #0b3f28;

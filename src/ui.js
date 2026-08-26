@@ -8,10 +8,10 @@ import { PILE } from './engine.js';
 
 const DRAG_THRESHOLD = 5;     // px antes de considerar que se está arrastrando
 const DOUBLE_TAP_MS = 320;
-const REPARTO_PASO = 65;      // ms entre carta y carta al repartir
+const REPARTO_PASO = 49;      // ms entre carta y carta al repartir
 // Reserva por si el navegador no sabe resolver la variable de CSS. Tiene que
 // coincidir con --card-speed en styles.css; hay una prueba que lo vigila.
-export const VUELO_POR_DEFECTO = 864;
+export const VUELO_POR_DEFECTO = 648;
 const Z_VUELO = 1000;         // una carta en movimiento va por encima del tablero
 const Z_ARRASTRE = 2000;      // y la que lleva el jugador en la mano, por encima de todo
 

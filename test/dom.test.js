@@ -678,9 +678,9 @@ test('las cartas vuelan mucho más despacio que el resto de la interfaz', () => 
   const raiz = reglas().find((r) => r.selectorText === ':root').style;
   const ui = parseFloat(raiz.getPropertyValue('--speed'));
   const cartas = parseFloat(raiz.getPropertyValue('--card-speed'));
-  assert.equal(cartas, 864, 'el vuelo de las cartas dura 864 ms');
-  assert.ok(cartas >= ui * 4, 'y muy por encima de las transiciones de la interfaz');
-  assert.equal(board.flightMs, 864, 'y el JS lee ese mismo valor de la hoja de estilos');
+  assert.equal(cartas, 648, 'el vuelo de las cartas dura 648 ms');
+  assert.ok(cartas >= ui * 3, 'y muy por encima de las transiciones de la interfaz');
+  assert.equal(board.flightMs, 648, 'y el JS lee ese mismo valor de la hoja de estilos');
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--card-speed)'), true);
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--speed)'), false,
     'los botones y los diálogos siguen a su ritmo');
@@ -969,7 +969,7 @@ test('el remate se puede detener a media cascada', async () => {
 });
 
 test('el ritmo de la cascada sale de la duración del vuelo', () => {
-  assert.equal(Math.round(board.flightMs / 4), 216, 'una carta cada cuarto de vuelo');
+  assert.equal(Math.round(board.flightMs / 4), 162, 'una carta cada cuarto de vuelo');
 });
 
 test('la duración de reserva del JS coincide con la hoja de estilos', () => {
