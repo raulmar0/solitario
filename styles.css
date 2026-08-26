@@ -66,6 +66,11 @@ html, body {
   height: 100%;
   margin: 0;
   overscroll-behavior: none;
+  /* Nada de zoom: pan-x pan-y deja desplazarse pero quita el pellizco y el
+     doble toque. El resto (los gestos de Safari) lo corta el JS. */
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -88,7 +93,7 @@ body {
   flex-wrap: wrap;
   /* Instalada en iPhone la barra de estado se superpone (black-translucent +
      viewport-fit=cover), así que hay que dejarle su hueco. */
-  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-left)) 10px max(12px, env(safe-area-inset-right));
+  padding: max(10px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 10px max(12px, env(safe-area-inset-left, 0px));
   background: var(--topbar-veil);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(6px);
@@ -119,7 +124,7 @@ body {
   border: 0;
   border-radius: 999px;
   cursor: pointer;
-  animation: latido 2.4s ease-in-out infinite;
+  animation: latido 2.4s linear infinite;
 }
 .update-pill:hover { filter: brightness(1.08); }
 .update-pill:disabled { opacity: .6; cursor: progress; animation: none; }
@@ -134,7 +139,7 @@ body {
 .stat dt { font-size: 10px; text-transform: uppercase; letter-spacing: .7px; color: var(--ink-soft); }
 .stat dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .stat-wide dd { font-size: 13px; padding-top: 2px; }
-.stat.bump dd { animation: bump 320ms ease; }
+.stat.bump dd { animation: bump 320ms linear; }
 @keyframes bump { 40% { transform: scale(1.22); color: var(--accent); } }
 
 .tools { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -147,7 +152,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 8px;
   cursor: pointer;
-  transition: background var(--speed), transform var(--speed), opacity var(--speed);
+  transition: background var(--speed) linear, transform var(--speed) linear, opacity var(--speed) linear;
 }
 .tool:hover:not(:disabled) { background: rgba(255, 255, 255, .18); }
 .tool:active:not(:disabled) { transform: translateY(1px); }
@@ -163,7 +168,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 14px 8px calc(14px + env(safe-area-inset-bottom));
+  padding: 14px max(8px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
   overflow: auto;
 }
 
@@ -184,7 +189,7 @@ body {
   background: rgba(0, 0, 0, .14);
   display: grid;
   place-items: center;
-  transition: border-color var(--speed), background var(--speed), box-shadow var(--speed);
+  transition: border-color var(--speed) linear, background var(--speed) linear, box-shadow var(--speed) linear;
 }
 .slot-mark { font-size: calc(var(--cw) * .34); opacity: .3; }
 .slot-mark.red { color: #ffb3a7; }
@@ -214,12 +219,12 @@ body {
   will-change: transform;
   cursor: default;
 }
-.anim .card { transition: transform var(--card-speed) cubic-bezier(.22, .68, .35, 1.02), box-shadow var(--card-speed); }
+.anim .card { transition: transform var(--card-speed) linear, box-shadow var(--card-speed) linear; }
 
 .card.playable { cursor: grab; }
 .card.dragging { cursor: grabbing; box-shadow: var(--shadow-lift); transition: none; }
-.card.hint { animation: hint 900ms ease 2; }
-.card.nope { animation: nope 380ms ease; }
+.card.hint { animation: hint 900ms linear 2; }
+.card.nope { animation: nope 380ms linear; }
 @keyframes nope {
   0%, 100% { box-shadow: var(--shadow); }
   40% { box-shadow: 0 0 0 3px var(--danger), 0 8px 18px rgba(0, 0, 0, .35); }
@@ -284,6 +289,30 @@ body {
   opacity: 1;
 }
 
+/* Cartas que quedan por robar: una chapa sobre el montón del mazo. */
+.stock-count {
+  position: absolute;
+  top: 0; left: 0;
+  width: var(--cw);
+  height: var(--ch);
+  display: grid;
+  place-items: end center;
+  padding-bottom: calc(var(--ch) * .07);
+  pointer-events: none;              /* el toque tiene que llegar al mazo */
+  z-index: 100;                      /* por encima del montón, por debajo de lo que vuela */
+}
+.stock-count span {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .62);
+  border: 1px solid rgba(255, 255, 255, .3);
+  color: #fff;
+  font-size: calc(var(--cw) * .2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
 .banner {
   margin: 10px auto 0;
   width: fit-content;
@@ -313,7 +342,7 @@ body {
   border-radius: 999px;
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(0, 0, 0, .32);
-  animation: latido 1.9s ease-in-out infinite;
+  animation: latido 1.9s linear infinite;
 }
 .finish:hover { filter: brightness(1.08); }
 .finish:active { transform: translateY(1px); }
@@ -352,7 +381,7 @@ body {
   border: 1px solid var(--panel-line);
   border-radius: 9px;
   cursor: pointer;
-  transition: background var(--speed);
+  transition: background var(--speed) linear;
 }
 .btn:hover { background: var(--fill-strong); }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
@@ -452,6 +481,10 @@ body {
 .win-stats dd { margin: 2px 0 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .win-note { color: var(--accent); font-weight: 700; min-height: 20px; }
 
+.dlg-stuck { text-align: center; width: min(94vw, 420px); }
+.stuck-art { font-size: 34px; letter-spacing: 8px; margin-bottom: 6px; opacity: .4; filter: grayscale(1); }
+.stuck-note { color: var(--panel-ink-soft); }
+
 .rules { margin: 8px 0; padding-left: 20px; }
 .rules li { margin: 5px 0; }
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 13.5px; }
@@ -472,12 +505,17 @@ body {
 }
 
 @media (max-width: 640px) {
-  .topbar { gap: 8px; padding: 8px; }
+  /* Ojo: sin repetir aquí la zona segura, el `padding: 8px` se comía la del
+     iPhone y la barra se metía debajo del reloj y la muesca. */
+  .topbar {
+    gap: 8px;
+    padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) 8px max(8px, env(safe-area-inset-left, 0px));
+  }
   .brand h1 { display: none; }
   .tool { padding: 7px 9px; font-size: 0; gap: 0; }
   .tool span { font-size: 15px; }
   .stat { min-width: 54px; padding: 2px 7px; }
-  .table { padding: 8px 4px; }
+  .table { padding: 8px max(4px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

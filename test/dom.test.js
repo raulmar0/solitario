@@ -481,6 +481,29 @@ test('con la partida atascada las cartas siguen cogiéndose', () => {
   assert.equal($('#btn-hint').disabled, false);
 });
 
+test('sin jugadas se avisa de que ya no hay posibilidad y se ofrece la salida', async () => {
+  const carta = (rank, suit) => ({ id: `${rank}${suit}`, rank, suit, faceUp: true });
+  escenario({
+    foundations: [[1, 2, 3, 4, 5].map((r) => carta(r, 'S')), [], [], []],
+    tableau: [[carta(6, 'H')], [carta(7, 'S')], [carta(9, 'S')], [carta(9, 'H')], [carta(9, 'D')], [carta(9, 'C')], [carta(3, 'D')]],
+  });
+  assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 0 }, to: { pile: 'tableau', index: 1 }, count: 1 }), true);
+  assert.equal(game.status, 'stuck');
+  assert.match($('#banner').textContent, /ya no hay posibilidad/i, 'se dice en el tablero');
+  assert.equal($('#banner').classList.contains('warn'), true);
+
+  await new Promise((r) => setTimeout(r, 600));
+  assert.equal($('#dlg-stuck').open, true, 'y se dice a la cara');
+  assert.match($('#stuck-note').textContent, /pilas de arriba/,
+    'aquí aún cabe bajar el 5S, y eso se cuenta');
+  assert.equal($('#dlg-stuck [data-action="undo"]').disabled, false);
+
+  $('#dlg-stuck [data-action="undo"]').click();
+  assert.equal($('#dlg-stuck').open, false);
+  assert.equal(game.status, 'playing');
+  assert.equal($('#banner').textContent, '', 'con salida, el aviso se retira');
+});
+
 test('tocar un mazo agotado no hace nada raro', () => {
   escenario({ tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: true }]], stock: [], waste: [] });
   const antes = JSON.stringify(game.state);
@@ -491,10 +514,39 @@ test('tocar un mazo agotado no hace nada raro', () => {
   assert.equal($('.slot-stock').classList.contains('dead'), true, 'el hueco se ve apagado');
 });
 
-test('el zoom con dos dedos no está bloqueado', () => {
+test('no se puede hacer zoom: ni pellizco ni doble toque', () => {
   const viewport = window.document.querySelector('meta[name="viewport"]').content;
-  assert.equal(/user-scalable\s*=\s*no/.test(viewport), false);
-  assert.equal(/maximum-scale/.test(viewport), false);
+  assert.match(viewport, /user-scalable\s*=\s*no/);
+  assert.match(viewport, /maximum-scale\s*=\s*1/);
+  assert.match(viewport, /viewport-fit=cover/, 'y se sigue dibujando bajo la muesca');
+  // pan-x pan-y deja desplazarse, pero quita el pellizco y el doble toque.
+  assert.equal(regla('html, body').style.getPropertyValue('touch-action'), 'pan-x pan-y');
+
+  // Safari en iOS se salta el viewport: el pellizco le llega como gesto propio.
+  const gesto = new window.Event('gesturestart', { bubbles: true, cancelable: true });
+  window.document.dispatchEvent(gesto);
+  assert.equal(gesto.defaultPrevented, true, 'el pellizco de Safari se corta');
+
+  const dedos = (n) => {
+    const ev = new window.Event('touchmove', { bubbles: true, cancelable: true });
+    Object.defineProperty(ev, 'touches', { value: Array.from({ length: n }, () => ({})) });
+    window.document.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  };
+  assert.equal(dedos(2), true, 'dos dedos moviéndose no separan la pantalla');
+  assert.equal(dedos(1), false, 'con un dedo se sigue pudiendo desplazar');
+});
+
+test('la barra de arriba deja su hueco a la muesca también en el móvil', () => {
+  // jsdom no sabe leer `max()` ni `env()`, así que se mira la hoja tal cual.
+  const movil = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)[1];
+  const barra = /\.topbar \{([\s\S]*?)\}/.exec(movil)[1];
+  assert.match(barra, /padding:[^;]*env\(safe-area-inset-top/,
+    'el padding del móvil no puede pisar la zona segura de arriba');
+  assert.match(barra, /padding:[^;]*env\(safe-area-inset-left/);
+  assert.match(barra, /padding:[^;]*env\(safe-area-inset-right/);
+  const tapete = /\.table \{([\s\S]*?)\}/.exec(movil)[1];
+  assert.match(tapete, /env\(safe-area-inset-bottom/, 'y abajo, la barra del iPhone');
 });
 
 test('al cambiar de pestaña de récords el foco se queda en la pestaña', () => {
@@ -586,6 +638,25 @@ test('las fundaciones van a la izquierda y el mazo a la derecha', () => {
   assert.ok(slot('.slot-waste') - fundaciones[3] > cw, 'queda un hueco de respiro entre los dos grupos');
 });
 
+test('el mazo enseña cuántas cartas quedan por robar', () => {
+  game.newGame(1);
+  board.cancel();
+  const contador = $('#stock-count');
+  assert.equal(game.state.stock.length, 24);
+  assert.equal(contador.hidden, false);
+  assert.equal(contador.textContent, '24');
+  const x = parseFloat(/translate3d\(([-\d.]+)px/.exec(contador.style.transform)[1]);
+  assert.equal(Math.round(x), Math.round(6 * (cssVar('--cw') + cssVar('--gap'))), 'va sobre el mazo');
+  assert.equal(regla('.stock-count').style.getPropertyValue('pointer-events'), 'none',
+    'el toque tiene que atravesarlo y llegar al mazo');
+
+  game.draw();
+  assert.equal(contador.textContent, '23', 'baja al robar');
+
+  escenario({ tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: true }]], stock: [], waste: [] });
+  assert.equal(contador.hidden, true, 'con el mazo vacío se quita: ya está la flecha de reciclar');
+});
+
 test('el descarte se abanica hacia la izquierda, sin meterse bajo el mazo', () => {
   game.setPrefs({ drawCount: 3 });
   game.newGame(1);
@@ -613,6 +684,19 @@ test('las cartas vuelan mucho más despacio que el resto de la interfaz', () => 
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--card-speed)'), true);
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--speed)'), false,
     'los botones y los diálogos siguen a su ritmo');
+});
+
+test('las animaciones van a velocidad lineal, sin acelerones', () => {
+  const sinCurva = (valor, sel) => {
+    assert.match(valor, /\blinear\b/, `${sel} debería ir a velocidad lineal`);
+    assert.equal(/ease|cubic-bezier/.test(valor), false, `${sel} no debería acelerar ni frenar`);
+  };
+  for (const sel of ['.anim .card', '.tool', '.slot', '.btn']) {
+    sinCurva(regla(sel).style.getPropertyValue('transition'), sel);
+  }
+  for (const sel of ['.card.hint', '.card.nope', '.stat.bump dd', '.finish', '.update-pill']) {
+    sinCurva(regla(sel).style.getPropertyValue('animation'), sel);
+  }
 });
 
 // --- reparto animado ---

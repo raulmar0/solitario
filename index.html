@@ -2,7 +2,7 @@
 <html lang="es" data-theme="auto">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="Solitario Klondike con puntuación, estadísticas y récords guardados en tu propio navegador.">
 <meta name="color-scheme" content="light dark">
 <!-- GitHub Pages no deja poner cabeceras: la misma política que sirve nginx, aquí en meta.
@@ -68,6 +68,9 @@
     <div class="slot slot-tableau" data-pile="tableau" data-index="5"></div>
     <div class="slot slot-tableau" data-pile="tableau" data-index="6"></div>
     <div class="cards" id="cards"></div>
+    <!-- Cuántas cartas quedan por robar. Va aparte y por encima de las cartas
+         porque el hueco del mazo lo tapa su propio montón. -->
+    <div class="stock-count" id="stock-count" aria-hidden="true"><span></span></div>
   </div>
   <button type="button" class="finish" id="btn-finish" hidden>
     <span aria-hidden="true">✨</span> Rematar la partida
@@ -87,6 +90,18 @@
   <div class="dlg-actions">
     <button class="btn primary" data-action="new">Otra partida</button>
     <button class="btn" data-action="stats">Ver récords</button>
+    <button class="btn ghost" data-close>Cerrar</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-stuck" class="dlg dlg-stuck">
+  <div class="stuck-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
+  <h2>Ya no hay posibilidad</h2>
+  <p class="stuck-note" id="stuck-note"></p>
+  <div class="dlg-actions">
+    <button class="btn primary" data-action="undo">Deshacer la última</button>
+    <button class="btn" data-action="restart">Repetir reparto</button>
+    <button class="btn" data-action="new">Partida nueva</button>
     <button class="btn ghost" data-close>Cerrar</button>
   </div>
 </dialog>

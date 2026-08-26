@@ -21,12 +21,13 @@ const fecha = (iso) => {
 
 export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSettings = () => {} }) {
   const dlgWin = $('#dlg-win');
+  const dlgStuck = $('#dlg-stuck');
   const dlgStats = $('#dlg-stats');
   const dlgSettings = $('#dlg-settings');
   const dlgHelp = $('#dlg-help');
   let statsMode = null;
 
-  for (const dlg of [dlgWin, dlgStats, dlgSettings, dlgHelp]) {
+  for (const dlg of [dlgWin, dlgStuck, dlgStats, dlgSettings, dlgHelp]) {
     dlg.addEventListener('click', (event) => {
       if (event.target.closest('[data-close]')) dlg.close();
       else if (event.target === dlg) dlg.close();   // clic en el fondo
@@ -286,6 +287,32 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (accion === 'stats') { dlgWin.close(); api.openStats(); }
   });
 
+  // ---------- partida sin salida ----------
+
+  /**
+   * La partida se ha quedado sin jugadas. Se dice claro y se ofrece la salida:
+   * deshacer, repetir el mismo reparto o repartir de nuevo.
+   */
+  function showStuck() {
+    if (game.status !== 'stuck' || api.anyOpen) return;
+    // Atascado solo mira las jugadas útiles: puede quedar el recurso de bajar
+    // una carta de las pilas de arriba, y entonces no está todo perdido.
+    $('#stuck-note').textContent = game.hasAnyMove
+      ? 'No queda ninguna jugada en las columnas ni cartas que robar. Solo puedes arrastrar hacia abajo una carta de las pilas de arriba, deshacer o repartir otra vez.'
+      : 'No queda ninguna carta que mover ni nada que robar: esta partida no tiene salida.';
+    $('#dlg-stuck [data-action="undo"]').disabled = !game.canUndo;
+    dlgStuck.showModal();
+  }
+
+  dlgStuck.addEventListener('click', (event) => {
+    const accion = event.target.closest('[data-action]')?.dataset.action;
+    if (!accion) return;
+    dlgStuck.close();
+    if (accion === 'undo') game.undo();
+    if (accion === 'restart') game.restart();
+    if (accion === 'new') game.newGame();
+  });
+
   const api = {
     openStats() {
       statsMode = { scoring: game.prefs.scoring, drawCount: game.prefs.drawCount };
@@ -295,8 +322,9 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     openSettings() { renderSettings(); onOpenSettings(); dlgSettings.showModal(); },
     openHelp() { dlgHelp.showModal(); },
     showWin,
+    showStuck,
     renderSettings,
-    get anyOpen() { return [dlgWin, dlgStats, dlgSettings, dlgHelp].some((d) => d.open); },
+    get anyOpen() { return [dlgWin, dlgStuck, dlgStats, dlgSettings, dlgHelp].some((d) => d.open); },
   };
   return api;
 }

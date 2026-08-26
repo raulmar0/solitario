@@ -125,6 +125,29 @@ test('estar atascado es un aviso: se puede seguir jugando y bajar una carta de l
   assert.equal(game.state.foundations[0].length, 4);
 });
 
+test('sin salida se distingue de «aún cabe bajar una carta de las pilas de arriba»', () => {
+  const montar = (extra) => {
+    const { game, store } = crear();
+    game.newGame(2);
+    const st = { ...engine.cloneState(game.state), ...tablero(extra) };
+    store.saveGame({ version: 1, state: st, baseScore: 0, moves: 9, elapsedMs: 0, prefs: game.prefs, history: [] });
+    assert.equal(game.resume(), true);
+    return game;
+  };
+
+  const conRescate = montar({
+    foundations: [[[1, 'S'], [2, 'S'], [3, 'S'], [4, 'S'], [5, 'S']], [], [], []],
+    primeraSola: [6, 'H'],
+    tops: [[9, 'S'], [9, 'H'], [9, 'D'], [9, 'C'], [3, 'D'], [3, 'C']],
+  });
+  assert.equal(conRescate.status, 'stuck');
+  assert.equal(conRescate.hasAnyMove, true, 'el 5 de picas todavía puede bajar al 6 de corazones');
+
+  const muerta = montar({ tops: [[9, 'S'], [9, 'H'], [9, 'D'], [9, 'C'], [3, 'D'], [3, 'C'], [7, 'S']] });
+  assert.equal(muerta.status, 'stuck');
+  assert.equal(muerta.hasAnyMove, false, 'sin fundaciones que desatasquen no queda nada que mover');
+});
+
 test('una partida muerta cuenta como derrota al dejarla', () => {
   const { game, store } = crear();
   game.newGame(2);

@@ -44,10 +44,17 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   libres, dos columnas donde encaja— se arrastra.
 - **Reparto animado**: las 28 cartas del tableau salen del mazo de una en una y
   se destapan al llegar, como en la mesa. Dura unos 2,6 s y un toque se lo salta.
+- **Cuántas quedan por robar**: el mazo lleva el número encima, sobre el montón.
+- **Sin salida**: cuando ya no queda ninguna jugada se dice en el tablero —el
+  aviso se queda fijo— y se abre un cartel que lo explica y ofrece la salida:
+  deshacer, repetir el mismo reparto o repartir de nuevo. Si aún cabe bajar una
+  carta de las pilas de arriba, se dice también.
 - **Botón de rematar**: en cuanto la partida ya no tiene decisiones (todo boca
   arriba y sin mazo) aparece un botón que sube el resto en cascada, una carta
   cada 216 ms. Se puede detener a media cascada.
-- Atajos de teclado, tema claro/oscuro, y funciona con el dedo en el móvil.
+- Atajos de teclado, tema claro/oscuro, y funciona con el dedo en el móvil: sin
+  zoom por accidente (ni pellizco ni doble toque) y dejándole su hueco a la
+  muesca del iPhone. Las animaciones van a velocidad lineal, sin acelerones.
 
 ## Aplicación instalable (PWA)
 
@@ -59,7 +66,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.1.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.2.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 

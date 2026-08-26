@@ -377,6 +377,16 @@ export function createGame({ store, now = () => Date.now() }) {
 
     hint() { return status === 'playing' || status === 'stuck' ? engine.hint(state) : null; },
 
+    /**
+     * ¿Queda alguna jugada, contando la de bajar una carta de las fundaciones?
+     * Atascado (`stuck`) solo mira las jugadas útiles; esto distingue entre «no
+     * hay salida» y «te queda el recurso de bajar una carta de arriba».
+     */
+    get hasAnyMove() {
+      if (status !== 'playing' && status !== 'stuck') return false;
+      return engine.usefulMoves(state, { includeFoundationToTableau: true }).length > 0;
+    },
+
     pause() { stopClock(); emit(); },
     resumeClock() { if (moves > 0) startClock(); emit(); },
 

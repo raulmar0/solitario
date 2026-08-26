@@ -93,13 +93,20 @@ let bannerTimer = null;
 let autoTimer = null;
 let winShownFor = null;
 let ultimaPuntuacion = null;
+let atascadoAvisado = false;
 
-function message(texto, aviso = false) {
+// Lo que se dice cuando la partida se queda sin jugadas. Se queda fijo en el
+// tablero: no es un aviso de paso, es el estado en el que está la partida.
+const sinSalida = () => (game.hasAnyMove
+  ? 'Ya no hay posibilidad: no queda ninguna jugada en las columnas. Baja una carta de las pilas de arriba, deshaz o reparte otra vez.'
+  : 'Ya no hay posibilidad: esta partida no tiene salida. Deshaz o reparte otra vez.');
+
+function message(texto, aviso = false, fijo = false) {
   const el = $('#banner');
   el.textContent = texto;
   el.classList.toggle('warn', aviso);
   clearTimeout(bannerTimer);
-  if (texto) bannerTimer = setTimeout(() => { el.textContent = ''; el.classList.remove('warn'); }, 4200);
+  if (texto && !fijo) bannerTimer = setTimeout(() => { el.textContent = ''; el.classList.remove('warn'); }, 4200);
 }
 
 function applyPrefs() {
@@ -146,8 +153,14 @@ function refresh() {
     detenerAuto();
     setTimeout(() => panels.showWin(), 420);
   }
-  if (game.status === 'stuck') {
-    message('No veo jugadas útiles. Puedes bajar una carta de las pilas de arriba, deshacer o repartir.', true);
+  if (game.status === 'stuck' && !atascadoAvisado) {
+    atascadoAvisado = true;
+    message(sinSalida(), true, true);
+    // Se deja llegar a la carta que acaba de volar antes de tapar el tablero.
+    setTimeout(() => { if (game.status === 'stuck') panels.showStuck(); }, 420);
+  } else if (game.status !== 'stuck' && atascadoAvisado) {
+    atascadoAvisado = false;
+    message('');                       // hubo salida: el aviso fijo se retira
   } else if (game.canAutoComplete && !autoTimer) {
     message('Ya no queda nada que decidir: dale a «Rematar la partida».');
   }
@@ -281,6 +294,21 @@ addEventListener('keydown', (event) => {
     case '?': panels.openHelp(); break;
     default: break;
   }
+});
+
+// ---------- nada de zoom ----------
+// El viewport ya lo pide y la hoja de estilos también (touch-action), pero
+// Safari en iOS se salta `user-scalable=no`: el pellizco le llega como gesto
+// propio. Se corta a mano, que si no el tablero se descoloca de un dedazo.
+for (const gesto of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(gesto, (event) => event.preventDefault(), { passive: false });
+}
+document.addEventListener('touchmove', (event) => {
+  if (event.touches.length > 1) event.preventDefault();
+}, { passive: false });
+// El doble clic de zoom sí, pero el de seleccionar una palabra en un campo no.
+document.addEventListener('dblclick', (event) => {
+  if (!event.target.closest?.('input, textarea')) event.preventDefault();
 });
 
 // Punto de entrada para la consola del navegador y para las pruebas.

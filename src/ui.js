@@ -29,6 +29,7 @@ export const COLUMNA = {
 
 export function createBoard({ root, game, onMessage = () => {} }) {
   const layer = root.querySelector('#cards');
+  const contador = root.querySelector('#stock-count');
   const slots = [...root.querySelectorAll('.slot')];
   const els = new Map();       // id de carta -> elemento
   let layout = null;
@@ -202,6 +203,12 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     stock.classList.toggle('dead', state.stock.length === 0 && !engine.isLegal(state, { type: 'recycle' }));
 
     const mazoX = colX(COLUMNA.stock, m);
+    if (contador) {
+      // Con el mazo vacío el hueco ya enseña su flecha de reciclar: un cero ahí solo estorba.
+      contador.hidden = state.stock.length === 0;
+      contador.firstElementChild.textContent = String(state.stock.length);
+      contador.style.transform = `translate3d(${mazoX}px, 0, 0)`;
+    }
     for (const [id, el] of els) {
       const p = positions.get(id);
       if (!p) { el.style.visibility = 'hidden'; continue; }
