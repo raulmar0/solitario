@@ -43,15 +43,26 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   final, que hacen falta para los reyes). Para elegir el sitio a mano —dos huecos
   libres, dos columnas donde encaja— se arrastra.
 - **Reparto animado**: las 28 cartas del tableau salen del mazo de una en una y
-  se destapan al llegar, como en la mesa. Dura unos 2 s y un toque se lo salta.
+  se destapan al llegar con un volteo, como en la mesa. Dura un segundo y un toque
+  se lo salta.
 - **Cuántas quedan por robar**: el mazo lleva el número encima, sobre el montón.
+- **Pista con la carta señalada**: al pedir consejo, la carta que hay que tocar
+  late fuerte y el sitio donde va se marca flojito, para no confundirlos.
+- **Sonidos**: los clics de las cartas y los avisos están sintetizados con Web
+  Audio, sin un solo fichero de audio ni una petición a la red. Se apagan desde
+  Ajustes. El navegador no deja sonar nada hasta que tocas la página, así que el
+  reparto de bienvenida es mudo a propósito.
+- **Las acciones, abajo**: en un móvil grande, la parte de arriba de la pantalla
+  queda lejos del pulgar. Los nueve botones van al fondo, con iconos de trazo
+  propios (no emojis, que cada sistema dibuja a su manera) y 45 x 46 px de
+  objetivo, por encima del mínimo que pide Apple.
 - **Sin salida**: cuando ya no queda ninguna jugada se dice en el tablero —el
   aviso se queda fijo— y se abre un cartel que lo explica y ofrece la salida:
   deshacer, repetir el mismo reparto o repartir de nuevo. Si aún cabe bajar una
   carta de las pilas de arriba, se dice también.
 - **Botón de rematar**: en cuanto la partida ya no tiene decisiones (todo boca
   arriba y sin mazo) aparece un botón que sube el resto en cascada, una carta
-  cada 162 ms. Se puede detener a media cascada.
+  cada 81 ms. Se puede detener a media cascada.
 - Atajos de teclado, tema claro/oscuro, y funciona con el dedo en el móvil: sin
   zoom por accidente (ni pellizco ni doble toque) y dejándole su hueco a la
   muesca del iPhone. Las animaciones van a velocidad lineal, sin acelerones.
@@ -66,7 +77,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.2.1`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.3.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 

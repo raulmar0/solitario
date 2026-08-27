@@ -19,6 +19,7 @@ export const DEFAULT_PREFS = {
   scoring: 'standard',
   timed: true,
   animations: true,
+  sound: true,
   autoSafe: false,      // subir automáticamente las cartas que no estorban
   solvableOnly: false,  // repartir solo manos con solución comprobada
   theme: 'auto',

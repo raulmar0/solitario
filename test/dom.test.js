@@ -545,8 +545,33 @@ test('la barra de arriba deja su hueco a la muesca también en el móvil', () =>
     'el padding del móvil no puede pisar la zona segura de arriba');
   assert.match(barra, /padding:[^;]*env\(safe-area-inset-left/);
   assert.match(barra, /padding:[^;]*env\(safe-area-inset-right/);
-  const tapete = /\.table \{([\s\S]*?)\}/.exec(movil)[1];
-  assert.match(tapete, /env\(safe-area-inset-bottom/, 'y abajo, la barra del iPhone');
+  // Abajo el hueco lo guarda la barra de acciones, que es la que pega al borde.
+  const acciones = /\n\.tools \{([\s\S]*?)\n\}/.exec(css)[1];
+  assert.match(acciones, /padding:[^;]*env\(safe-area-inset-bottom/,
+    'la barra de acciones no puede pisar la raya del iPhone');
+});
+
+test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', () => {
+  const barra = $('#tools');
+  assert.ok(barra, 'hay barra de acciones');
+  // Después del tablero en el orden del documento: en pantalla queda debajo.
+  assert.equal(barra.previousElementSibling.tagName, 'MAIN');
+  assert.equal(window.document.querySelector('.topbar .tool'), null, 'y ya no arriba');
+
+  const botones = [...barra.querySelectorAll('.tool')];
+  assert.equal(botones.length, 9);
+  for (const b of botones) {
+    assert.ok(b.getAttribute('aria-label'), `${b.id} necesita nombre para el lector de pantalla`);
+    const icono = b.querySelector('.ico use')?.getAttribute('href');
+    assert.match(icono ?? '', /^#i-/, `${b.id} tiene que llevar icono`);
+    assert.ok(window.document.querySelector(`symbol${icono}`), `falta el dibujo de ${icono}`);
+    assert.ok(b.querySelector('.rotulo')?.textContent, `${b.id} lleva su rótulo`);
+  }
+
+  // Objetivo de dedo: Apple pide 44 px de lado como mínimo.
+  assert.ok(parseFloat(regla('.tool').style.getPropertyValue('min-height')) >= 44);
+  const acciones = /\n\.tools \{([\s\S]*?)\n\}/.exec(css)[1];
+  assert.match(acciones, /padding:[^;]*env\(safe-area-inset-bottom/);
 });
 
 test('al cambiar de pestaña de récords el foco se queda en la pestaña', () => {
@@ -674,13 +699,13 @@ test('el descarte se abanica hacia la izquierda, sin meterse bajo el mazo', () =
   game.setPrefs({ drawCount: 1 });
 });
 
-test('las cartas vuelan mucho más despacio que el resto de la interfaz', () => {
+test('el vuelo de las cartas va por su cuenta, no al ritmo de la interfaz', () => {
   const raiz = reglas().find((r) => r.selectorText === ':root').style;
   const ui = parseFloat(raiz.getPropertyValue('--speed'));
   const cartas = parseFloat(raiz.getPropertyValue('--card-speed'));
-  assert.equal(cartas, 648, 'el vuelo de las cartas dura 648 ms');
-  assert.ok(cartas >= ui * 3, 'y muy por encima de las transiciones de la interfaz');
-  assert.equal(board.flightMs, 648, 'y el JS lee ese mismo valor de la hoja de estilos');
+  assert.equal(cartas, 324, 'el vuelo de las cartas dura 324 ms');
+  assert.ok(cartas > ui, 'aun así, más largo que una transición de la interfaz');
+  assert.equal(board.flightMs, 324, 'y el JS lee ese mismo valor de la hoja de estilos');
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--card-speed)'), true);
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--speed)'), false,
     'los botones y los diálogos siguen a su ritmo');
@@ -697,6 +722,60 @@ test('las animaciones van a velocidad lineal, sin acelerones', () => {
   for (const sel of ['.card.hint', '.card.nope', '.stat.bump dd', '.finish', '.update-pill']) {
     sinCurva(regla(sel).style.getPropertyValue('animation'), sel);
   }
+});
+
+test('la pista marca fuerte la carta que hay que tocar y flojo el sitio donde va', () => {
+  escenario({
+    tableau: [
+      [{ id: '8S', rank: 8, suit: 'S', faceUp: true }],
+      [{ id: '7H', rank: 7, suit: 'H', faceUp: true }],
+    ],
+  });
+  const jugada = game.hint();
+  assert.deepEqual(jugada.from, { pile: 'tableau', index: 1 }, 'la única jugada útil es el 7H sobre el 8S');
+
+  board.flashHint(jugada);
+  assert.equal(cartaEl('7H').classList.contains('hint'), true, 'la carta a tocar late');
+  assert.equal(cartaEl('7H').classList.contains('hint-destino'), false);
+  assert.equal(cartaEl('8S').classList.contains('hint-destino'), true, 'el destino se marca aparte');
+  assert.equal(cartaEl('8S').classList.contains('hint'), false, 'y no se confunde con la que se toca');
+
+  // Un hueco vacío como destino también se marca, pero flojo.
+  escenario({
+    tableau: [[], [{ id: '3D', rank: 3, suit: 'D', faceUp: false }, { id: 'KH', rank: 13, suit: 'H', faceUp: true }]],
+  });
+  const alHueco = game.hint();
+  assert.deepEqual(alHueco.to, { pile: 'tableau', index: 0 }, 'el rey se va al hueco y destapa el 3D');
+  board.flashHint(alHueco);
+  assert.equal(cartaEl('KH').classList.contains('hint'), true);
+  assert.equal($('.slot-tableau[data-index="0"]').classList.contains('hint-destino'), true);
+});
+
+test('la carta que se mueve se levanta de la mesa mientras vuela', async () => {
+  escenario({
+    tableau: [
+      [{ id: '10C', rank: 10, suit: 'C', faceUp: true }],
+      [], [], [], [], [],
+      [{ id: '9H', rank: 9, suit: 'H', faceUp: true }],
+    ],
+    stock: [{ id: '2H', rank: 2, suit: 'H', faceUp: false }],   // si no, la posición queda muerta
+  });
+  assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 6 }, to: { pile: 'tableau', index: 0 }, count: 1 }), true);
+  assert.equal(game.status, 'playing', 'la partida sigue viva: nada de carteles de por medio');
+  assert.equal(cartaEl('9H').classList.contains('volando'), true, 'en el aire va levantada');
+  await new Promise((r) => setTimeout(r, board.flightMs + 200));
+  assert.equal(cartaEl('9H').classList.contains('volando'), false, 'al posarse vuelve a la mesa');
+});
+
+test('las cartas se voltean de verdad, no aparecen y desaparecen', () => {
+  assert.equal(regla('.card .back').style.getPropertyValue('transform'), 'rotateY(180deg)');
+  assert.equal(regla('.card.down .face').style.getPropertyValue('transform'), 'rotateY(-180deg)');
+  assert.equal(regla('.card.down .back').style.getPropertyValue('transform'), 'rotateY(0deg)');
+  assert.equal(regla('.card .face, .card .back').style.getPropertyValue('backface-visibility'), 'hidden',
+    'cada cara se esconde sola al darse la vuelta');
+  assert.equal(regla('.card').style.getPropertyValue('perspective'), '700px', 'y con fondo, que si no se ve plano');
+  assert.equal(regla('.card.down .face').style.getPropertyValue('visibility'), '',
+    'ya no se esconde a lo bruto');
 });
 
 // --- reparto animado ---
@@ -969,7 +1048,7 @@ test('el remate se puede detener a media cascada', async () => {
 });
 
 test('el ritmo de la cascada sale de la duración del vuelo', () => {
-  assert.equal(Math.round(board.flightMs / 4), 162, 'una carta cada cuarto de vuelo');
+  assert.equal(Math.round(board.flightMs / 4), 81, 'una carta cada cuarto de vuelo');
 });
 
 test('la duración de reserva del JS coincide con la hoja de estilos', () => {

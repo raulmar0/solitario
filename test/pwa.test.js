@@ -189,7 +189,7 @@ test('todo lo que carga la página está en la precarga', () => {
   const html = leer('index.html');
   const enSw = new Set([...leer('sw.js').matchAll(/^\s{2}'([^']+)',$/gm)].map((m) => m[1]));
   const referidos = [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1])
-    .filter((r) => !r.startsWith('data:') && !r.startsWith('http'));
+    .filter((r) => !r.startsWith('data:') && !r.startsWith('http') && !r.startsWith('#'));
   for (const r of referidos) assert.ok(enSw.has(r), `${r} sale en el HTML pero no se precarga`);
 
   // Y todos los módulos que importa el juego.

@@ -17,7 +17,7 @@ export function formatTime(ms) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export function createGame({ store, now = () => Date.now() }) {
+export function createGame({ store, now = () => Date.now(), onEvents = () => {} }) {
   const listeners = new Set();
 
   let prefs = store.getPrefs();
@@ -135,6 +135,8 @@ export function createGame({ store, now = () => Date.now() }) {
     startClock();
     checkEnd();
     persist();
+    // Quien escuche (de momento, los sonidos) no puede tumbar una jugada.
+    try { onEvents(result.events); } catch { /* el adorno nunca manda */ }
   }
 
   function persist() {

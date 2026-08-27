@@ -21,6 +21,20 @@
 </head>
 <body>
 
+<!-- Iconos de la barra: trazo, no relleno, para que hereden el color y se vean
+     igual de nítidos en cualquier pantalla. Se dibujan una vez y se usan con <use>. -->
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-nueva" viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h9a2 2 0 0 1 2 2v12"/></symbol>
+  <symbol id="i-repetir" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 3v5h5"/></symbol>
+  <symbol id="i-deshacer" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a6 6 0 0 1 0 12h-3"/></symbol>
+  <symbol id="i-rehacer" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a6 6 0 0 0 0 12h3"/></symbol>
+  <symbol id="i-pista" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2h5c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z"/><path d="M9.5 19h5"/><path d="M10.5 21.5h3"/></symbol>
+  <symbol id="i-auto" viewBox="0 0 24 24"><path d="M5 4h14"/><path d="M12 21V8"/><path d="m7 13 5-5 5 5"/></symbol>
+  <symbol id="i-records" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M8 5.5H5A3 3 0 0 0 8 9"/><path d="M16 5.5h3A3 3 0 0 1 16 9"/><path d="M12 13v4"/><path d="M9 20h6"/><path d="M10 17h4"/></symbol>
+  <symbol id="i-ajustes" viewBox="0 0 24 24"><path d="M4 7h9"/><path d="M19 7h1"/><circle cx="16" cy="7" r="2.2"/><path d="M4 17h5"/><path d="M15 17h5"/><circle cx="12" cy="17" r="2.2"/></symbol>
+  <symbol id="i-ayuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .9-1 1.6v.4"/><path d="M12 17.4h.01"/></symbol>
+</svg>
+
 <header class="topbar">
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">♠</span>
@@ -33,18 +47,6 @@
     <div class="stat"><dt>Jugadas</dt><dd id="moves">0</dd></div>
     <div class="stat stat-wide"><dt>Reparto</dt><dd id="seed">—</dd></div>
   </dl>
-
-  <nav class="tools" aria-label="Acciones">
-    <button id="btn-new" class="tool" title="Partida nueva (N)"><span aria-hidden="true">🂠</span> Nueva</button>
-    <button id="btn-restart" class="tool" title="Repetir este reparto (R)"><span aria-hidden="true">↺</span> Repetir</button>
-    <button id="btn-undo" class="tool" title="Deshacer (Ctrl+Z)"><span aria-hidden="true">⟲</span> Deshacer</button>
-    <button id="btn-redo" class="tool" title="Rehacer (Ctrl+Y)"><span aria-hidden="true">⟳</span> Rehacer</button>
-    <button id="btn-hint" class="tool" title="Pista (H)"><span aria-hidden="true">💡</span> Pista</button>
-    <button id="btn-auto" class="tool" title="Subir cartas automáticamente (A)"><span aria-hidden="true">⇡</span> Auto</button>
-    <button id="btn-stats" class="tool" title="Puntuaciones y estadísticas (P)"><span aria-hidden="true">🏆</span> Récords</button>
-    <button id="btn-settings" class="tool" title="Ajustes (,)"><span aria-hidden="true">⚙</span> Ajustes</button>
-    <button id="btn-help" class="tool" title="Ayuda (?)" aria-label="Ayuda"><span aria-hidden="true">?</span></button>
-  </nav>
 
   <button type="button" class="update-pill" id="btn-update-pill" hidden>
     <span aria-hidden="true">↑</span> Versión nueva · Actualizar
@@ -77,6 +79,18 @@
   </button>
   <p class="banner" id="banner" role="status" aria-live="polite"></p>
 </main>
+
+<nav class="tools" id="tools" aria-label="Acciones">
+  <button id="btn-new" class="tool" type="button" aria-label="Partida nueva (N)" title="Partida nueva (N)"><svg class="ico" aria-hidden="true"><use href="#i-nueva"/></svg><span class="rotulo">Nueva</span></button>
+  <button id="btn-restart" class="tool" type="button" aria-label="Repetir este reparto (R)" title="Repetir este reparto (R)"><svg class="ico" aria-hidden="true"><use href="#i-repetir"/></svg><span class="rotulo">Repetir</span></button>
+  <button id="btn-undo" class="tool" type="button" aria-label="Deshacer (Ctrl+Z)" title="Deshacer (Ctrl+Z)"><svg class="ico" aria-hidden="true"><use href="#i-deshacer"/></svg><span class="rotulo">Deshacer</span></button>
+  <button id="btn-redo" class="tool" type="button" aria-label="Rehacer (Ctrl+Y)" title="Rehacer (Ctrl+Y)"><svg class="ico" aria-hidden="true"><use href="#i-rehacer"/></svg><span class="rotulo">Rehacer</span></button>
+  <button id="btn-hint" class="tool" type="button" aria-label="Pista (H)" title="Pista (H)"><svg class="ico" aria-hidden="true"><use href="#i-pista"/></svg><span class="rotulo">Pista</span></button>
+  <button id="btn-auto" class="tool" type="button" aria-label="Subir cartas automáticamente (A)" title="Subir cartas automáticamente (A)"><svg class="ico" aria-hidden="true"><use href="#i-auto"/></svg><span class="rotulo">Auto</span></button>
+  <button id="btn-stats" class="tool" type="button" aria-label="Puntuaciones y estadísticas (P)" title="Puntuaciones y estadísticas (P)"><svg class="ico" aria-hidden="true"><use href="#i-records"/></svg><span class="rotulo">Récords</span></button>
+  <button id="btn-settings" class="tool" type="button" aria-label="Ajustes (,)" title="Ajustes (,)"><svg class="ico" aria-hidden="true"><use href="#i-ajustes"/></svg><span class="rotulo">Ajustes</span></button>
+  <button id="btn-help" class="tool" type="button" aria-label="Cómo se juega (?)" title="Cómo se juega (?)"><svg class="ico" aria-hidden="true"><use href="#i-ayuda"/></svg><span class="rotulo">Ayuda</span></button>
+</nav>
 
 <dialog id="dlg-win" class="dlg dlg-win">
   <div class="win-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
@@ -168,6 +182,7 @@
   <label class="switch"><input type="checkbox" data-pref="autoSafe"><span>Subir solas las cartas que ya no estorban</span></label>
   <label class="switch"><input type="checkbox" data-pref="solvableOnly"><span>Repartir solo manos con solución comprobada</span></label>
   <label class="switch"><input type="checkbox" data-pref="animations"><span>Animaciones</span></label>
+  <label class="switch"><input type="checkbox" data-pref="sound"><span>Sonidos <em>(los clics de las cartas y los avisos)</em></span></label>
 
   <div class="field">
     <label class="field-label" for="pref-name">Tu nombre <em>(se guarda con cada récord)</em></label>

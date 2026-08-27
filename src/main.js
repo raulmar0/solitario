@@ -9,12 +9,27 @@ import { isKnownSolvable } from './solvable-seeds.js';
 import { PILE } from './engine.js';
 import { VERSION } from './version.js';
 import { registrarServiceWorker, crearInstalador, esStandalone, esIos } from './pwa.js';
+import { crearSonidos } from './sonidos.js';
 
 const $ = (sel) => document.querySelector(sel);
 
 const store = createStore(globalThis.localStorage);
-const game = createGame({ store });
-const board = createBoard({ root: $('#board'), game, onMessage: message });
+// El callback se ejecuta más tarde, cuando `game` ya existe.
+const sonidos = crearSonidos({ activo: () => game.prefs.sound !== false });
+const game = createGame({ store, onEvents: sonarJugada });
+const board = createBoard({ root: $('#board'), game, onMessage: message, onNegar: () => sonidos.nada() });
+
+/** Cada cosa que pasa en el tablero suena distinta. */
+function sonarJugada(eventos) {
+  for (const ev of eventos) {
+    if (ev.type === 'draw') sonidos.robar();
+    else if (ev.type === 'recycle') sonidos.barajar();
+    else if (ev.type === 'flip') sonidos.voltear();
+    else if (ev.type === 'move') {
+      if (ev.to === PILE.FOUNDATION) sonidos.fundacion(); else sonidos.colocar();
+    }
+  }
+}
 
 // ---------- aplicación instalable ----------
 
@@ -94,6 +109,7 @@ let autoTimer = null;
 let winShownFor = null;
 let ultimaPuntuacion = null;
 let atascadoAvisado = false;
+let ultimoReparto = null;      // se fija al arrancar: el primer reparto no suena
 
 // Lo que se dice cuando la partida se queda sin jugadas. Se queda fijo en el
 // tablero: no es un aviso de paso, es el estado en el que está la partida.
@@ -148,13 +164,18 @@ function refresh() {
   refreshHeader();
   board.paint();
 
+  if (ultimoReparto !== null && game.dealId !== ultimoReparto) sonidos.barajar();
+  ultimoReparto = game.dealId;      // en la primera vuelta solo se apunta: el reparto de bienvenida no suena
+
   if (game.status === 'won' && winShownFor !== game.lastResult?.at) {
     winShownFor = game.lastResult?.at;
     detenerAuto();
+    sonidos.ganar();
     setTimeout(() => panels.showWin(), 420);
   }
   if (game.status === 'stuck' && !atascadoAvisado) {
     atascadoAvisado = true;
+    sonidos.atasco();
     message(sinSalida(), true, true);
     // Se deja llegar a la carta que acaba de volar antes de tapar el tablero.
     setTimeout(() => { if (game.status === 'stuck') panels.showStuck(); }, 420);
@@ -235,7 +256,10 @@ $('#btn-restart').addEventListener('click', () => {
   message('Mismo reparto, desde el principio.');
 });
 
-$('#btn-undo').addEventListener('click', () => { detenerAuto(); if (!game.undo()) message('No hay nada que deshacer.'); });
+$('#btn-undo').addEventListener('click', () => {
+  detenerAuto();
+  if (game.undo()) sonidos.deshacer(); else message('No hay nada que deshacer.');
+});
 $('#btn-redo').addEventListener('click', () => { if (!game.redo()) message('No hay nada que rehacer.'); });
 
 $('#btn-hint').addEventListener('click', () => {
@@ -243,6 +267,7 @@ $('#btn-hint').addEventListener('click', () => {
   if (!jugada) { message('No veo ninguna jugada.', true); return; }
   if (jugada.type === 'draw') message('Roba del mazo.');
   else if (jugada.type === 'recycle') message('Recicla el descarte.');
+  else message('Toca la carta que parpadea.');
   board.flashHint(jugada);
 });
 

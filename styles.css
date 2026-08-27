@@ -6,7 +6,8 @@
   --gap: 12px;
   --radius: 9px;
   --speed: 180ms;         /* transiciones de la interfaz */
-  --card-speed: 648ms;    /* el vuelo de las cartas: despacio a propósito, para que se vea */
+  --card-speed: 324ms;    /* lo que tarda una carta en ir de un sitio a otro */
+  --flip-speed: 240ms;    /* el volteo al destapar, un pelo más corto que el vuelo */
 
   --felt-1: #14663f;
   --felt-2: #0b3f28;
@@ -142,18 +143,50 @@ body {
 .stat.bump dd { animation: bump 320ms linear; }
 @keyframes bump { 40% { transform: scale(1.22); color: var(--accent); } }
 
-.tools { display: flex; gap: 6px; flex-wrap: wrap; }
+/* ---------- barra de acciones ---------- */
+/* Va al fondo de la pantalla a propósito: arriba, en un móvil grande, hay que
+   cambiar la mano para llegar. Aquí cae el pulgar solo. */
+
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.tools {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px max(6px, env(safe-area-inset-right, 0px)) max(5px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
+  background: var(--topbar-veil);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(6px);
+}
 .tool {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 11px;
-  font: inherit; font-size: 13px; font-weight: 550;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 96px;
+  min-height: 48px;              /* objetivo de dedo, no de ratón */
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 2px;
+  font: inherit;
   color: var(--ink);
-  background: rgba(255, 255, 255, .09);
+  background: rgba(255, 255, 255, .07);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   transition: background var(--speed) linear, transform var(--speed) linear, opacity var(--speed) linear;
 }
+.ico {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rotulo { font-size: 10.5px; font-weight: 600; }
 .tool:hover:not(:disabled) { background: rgba(255, 255, 255, .18); }
 .tool:active:not(:disabled) { transform: translateY(1px); }
 .tool:disabled { opacity: .35; cursor: default; }
@@ -168,7 +201,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 14px max(8px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+  padding: 14px max(8px, env(safe-area-inset-right, 0px)) 10px max(8px, env(safe-area-inset-left, 0px));
   overflow: auto;
 }
 
@@ -218,27 +251,50 @@ body {
   box-shadow: var(--shadow);
   will-change: transform;
   cursor: default;
+  perspective: 700px;      /* el volteo necesita fondo para no verse plano */
 }
-.anim .card { transition: transform var(--card-speed) linear, box-shadow var(--card-speed) linear; }
+/* La posición va a ritmo constante; el relieve entra y sale rápido, que es lo
+   que hace que parezca que la carta se coge y se posa, no que se desliza. */
+.anim .card {
+  transition: transform var(--card-speed) linear, box-shadow var(--card-speed) linear, scale 140ms linear;
+}
+.anim .card .face, .anim .card .back { transition: transform var(--flip-speed) linear; }
 
 .card.playable { cursor: grab; }
 .card.dragging { cursor: grabbing; box-shadow: var(--shadow-lift); transition: none; }
-.card.hint { animation: hint 900ms linear 2; }
+/* Levantada: mientras vuela sola o mientras la llevas en la mano. */
+.anim .card.volando { box-shadow: var(--shadow-lift); }
+.anim .card.volando, .anim .card.dragging { scale: 1.06; }
+
+/* La pista: la carta que hay que tocar late fuerte; el sitio donde va, flojito. */
+.card.hint { animation: pista 800ms linear 3; }
+.card.hint-destino, .slot.hint-destino { animation: pista-destino 800ms linear 3; }
 .card.nope { animation: nope 380ms linear; }
 @keyframes nope {
-  0%, 100% { box-shadow: var(--shadow); }
-  40% { box-shadow: 0 0 0 3px var(--danger), 0 8px 18px rgba(0, 0, 0, .35); }
+  0%, 100% { translate: 0; box-shadow: var(--shadow); }
+  20% { translate: -5px; }
+  40% { translate: 5px; box-shadow: 0 0 0 3px var(--danger), 0 8px 18px rgba(0, 0, 0, .35); }
+  60% { translate: -3px; }
+  80% { translate: 3px; }
 }
-@keyframes hint {
+@keyframes pista {
+  0%, 100% { box-shadow: var(--shadow); scale: 1; }
+  50% { box-shadow: 0 0 0 4px var(--accent), 0 14px 30px rgba(0, 0, 0, .45); scale: 1.07; }
+}
+@keyframes pista-destino {
   0%, 100% { box-shadow: var(--shadow); }
-  50% { box-shadow: 0 0 0 3px var(--accent), 0 10px 22px rgba(0, 0, 0, .4); }
+  50% { box-shadow: 0 0 0 3px rgba(240, 196, 83, .5); }
 }
 
 .card .face, .card .back {
   position: absolute; inset: 0;
   border-radius: var(--radius);
-  backface-visibility: hidden;
+  backface-visibility: hidden;   /* cada cara se esconde sola al darse la vuelta */
+  transform: rotateY(0deg);
 }
+.card .back { transform: rotateY(180deg); }
+.card.down .face { transform: rotateY(-180deg); }
+.card.down .back { transform: rotateY(0deg); }
 
 .card .face {
   background: var(--card-face);
@@ -257,9 +313,6 @@ body {
   border: 1px solid rgba(0, 0, 0, .3);
   box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .14);
 }
-
-.card.down .face { visibility: hidden; }
-.card:not(.down) .back { visibility: hidden; }
 
 .corner {
   display: flex;
@@ -512,14 +565,18 @@ body {
     padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) 8px max(8px, env(safe-area-inset-left, 0px));
   }
   .brand h1 { display: none; }
-  .tool { padding: 7px 9px; font-size: 0; gap: 0; }
-  .tool span { font-size: 15px; }
   .stat { min-width: 54px; padding: 2px 7px; }
-  .table { padding: 8px max(4px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px)); }
+  .table { padding: 8px max(4px, env(safe-area-inset-right, 0px)) 6px max(4px, env(safe-area-inset-left, 0px)); }
+  .tools { gap: 2px; padding-left: max(4px, env(safe-area-inset-left, 0px)); padding-right: max(4px, env(safe-area-inset-right, 0px)); }
+  .tool { min-height: 46px; padding: 5px 1px; }
+  .ico { width: 24px; height: 24px; }
+  .rotulo { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim .card { transition: none; }
-  .card.hint, .card.nope, .stat.bump dd, .finish, .update-pill { animation: none; }
+  .anim .card, .anim .card .face, .anim .card .back { transition: none; }
+  .anim .card.volando, .anim .card.dragging { scale: 1; }
+  .card.hint, .card.hint-destino, .slot.hint-destino, .card.nope,
+  .stat.bump dd, .finish, .update-pill { animation: none; }
   .confetti { display: none; }
 }

@@ -8,12 +8,13 @@ import { PILE } from './engine.js';
 
 const DRAG_THRESHOLD = 5;     // px antes de considerar que se está arrastrando
 const DOUBLE_TAP_MS = 320;
-const REPARTO_PASO = 49;      // ms entre carta y carta al repartir
+const REPARTO_PASO = 25;      // ms entre carta y carta al repartir
 // Reserva por si el navegador no sabe resolver la variable de CSS. Tiene que
 // coincidir con --card-speed en styles.css; hay una prueba que lo vigila.
-export const VUELO_POR_DEFECTO = 648;
+export const VUELO_POR_DEFECTO = 324;
 const Z_VUELO = 1000;         // una carta en movimiento va por encima del tablero
 const Z_ARRASTRE = 2000;      // y la que lleva el jugador en la mano, por encima de todo
+const PISTA_MS = 2400;        // 800 ms x 3 pasadas: lo que dura la animación de la pista
 
 /**
  * Reparto de la fila de arriba, en columnas: las cuatro fundaciones a la
@@ -27,7 +28,7 @@ export const COLUMNA = {
   stock: 6,
 };
 
-export function createBoard({ root, game, onMessage = () => {} }) {
+export function createBoard({ root, game, onMessage = () => {}, onNegar = () => {} }) {
   const layer = root.querySelector('#cards');
   const contador = root.querySelector('#stock-count');
   const slots = [...root.querySelectorAll('.slot')];
@@ -169,10 +170,13 @@ export function createBoard({ root, game, onMessage = () => {} }) {
    */
   function alzar(id) {
     clearTimeout(volando.get(id));
+    els.get(id)?.classList.add('volando');
     volando.set(id, setTimeout(() => {
       volando.delete(id);
       const el = els.get(id);
-      if (el && el.dataset.z != null) el.style.zIndex = el.dataset.z;
+      if (!el) return;
+      el.classList.remove('volando');
+      if (el.dataset.z != null) el.style.zIndex = el.dataset.z;
     }, vueloMs() + 30));
   }
 
@@ -278,7 +282,10 @@ export function createBoard({ root, game, onMessage = () => {} }) {
 
   /** Al cambiar el tamaño se recolocan todas: eso no es que estén volando. */
   function repintarSinVuelo() {
-    for (const reloj of volando.values()) clearTimeout(reloj);
+    for (const [id, reloj] of volando) {
+      clearTimeout(reloj);
+      els.get(id)?.classList.remove('volando');
+    }
     volando = new Map();
     posiciones = new Map();
     paint({ vuelo: false });
@@ -500,6 +507,7 @@ export function createBoard({ root, game, onMessage = () => {} }) {
   }
 
   function negar(id) {
+    onNegar();
     const el = els.get(id);
     if (!el) return;
     el.classList.remove('nope');
@@ -598,15 +606,18 @@ export function createBoard({ root, game, onMessage = () => {} }) {
     /** Lo que tarda una carta en ir de un sitio a otro, según la hoja de estilos. */
     get flightMs() { return vueloMs(); },
     get repartiendo() { return !!enMazo; },
-    /** Marca la jugada sugerida para que se vea de un vistazo. */
+    /**
+     * Marca la jugada sugerida: la carta que hay que tocar late fuerte y el
+     * sitio al que va, flojito. Así se distingue de un vistazo qué se pica.
+     */
     flashHint(move) {
       if (!move) return;
-      const marcar = (el) => {
+      const marcar = (el, clase = 'hint') => {
         if (!el) return;
-        el.classList.remove('hint');
+        el.classList.remove('hint', 'hint-destino');
         void el.offsetWidth;      // reinicia la animación
-        el.classList.add('hint');
-        setTimeout(() => el.classList.remove('hint'), 2000);
+        el.classList.add(clase);
+        setTimeout(() => el.classList.remove(clase), PISTA_MS);
       };
       if (move.type === 'draw' || move.type === 'recycle') { marcar(slotFor('stock')); return; }
       for (const id of idsOf({ from: move.from, count: move.count ?? 1 })) marcar(els.get(id));
@@ -615,10 +626,10 @@ export function createBoard({ root, game, onMessage = () => {} }) {
         ? slotFor('foundation', move.to.index)
         : slotFor('tableau', move.to.index);
       if (destino && (move.to.pile === PILE.FOUNDATION ? game.state.foundations[move.to.index].length === 0
-        : game.state.tableau[move.to.index].length === 0)) marcar(destino);
+        : game.state.tableau[move.to.index].length === 0)) marcar(destino, 'hint-destino');
       else {
         const pila = move.to.pile === PILE.FOUNDATION ? game.state.foundations[move.to.index] : game.state.tableau[move.to.index];
-        marcar(els.get(engine.top(pila)?.id));
+        marcar(els.get(engine.top(pila)?.id), 'hint-destino');
       }
     },
   };
