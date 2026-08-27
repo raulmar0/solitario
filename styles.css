@@ -109,7 +109,9 @@ body {
   font-size: 15px;
 }
 
-.scoreboard { display: flex; gap: 6px; margin: 0; flex: 1 1 auto; }
+/* Envuelve porque en una pantalla de 280 px las cuatro cajas no caben en fila
+   y se salían del ancho: antes dos líneas que barra horizontal. */
+.scoreboard { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; flex: 1 1 auto; }
 
 /* Aviso de versión nueva: solo aparece cuando hay un worker esperando. */
 .update-pill {
@@ -202,7 +204,11 @@ body {
   flex-direction: column;
   align-items: center;
   padding: 14px max(8px, env(safe-area-inset-right, 0px)) 10px max(8px, env(safe-area-inset-left, 0px));
-  overflow: auto;
+  overflow-y: auto;
+  /* Red de seguridad: el tablero se mide para que quepa con margen, pero si
+     alguna animación creciera, antes se recorta que sacar barra horizontal.
+     Un navegador que no entienda `clip` se queda con el `auto` de siempre. */
+  overflow-x: clip;
 }
 
 .board {
@@ -256,18 +262,27 @@ body {
 /* La posición va a ritmo constante; el relieve entra y sale rápido, que es lo
    que hace que parezca que la carta se coge y se posa, no que se desliza. */
 .anim .card {
-  transition: transform var(--card-speed) linear, box-shadow var(--card-speed) linear, scale 140ms linear;
+  transition: transform var(--card-speed) linear, box-shadow var(--card-speed) linear, translate 140ms linear;
 }
 .anim .card .face, .anim .card .back { transition: transform var(--flip-speed) linear; }
 
 .card.playable { cursor: grab; }
 .card.dragging { cursor: grabbing; box-shadow: var(--shadow-lift); transition: none; }
-/* Levantada: mientras vuela sola o mientras la llevas en la mano. */
+/* Levantada: mientras vuela sola o mientras la llevas en la mano.
+   Sube unos píxeles en lugar de agrandarse, y por un motivo de peso: `scale` se
+   aplica ANTES que el `transform`, así que agrandar la carta le multiplicaba
+   también la posición que lleva el transform y las columnas de la derecha
+   pegaban un salto de hasta 22 px al despegar. `translate` va por delante de
+   todo y solo desplaza. */
 .anim .card.volando { box-shadow: var(--shadow-lift); }
-.anim .card.volando, .anim .card.dragging { scale: 1.06; }
+.anim .card.volando, .anim .card.dragging { translate: 0 -4px; }
 
-/* La pista: la carta que hay que tocar late fuerte; el sitio donde va, flojito. */
+/* La pista: la carta que hay que tocar late fuerte; el sitio donde va, flojito.
+   El crecer va en las dos caras y no en la carta, por lo mismo de antes: sobre
+   la carta, `scale` le movería la posición. Sobre las caras, que están a inset 0
+   y solo llevan el giro del volteo, únicamente la agranda. */
 .card.hint { animation: pista 800ms linear 3; }
+.card.hint .face, .card.hint .back { animation: pista-cara 800ms linear 3; }
 .card.hint-destino, .slot.hint-destino { animation: pista-destino 800ms linear 3; }
 .card.nope { animation: nope 380ms linear; }
 @keyframes nope {
@@ -278,8 +293,12 @@ body {
   80% { translate: 3px; }
 }
 @keyframes pista {
-  0%, 100% { box-shadow: var(--shadow); scale: 1; }
-  50% { box-shadow: 0 0 0 4px var(--accent), 0 14px 30px rgba(0, 0, 0, .45); scale: 1.07; }
+  0%, 100% { box-shadow: var(--shadow); }
+  50% { box-shadow: 0 0 0 4px var(--accent), 0 14px 30px rgba(0, 0, 0, .45); }
+}
+@keyframes pista-cara {
+  0%, 100% { scale: 1; }
+  50% { scale: 1.07; }
 }
 @keyframes pista-destino {
   0%, 100% { box-shadow: var(--shadow); }
@@ -415,6 +434,11 @@ body {
   color: var(--panel-ink);
   padding: 20px;
   width: min(94vw, 460px);
+  /* Con las tres secciones en uno, el panel puede dar de sí: que se desplace
+     por dentro en vez de salirse por abajo de la pantalla. */
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
 }
 .dlg-wide { width: min(94vw, 720px); }
@@ -476,6 +500,32 @@ body {
 }
 .text-input::placeholder { color: var(--panel-ink-soft); opacity: .8; }
 .text-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.panel { min-height: 0; }
+.row.wrap { flex-wrap: wrap; }
+
+/* Las pestañas de sección mandan sobre las de dentro (la modalidad de los
+   récords): se dibujan como pestañas de verdad y no como píldoras, para que a
+   nadie se le confundan dos filas de lo mismo. */
+#panel-tabs {
+  gap: 2px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--panel-line);
+}
+#panel-tabs .tab {
+  padding: 9px 14px;
+  font-size: 14px;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1px;
+}
+#panel-tabs .tab[aria-selected="true"] {
+  background: none;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
 
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 .tab {
@@ -567,16 +617,15 @@ body {
   .brand h1 { display: none; }
   .stat { min-width: 54px; padding: 2px 7px; }
   .table { padding: 8px max(4px, env(safe-area-inset-right, 0px)) 6px max(4px, env(safe-area-inset-left, 0px)); }
-  .tools { gap: 2px; padding-left: max(4px, env(safe-area-inset-left, 0px)); padding-right: max(4px, env(safe-area-inset-right, 0px)); }
-  .tool { min-height: 46px; padding: 5px 1px; }
-  .ico { width: 24px; height: 24px; }
-  .rotulo { display: none; }
+  .tools { gap: 3px; padding-left: max(4px, env(safe-area-inset-left, 0px)); padding-right: max(4px, env(safe-area-inset-right, 0px)); }
+  .tool { min-height: 48px; padding: 5px 2px; }
+  .rotulo { font-size: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .anim .card, .anim .card .face, .anim .card .back { transition: none; }
-  .anim .card.volando, .anim .card.dragging { scale: 1; }
-  .card.hint, .card.hint-destino, .slot.hint-destino, .card.nope,
-  .stat.bump dd, .finish, .update-pill { animation: none; }
+  .anim .card.volando, .anim .card.dragging { translate: 0; }
+  .card.hint, .card.hint .face, .card.hint .back, .card.hint-destino,
+  .slot.hint-destino, .card.nope, .stat.bump dd, .finish, .update-pill { animation: none; }
   .confetti { display: none; }
 }

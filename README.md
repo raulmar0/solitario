@@ -53,9 +53,15 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   Ajustes. El navegador no deja sonar nada hasta que tocas la página, así que el
   reparto de bienvenida es mudo a propósito.
 - **Las acciones, abajo**: en un móvil grande, la parte de arriba de la pantalla
-  queda lejos del pulgar. Los nueve botones van al fondo, con iconos de trazo
-  propios (no emojis, que cada sistema dibuja a su manera) y 45 x 46 px de
-  objetivo, por encima del mínimo que pide Apple.
+  queda lejos del pulgar. Los cinco botones —nueva, repetir, rehacer, pista y
+  ajustes— van al fondo, con su rótulo debajo, iconos de trazo propios (no
+  emojis, que cada sistema dibuja a su manera) y 82 x 51 px de objetivo, muy por
+  encima del mínimo que pide Apple.
+- **Un solo panel**: ajustes, récords y ayuda están en el mismo sitio, en tres
+  secciones. Antes eran tres diálogos y tres botones distintos. Deshacer y subir
+  las cartas que no estorban se quedaron sin botón: lo primero está en el
+  teclado y en el cartel de partida muerta, y lo segundo lo hace el botón de
+  rematar cuando toca.
 - **Sin salida**: cuando ya no queda ninguna jugada se dice en el tablero —el
   aviso se queda fijo— y se abre un cartel que lo explica y ofrece la salida:
   deshacer, repetir el mismo reparto o repartir de nuevo. Si aún cabe bajar una
@@ -77,7 +83,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.3.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.4.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -211,5 +217,5 @@ uno a otro.
 | H | pista |
 | A | subir automáticamente |
 | N / R | partida nueva / repetir reparto |
-| P / , / ? | récords / ajustes / ayuda |
+| , / P / ? | el panel: ajustes / récords / ayuda |
 | Esc | cancelar el arrastre |

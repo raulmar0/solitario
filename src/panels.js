@@ -22,21 +22,69 @@ const fecha = (iso) => {
 export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSettings = () => {} }) {
   const dlgWin = $('#dlg-win');
   const dlgStuck = $('#dlg-stuck');
-  const dlgStats = $('#dlg-stats');
   const dlgSettings = $('#dlg-settings');
-  const dlgHelp = $('#dlg-help');
   let statsMode = null;
 
-  for (const dlg of [dlgWin, dlgStuck, dlgStats, dlgSettings, dlgHelp]) {
+  for (const dlg of [dlgWin, dlgStuck, dlgSettings]) {
     dlg.addEventListener('click', (event) => {
       if (event.target.closest('[data-close]')) dlg.close();
       else if (event.target === dlg) dlg.close();   // clic en el fondo
     });
   }
 
+  // ---------- las tres secciones ----------
+
+  const SECCIONES = [
+    { id: 'ajustes', titulo: 'Ajustes' },
+    { id: 'records', titulo: 'Récords y estadísticas' },
+    { id: 'ayuda', titulo: 'Cómo se juega' },
+  ];
+  let seccion = 'ajustes';
+
+  function mostrarSeccion(cual, { foco = false } = {}) {
+    seccion = SECCIONES.some((x) => x.id === cual) ? cual : 'ajustes';
+    for (const s of SECCIONES) {
+      const pestana = $(`#tab-${s.id}`);
+      const panel = $(`#panel-${s.id}`);
+      const activa = s.id === seccion;
+      pestana.setAttribute('aria-selected', String(activa));
+      pestana.tabIndex = activa ? 0 : -1;   // el tabulador entra una vez; dentro, flechas
+      panel.hidden = !activa;
+      if (activa) $('#panel-titulo').textContent = s.titulo;
+    }
+    if (seccion === 'records') renderStats();
+    if (seccion === 'ajustes') renderSettings();
+    if (foco) $(`#tab-${seccion}`).focus();
+  }
+
+  $('#panel-tabs').addEventListener('click', (event) => {
+    const pestana = event.target.closest('[role="tab"]');
+    if (pestana) mostrarSeccion(pestana.id.replace('tab-', ''));
+  });
+
+  $('#panel-tabs').addEventListener('keydown', (event) => {
+    const paso = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity }[event.key];
+    if (paso === undefined || !event.target.closest('[role="tab"]')) return;
+    event.preventDefault();
+    const i = SECCIONES.findIndex((x) => x.id === seccion);
+    const destino = paso === -Infinity ? 0
+      : paso === Infinity ? SECCIONES.length - 1
+        : (i + paso + SECCIONES.length) % SECCIONES.length;
+    mostrarSeccion(SECCIONES[destino].id, { foco: true });
+  });
+
+  /** Abre el panel por la sección que se pida. */
+  function abrir(cual) {
+    if (cual === 'records') statsMode = { scoring: game.prefs.scoring, drawCount: game.prefs.drawCount };
+    mostrarSeccion(cual);
+    onOpenSettings();
+    if (!dlgSettings.open) dlgSettings.showModal();
+  }
+
   // ---------- récords ----------
 
   function renderStats() {
+    statsMode = statsMode ?? { scoring: game.prefs.scoring, drawCount: game.prefs.drawCount };
     const tabs = $('#stats-tabs');
     const panel = $('#stats-panel');
     const enPestanas = tabs.contains(document.activeElement);
@@ -314,17 +362,15 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   });
 
   const api = {
-    openStats() {
-      statsMode = { scoring: game.prefs.scoring, drawCount: game.prefs.drawCount };
-      renderStats();
-      dlgStats.showModal();
-    },
-    openSettings() { renderSettings(); onOpenSettings(); dlgSettings.showModal(); },
-    openHelp() { dlgHelp.showModal(); },
+    openStats() { abrir('records'); },
+    openSettings() { abrir('ajustes'); },
+    openHelp() { abrir('ayuda'); },
     showWin,
     showStuck,
     renderSettings,
-    get anyOpen() { return [dlgWin, dlgStuck, dlgStats, dlgSettings, dlgHelp].some((d) => d.open); },
+    /** Qué sección se está viendo; las pruebas y el teclado lo usan. */
+    get section() { return seccion; },
+    get anyOpen() { return [dlgWin, dlgStuck, dlgSettings].some((d) => d.open); },
   };
   return api;
 }

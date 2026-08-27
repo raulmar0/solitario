@@ -15,6 +15,13 @@ export const VUELO_POR_DEFECTO = 324;
 const Z_VUELO = 1000;         // una carta en movimiento va por encima del tablero
 const Z_ARRASTRE = 2000;      // y la que lleva el jugador en la mano, por encima de todo
 const PISTA_MS = 2400;        // 800 ms x 3 pasadas: lo que dura la animación de la pista
+/**
+ * Hueco que se guarda a cada lado del tablero. Las animaciones sacan la carta
+ * de su sitio —el temblor de «esa no puede ser» la mueve 5 px y el latido de la
+ * pista la agranda un 7%—, y sin este margen las columnas de los extremos se
+ * salían del ancho de la pantalla. Hay una prueba que vigila que siga bastando.
+ */
+export const MARGEN_ANIM = 8;
 
 /**
  * Reparto de la fila de arriba, en columnas: las cuatro fundaciones a la
@@ -69,17 +76,22 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
   // --- medidas ---
   function measure() {
     const host = root.parentElement;
-    const availW = Math.max(280, host.clientWidth - 8);
+    // El suelo es solo para que un contenedor sin medir (0 px) no dé cartas
+    // negativas: por encima de eso manda siempre lo que hay, que si no el
+    // tablero se salía de las pantallas más estrechas.
+    const availW = Math.max(140, host.clientWidth - 2 * MARGEN_ANIM);
     const availH = Math.max(320, host.clientHeight - 30);
 
     const gap = Math.max(5, Math.min(13, availW * 0.013));
-    let cw = Math.min((availW - 6 * gap) / 7, 104);
+    const cabeALoAncho = (availW - 6 * gap) / 7;
+    let cw = Math.min(cabeALoAncho, 104);
     let ch = cw * 1.4;
     const rowGap = Math.max(9, ch * 0.13);
     // Reservamos sitio para una columna razonablemente larga; si no cabe, se encogen las cartas.
     const needed = ch + rowGap + ch + 6.5 * (ch * 0.24);
     if (needed > availH) {
-      cw = Math.max(40, cw * (availH / needed));
+      // Encogen por alto, pero nunca hasta ser más anchas de lo que cabe.
+      cw = Math.min(cabeALoAncho, Math.max(40, cw * (availH / needed)));
       ch = cw * 1.4;
     }
     return { cw, ch, gap, rowGap: Math.max(9, ch * 0.13), tableauY: ch + Math.max(9, ch * 0.13) };

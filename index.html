@@ -83,13 +83,9 @@
 <nav class="tools" id="tools" aria-label="Acciones">
   <button id="btn-new" class="tool" type="button" aria-label="Partida nueva (N)" title="Partida nueva (N)"><svg class="ico" aria-hidden="true"><use href="#i-nueva"/></svg><span class="rotulo">Nueva</span></button>
   <button id="btn-restart" class="tool" type="button" aria-label="Repetir este reparto (R)" title="Repetir este reparto (R)"><svg class="ico" aria-hidden="true"><use href="#i-repetir"/></svg><span class="rotulo">Repetir</span></button>
-  <button id="btn-undo" class="tool" type="button" aria-label="Deshacer (Ctrl+Z)" title="Deshacer (Ctrl+Z)"><svg class="ico" aria-hidden="true"><use href="#i-deshacer"/></svg><span class="rotulo">Deshacer</span></button>
   <button id="btn-redo" class="tool" type="button" aria-label="Rehacer (Ctrl+Y)" title="Rehacer (Ctrl+Y)"><svg class="ico" aria-hidden="true"><use href="#i-rehacer"/></svg><span class="rotulo">Rehacer</span></button>
   <button id="btn-hint" class="tool" type="button" aria-label="Pista (H)" title="Pista (H)"><svg class="ico" aria-hidden="true"><use href="#i-pista"/></svg><span class="rotulo">Pista</span></button>
-  <button id="btn-auto" class="tool" type="button" aria-label="Subir cartas automáticamente (A)" title="Subir cartas automáticamente (A)"><svg class="ico" aria-hidden="true"><use href="#i-auto"/></svg><span class="rotulo">Auto</span></button>
-  <button id="btn-stats" class="tool" type="button" aria-label="Puntuaciones y estadísticas (P)" title="Puntuaciones y estadísticas (P)"><svg class="ico" aria-hidden="true"><use href="#i-records"/></svg><span class="rotulo">Récords</span></button>
-  <button id="btn-settings" class="tool" type="button" aria-label="Ajustes (,)" title="Ajustes (,)"><svg class="ico" aria-hidden="true"><use href="#i-ajustes"/></svg><span class="rotulo">Ajustes</span></button>
-  <button id="btn-help" class="tool" type="button" aria-label="Cómo se juega (?)" title="Cómo se juega (?)"><svg class="ico" aria-hidden="true"><use href="#i-ayuda"/></svg><span class="rotulo">Ayuda</span></button>
+  <button id="btn-settings" class="tool" type="button" aria-label="Ajustes, récords y ayuda (,)" title="Ajustes, récords y ayuda (,)"><svg class="ico" aria-hidden="true"><use href="#i-ajustes"/></svg><span class="rotulo">Ajustes</span></button>
 </nav>
 
 <dialog id="dlg-win" class="dlg dlg-win">
@@ -120,146 +116,151 @@
   </div>
 </dialog>
 
-<dialog id="dlg-stats" class="dlg dlg-wide">
+
+<dialog id="dlg-settings" class="dlg dlg-wide">
   <header class="dlg-head">
-    <h2>Récords y estadísticas</h2>
+    <h2 id="panel-titulo">Ajustes</h2>
     <button class="icon-btn" data-close aria-label="Cerrar">✕</button>
   </header>
 
-  <div class="tabs" id="stats-tabs" role="tablist" aria-label="Modalidad"></div>
-
-  <div id="stats-panel" role="tabpanel" tabindex="0">
-    <dl class="grid-stats" id="stats-grid"></dl>
-
-    <div id="bank-row" class="bank-row" hidden>
-      <span>Banca de Vegas acumulada: <strong id="bank-value">0 $</strong></span>
-      <button class="btn small ghost" id="btn-reset-bank">Poner a cero</button>
-    </div>
-
-    <h3>Mejores partidas</h3>
-    <div class="table-wrap">
-      <table class="scores" id="scores-table">
-        <thead><tr><th>#</th><th>Puntos</th><th>Resultado</th><th>Tiempo</th><th>Jugadas</th><th>Reparto</th><th>Fecha</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <p class="empty" id="scores-empty" hidden>Aún no hay partidas guardadas en esta modalidad. Juega una y aparecerá aquí.</p>
+  <!-- Tres secciones en un mismo sitio: lo que se toca, lo que se ha jugado y
+       cómo se juega. Antes eran tres diálogos y tres botones en la barra. -->
+  <div class="tabs" id="panel-tabs" role="tablist" aria-label="Secciones">
+    <button class="tab" type="button" role="tab" id="tab-ajustes" aria-controls="panel-ajustes" aria-selected="true">Ajustes</button>
+    <button class="tab" type="button" role="tab" id="tab-records" aria-controls="panel-records" aria-selected="false" tabindex="-1">Récords</button>
+    <button class="tab" type="button" role="tab" id="tab-ayuda" aria-controls="panel-ayuda" aria-selected="false" tabindex="-1">Ayuda</button>
   </div>
 
-  <footer class="dlg-foot">
-    <button class="btn small" id="btn-export">Exportar datos</button>
-    <button class="btn small" id="btn-import">Importar datos</button>
-    <button class="btn small danger" id="btn-wipe">Borrar todo</button>
-    <input type="file" id="import-file" accept="application/json" hidden>
-  </footer>
-</dialog>
-
-<dialog id="dlg-settings" class="dlg">
-  <header class="dlg-head">
-    <h2>Ajustes</h2>
-    <button class="icon-btn" data-close aria-label="Cerrar">✕</button>
-  </header>
-
-  <div class="field">
-    <span class="field-label">Cartas por robo</span>
-    <div class="seg" role="radiogroup" aria-label="Cartas por robo">
-      <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="1">De una</button>
-      <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="3">De tres</button>
-    </div>
-    <p class="hint-text">De tres es la variante difícil: en Vegas solo permite tres pasadas al mazo.</p>
-  </div>
-
-  <div class="field">
-    <span class="field-label">Puntuación</span>
-    <div class="seg" role="radiogroup" aria-label="Puntuación">
-      <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="standard">Estándar</button>
-      <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="vegas">Vegas</button>
-    </div>
-    <p class="hint-text" id="scoring-hint"></p>
-  </div>
-
-  <label class="switch"><input type="checkbox" data-pref="timed"><span>Contrarreloj <em>(−2 puntos cada 10 s y bonificación por ganar rápido)</em></span></label>
-  <label class="switch"><input type="checkbox" data-pref="autoSafe"><span>Subir solas las cartas que ya no estorban</span></label>
-  <label class="switch"><input type="checkbox" data-pref="solvableOnly"><span>Repartir solo manos con solución comprobada</span></label>
-  <label class="switch"><input type="checkbox" data-pref="animations"><span>Animaciones</span></label>
-  <label class="switch"><input type="checkbox" data-pref="sound"><span>Sonidos <em>(los clics de las cartas y los avisos)</em></span></label>
-
-  <div class="field">
-    <label class="field-label" for="pref-name">Tu nombre <em>(se guarda con cada récord)</em></label>
-    <input id="pref-name" class="text-input" data-pref="playerName" type="text" maxlength="24" placeholder="Anónimo">
-  </div>
-
-  <div class="field">
-    <span class="field-label">Tema</span>
-    <div class="seg" role="radiogroup" aria-label="Tema">
-      <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="auto">Automático</button>
-      <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="light">Claro</button>
-      <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="dark">Oscuro</button>
-    </div>
-  </div>
-
-  <div class="field">
-    <label class="field-label" for="seed-input">Jugar un reparto concreto</label>
-    <div class="row">
-      <input id="seed-input" class="text-input" type="number" min="1" max="999999" placeholder="p. ej. 1234" inputmode="numeric">
-      <button class="btn" id="btn-seed-go">Repartir</button>
-    </div>
-    <p class="hint-text">El mismo número reparte siempre las mismas cartas. Útil para competir con alguien.</p>
-  </div>
-
-  <div class="field">
-    <span class="field-label">Aplicación</span>
-
-    <div class="app-row">
-      <div class="app-row-info">
-        <strong id="app-version">v—</strong>
-        <p class="hint-text" id="update-hint">Se instala en el dispositivo y funciona sin conexión.</p>
+  <section class="panel" id="panel-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" tabindex="0">
+    <div class="field">
+      <span class="field-label">Cartas por robo</span>
+      <div class="seg" role="radiogroup" aria-label="Cartas por robo">
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="1">De una</button>
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="3">De tres</button>
       </div>
-      <button class="btn small" id="btn-update" type="button">Buscar actualización</button>
+      <p class="hint-text">De tres es la variante difícil: en Vegas solo permite tres pasadas al mazo.</p>
     </div>
 
-    <div class="app-row" id="install-row" hidden>
-      <div class="app-row-info">
-        <strong>Instalar en el dispositivo</strong>
-        <p class="hint-text" id="install-hint">Se abre a pantalla completa, como una aplicación más.</p>
+    <div class="field">
+      <span class="field-label">Puntuación</span>
+      <div class="seg" role="radiogroup" aria-label="Puntuación">
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="standard">Estándar</button>
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="vegas">Vegas</button>
       </div>
-      <button class="btn small primary" id="btn-install" type="button">Instalar</button>
+      <p class="hint-text" id="scoring-hint"></p>
+    </div>
+
+    <label class="switch"><input type="checkbox" data-pref="timed"><span>Contrarreloj <em>(−2 puntos cada 10 s y bonificación por ganar rápido)</em></span></label>
+    <label class="switch"><input type="checkbox" data-pref="autoSafe"><span>Subir solas las cartas que ya no estorban</span></label>
+    <label class="switch"><input type="checkbox" data-pref="solvableOnly"><span>Repartir solo manos con solución comprobada</span></label>
+    <label class="switch"><input type="checkbox" data-pref="animations"><span>Animaciones</span></label>
+    <label class="switch"><input type="checkbox" data-pref="sound"><span>Sonidos <em>(los clics de las cartas y los avisos)</em></span></label>
+
+    <div class="field">
+      <label class="field-label" for="pref-name">Tu nombre <em>(se guarda con cada récord)</em></label>
+      <input id="pref-name" class="text-input" data-pref="playerName" type="text" maxlength="24" placeholder="Anónimo">
+    </div>
+
+    <div class="field">
+      <span class="field-label">Tema</span>
+      <div class="seg" role="radiogroup" aria-label="Tema">
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="auto">Automático</button>
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="light">Claro</button>
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="dark">Oscuro</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="seed-input">Jugar un reparto concreto</label>
+      <div class="row">
+        <input id="seed-input" class="text-input" type="number" min="1" max="999999" placeholder="p. ej. 1234" inputmode="numeric">
+        <button class="btn" id="btn-seed-go">Repartir</button>
+      </div>
+      <p class="hint-text">El mismo número reparte siempre las mismas cartas. Útil para competir con alguien.</p>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Aplicación</span>
+
+      <div class="app-row">
+        <div class="app-row-info">
+          <strong id="app-version">v—</strong>
+          <p class="hint-text" id="update-hint">Se instala en el dispositivo y funciona sin conexión.</p>
+        </div>
+        <button class="btn small" id="btn-update" type="button">Buscar actualización</button>
+      </div>
+
+      <div class="app-row" id="install-row" hidden>
+        <div class="app-row-info">
+          <strong>Instalar en el dispositivo</strong>
+          <p class="hint-text" id="install-hint">Se abre a pantalla completa, como una aplicación más.</p>
+        </div>
+        <button class="btn small primary" id="btn-install" type="button">Instalar</button>
+      </div>
+    </div>
+  <div class="field">
+    <span class="field-label">Tus datos</span>
+    <p class="hint-text">Los récords y los ajustes viven en este navegador, en tu equipo. Aquí puedes llevártelos o borrarlos.</p>
+    <div class="row wrap">
+      <button class="btn small" id="btn-export">Exportar</button>
+      <button class="btn small" id="btn-import">Importar</button>
+      <button class="btn small danger" id="btn-wipe">Borrar todo</button>
+      <input type="file" id="import-file" accept="application/json" hidden>
     </div>
   </div>
+  </section>
+
+  <section class="panel" id="panel-records" role="tabpanel" aria-labelledby="tab-records" tabindex="0" hidden>
+    <div class="tabs" id="stats-tabs" role="tablist" aria-label="Modalidad"></div>
+
+    <div id="stats-panel" role="tabpanel" tabindex="0">
+      <dl class="grid-stats" id="stats-grid"></dl>
+
+      <div id="bank-row" class="bank-row" hidden>
+        <span>Banca de Vegas acumulada: <strong id="bank-value">0 $</strong></span>
+        <button class="btn small ghost" id="btn-reset-bank">Poner a cero</button>
+      </div>
+
+      <h3>Mejores partidas</h3>
+      <div class="table-wrap">
+        <table class="scores" id="scores-table">
+          <thead><tr><th>#</th><th>Puntos</th><th>Resultado</th><th>Tiempo</th><th>Jugadas</th><th>Reparto</th><th>Fecha</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="empty" id="scores-empty" hidden>Aún no hay partidas guardadas en esta modalidad. Juega una y aparecerá aquí.</p>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-ayuda" role="tabpanel" aria-labelledby="tab-ayuda" tabindex="0" hidden>
+    <p>Sube las 52 cartas a las cuatro pilas de arriba, cada una de un palo y del as al rey.</p>
+    <ul class="rules">
+      <li>En las columnas se apila en orden <strong>descendente</strong> y <strong>alternando color</strong>.</li>
+      <li>En un hueco vacío solo entra un <strong>rey</strong> (con toda su secuencia detrás).</li>
+      <li><strong>Pica una carta</strong> y va sola a donde pueda: primero a su pila de arriba y, si no, a la columna que le venga.</li>
+      <li><strong>Arrástrala</strong> cuando quieras elegir tú el sitio, por ejemplo entre dos huecos libres.</li>
+      <li>Al destapar una carta se le da la vuelta sola.</li>
+    </ul>
+    <h3>Atajos</h3>
+    <dl class="keys">
+      <div><dt>Espacio</dt><dd>robar del mazo</dd></div>
+      <div><dt>1…7</dt><dd>subir la carta de esa columna</dd></div>
+      <div><dt>0</dt><dd>subir la carta del descarte</dd></div>
+      <div><dt>Ctrl+Z / Ctrl+Y</dt><dd>deshacer y rehacer</dd></div>
+      <div><dt>H</dt><dd>pista</dd></div>
+      <div><dt>A</dt><dd>subir automáticamente</dd></div>
+      <div><dt>N / R</dt><dd>partida nueva / repetir reparto</dd></div>
+      <div><dt>, / P / ?</dt><dd>ajustes, récords y ayuda</dd></div>
+      <div><dt>Esc</dt><dd>cancelar el arrastre</dd></div>
+    </dl>
+    <h3>Puntuación</h3>
+    <p class="hint-text"><strong>Estándar:</strong> +10 por carta a las pilas de arriba, +5 al destapar una carta o traer una del descarte a una columna, −15 al bajar una carta de arriba, −100 al reciclar el mazo robando de una. <strong>Vegas:</strong> pagas 52 $ de entrada y cobras 5 $ por cada carta que subas; el saldo se acumula entre partidas.</p>
+    <p class="hint-text">Todo se guarda en este navegador, en tu equipo. No sale nada a ningún servidor.</p>
+  </section>
 
   <footer class="dlg-foot"><button class="btn primary" data-close>Listo</button></footer>
 </dialog>
 
-<dialog id="dlg-help" class="dlg">
-  <header class="dlg-head">
-    <h2>Cómo se juega</h2>
-    <button class="icon-btn" data-close aria-label="Cerrar">✕</button>
-  </header>
-  <p>Sube las 52 cartas a las cuatro pilas de arriba, cada una de un palo y del as al rey.</p>
-  <ul class="rules">
-    <li>En las columnas se apila en orden <strong>descendente</strong> y <strong>alternando color</strong>.</li>
-    <li>En un hueco vacío solo entra un <strong>rey</strong> (con toda su secuencia detrás).</li>
-    <li><strong>Pica una carta</strong> y va sola a donde pueda: primero a su pila de arriba y, si no, a la columna que le venga.</li>
-    <li><strong>Arrástrala</strong> cuando quieras elegir tú el sitio, por ejemplo entre dos huecos libres.</li>
-    <li>Al destapar una carta se le da la vuelta sola.</li>
-  </ul>
-  <h3>Atajos</h3>
-  <dl class="keys">
-    <div><dt>Espacio</dt><dd>robar del mazo</dd></div>
-    <div><dt>1…7</dt><dd>subir la carta de esa columna</dd></div>
-    <div><dt>0</dt><dd>subir la carta del descarte</dd></div>
-    <div><dt>Ctrl+Z / Ctrl+Y</dt><dd>deshacer y rehacer</dd></div>
-    <div><dt>H</dt><dd>pista</dd></div>
-    <div><dt>A</dt><dd>subir automáticamente</dd></div>
-    <div><dt>N / R</dt><dd>partida nueva / repetir reparto</dd></div>
-    <div><dt>P / ,</dt><dd>récords / ajustes</dd></div>
-    <div><dt>Esc</dt><dd>cancelar el arrastre</dd></div>
-  </dl>
-  <h3>Puntuación</h3>
-  <p class="hint-text"><strong>Estándar:</strong> +10 por carta a las pilas de arriba, +5 al destapar una carta o traer una del descarte a una columna, −15 al bajar una carta de arriba, −100 al reciclar el mazo robando de una. <strong>Vegas:</strong> pagas 52 $ de entrada y cobras 5 $ por cada carta que subas; el saldo se acumula entre partidas.</p>
-  <p class="hint-text">Todo se guarda en este navegador, en tu equipo. No sale nada a ningún servidor.</p>
-  <footer class="dlg-foot"><button class="btn primary" data-close>Entendido</button></footer>
-</dialog>
 
 <div id="confetti" class="confetti" aria-hidden="true"></div>
 

@@ -152,11 +152,9 @@ function refreshHeader() {
   }
   ultimaPuntuacion = puntos;
 
-  $('#btn-undo').disabled = !game.canUndo;
   $('#btn-redo').disabled = !game.canRedo;
   const jugando = game.status === 'playing' || game.status === 'stuck';
   $('#btn-hint').disabled = !jugando;
-  $('#btn-auto').disabled = game.status !== 'playing';
   pintarBotonFinal();
 }
 
@@ -256,10 +254,12 @@ $('#btn-restart').addEventListener('click', () => {
   message('Mismo reparto, desde el principio.');
 });
 
-$('#btn-undo').addEventListener('click', () => {
+/** Deshacer ya no tiene botón propio: queda el teclado y el cartel de sin salida. */
+function deshacer() {
   detenerAuto();
   if (game.undo()) sonidos.deshacer(); else message('No hay nada que deshacer.');
-});
+}
+
 $('#btn-redo').addEventListener('click', () => { if (!game.redo()) message('No hay nada que rehacer.'); });
 
 $('#btn-hint').addEventListener('click', () => {
@@ -271,11 +271,8 @@ $('#btn-hint').addEventListener('click', () => {
   board.flashHint(jugada);
 });
 
-$('#btn-auto').addEventListener('click', autoCompletar);
 $('#btn-finish').addEventListener('click', autoCompletar);
-$('#btn-stats').addEventListener('click', () => panels.openStats());
 $('#btn-settings').addEventListener('click', () => panels.openSettings());
-$('#btn-help').addEventListener('click', () => panels.openHelp());
 
 // ---------- teclado ----------
 addEventListener('keydown', (event) => {
@@ -286,7 +283,7 @@ addEventListener('keydown', (event) => {
   const ctrl = event.ctrlKey || event.metaKey;
   if (ctrl && event.key.toLowerCase() === 'z') {
     event.preventDefault();
-    if (event.shiftKey) game.redo(); else { detenerAuto(); game.undo(); }
+    if (event.shiftKey) game.redo(); else deshacer();
     return;
   }
   if (ctrl && event.key.toLowerCase() === 'y') { event.preventDefault(); game.redo(); return; }
@@ -309,7 +306,7 @@ addEventListener('keydown', (event) => {
 
   switch (tecla.toLowerCase()) {
     case 'escape': board.cancel(); break;
-    case 'u': detenerAuto(); game.undo(); break;
+    case 'u': deshacer(); break;
     case 'h': $('#btn-hint').click(); break;
     case 'a': autoCompletar(); break;
     case 'n': $('#btn-new').click(); break;

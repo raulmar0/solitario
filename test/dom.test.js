@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
-import { COLUMNA, VUELO_POR_DEFECTO } from '../src/ui.js';
+import { COLUMNA, VUELO_POR_DEFECTO, MARGEN_ANIM } from '../src/ui.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
@@ -45,6 +45,10 @@ globalThis.Blob = window.Blob;
 globalThis.URL = window.URL;
 globalThis.addEventListener = window.addEventListener.bind(window);
 globalThis.localStorage = window.localStorage;
+// La ayuda se abre sola la primera vez que alguien entra, y al ser el mismo
+// panel que los ajustes se cruzaba con las pruebas a los 500 ms. Con una
+// partida ya apuntada, el juego entiende que no es un recién llegado.
+window.localStorage.setItem('solitario.v1.stats', JSON.stringify({ 'standard-1': { played: 1, won: 0 } }));
 
 await import('../src/main.js');
 const { game, board, panels, refresh, instalador, VERSION } = globalThis.solitario;
@@ -190,17 +194,23 @@ test('picar una carta la sube sola a su fundación', () => {
 
 test('los botones de la barra responden', () => {
   const jugadas = game.moves;
-  $('#btn-undo').click();
+  // Deshacer ya no tiene botón: queda el teclado y el cartel de partida muerta.
+  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
   assert.ok(game.moves < jugadas, 'deshacer retrocede');
+  assert.equal($('#btn-redo').disabled, false, 'y entonces sí hay algo que rehacer');
   $('#btn-redo').click();
   assert.equal(game.moves, jugadas, 'rehacer vuelve');
+  assert.equal($('#btn-redo').disabled, true);
   $('#btn-hint').click();
-  assert.equal($('#btn-undo').disabled, false);
 });
 
-test('el diálogo de récords se rellena', () => {
-  $('#btn-stats').click();
-  assert.equal($('#dlg-stats').open, true);
+test('el panel de récords se rellena', () => {
+  panels.openStats();
+  assert.equal($('#dlg-settings').open, true, 'récords y ajustes son el mismo panel');
+  assert.equal(panels.section, 'records');
+  assert.equal($('#panel-records').hidden, false);
+  assert.equal($('#panel-ajustes').hidden, true);
+  assert.equal($('#panel-titulo').textContent, 'Récords y estadísticas');
   assert.equal($('#stats-tabs').children.length, 4);
   const activa = $('#stats-tabs [aria-selected="true"]');
   assert.ok(activa, 'siempre hay una pestaña activa');
@@ -208,7 +218,45 @@ test('el diálogo de récords se rellena', () => {
   assert.equal(activa.getAttribute('aria-controls'), 'stats-panel');
   assert.equal($('#stats-grid').children.length, 9);
   assert.match($('#stats-grid').textContent, /Partidas/);
-  $('#dlg-stats').close();
+  $('#dlg-settings').close();
+});
+
+test('las tres secciones viven en el mismo panel y se cambia entre ellas', () => {
+  assert.equal(window.document.querySelector('#dlg-stats'), null, 'ya no hay diálogo de récords aparte');
+  assert.equal(window.document.querySelector('#dlg-help'), null, 'ni de ayuda');
+
+  panels.openSettings();
+  assert.equal(panels.section, 'ajustes');
+  assert.equal($('#panel-titulo').textContent, 'Ajustes');
+
+  $('#tab-ayuda').click();
+  assert.equal(panels.section, 'ayuda');
+  assert.equal($('#panel-ayuda').hidden, false);
+  assert.equal($('#panel-ajustes').hidden, true);
+  assert.match($('#panel-ayuda').textContent, /Sube las 52 cartas/);
+  assert.equal($('#tab-ayuda').getAttribute('aria-selected'), 'true');
+  assert.equal($('#tab-ajustes').tabIndex, -1, 'el tabulador entra una vez y dentro se va con flechas');
+
+  // La tecla llega desde la pestaña que tiene el foco, y sube por burbuja.
+  $('#tab-ayuda').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  assert.equal(panels.section, 'ajustes', 'la última da la vuelta a la primera');
+
+  // Y las teclas de siempre siguen abriendo cada cosa por su sección.
+  panels.openHelp();
+  assert.equal(panels.section, 'ayuda');
+  panels.openStats();
+  assert.equal(panels.section, 'records');
+  assert.equal($('#dlg-settings').open, true, 'sin cerrar y volver a abrir por el camino');
+  $('#dlg-settings').close();
+});
+
+test('exportar, importar y borrar están en el panel, dentro de Ajustes', () => {
+  panels.openSettings();
+  for (const id of ['#btn-export', '#btn-import', '#btn-wipe', '#import-file']) {
+    assert.ok($(id), `falta ${id}`);
+    assert.equal($(id).closest('#panel-ajustes') != null, true, `${id} debería estar en Ajustes`);
+  }
+  $('#dlg-settings').close();
 });
 
 test('los ajustes reflejan las preferencias y las cambian', () => {
@@ -265,7 +313,7 @@ test('al ganar se abre el diálogo con el resumen', async () => {
   store.saveGame({ version: 1, state: estado, baseScore: 500, moves: 90, elapsedMs: 90000, prefs: game.prefs, history: [] });
   game.resume();
 
-  $('#btn-auto').click();
+  $('#btn-finish').click();          // el botón de rematar hace lo que hacía «Auto»
   await new Promise((r) => setTimeout(r, 400));
   assert.equal(game.status, 'won');
   await new Promise((r) => setTimeout(r, 600));
@@ -559,7 +607,9 @@ test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', 
   assert.equal(window.document.querySelector('.topbar .tool'), null, 'y ya no arriba');
 
   const botones = [...barra.querySelectorAll('.tool')];
-  assert.equal(botones.length, 9);
+  assert.equal(botones.length, 5, 'quedan cinco: nueva, repetir, rehacer, pista y ajustes');
+  assert.deepEqual(botones.map((b) => b.id),
+    ['btn-new', 'btn-restart', 'btn-redo', 'btn-hint', 'btn-settings']);
   for (const b of botones) {
     assert.ok(b.getAttribute('aria-label'), `${b.id} necesita nombre para el lector de pantalla`);
     const icono = b.querySelector('.ico use')?.getAttribute('href');
@@ -567,6 +617,11 @@ test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', 
     assert.ok(window.document.querySelector(`symbol${icono}`), `falta el dibujo de ${icono}`);
     assert.ok(b.querySelector('.rotulo')?.textContent, `${b.id} lleva su rótulo`);
   }
+
+  // Con cinco botones los rótulos caben también en el móvil: nada de esconderlos.
+  const movil = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)[1];
+  assert.equal(/\.rotulo\s*\{[^}]*display:\s*none/.test(movil), false,
+    'los rótulos se quedan a la vista');
 
   // Objetivo de dedo: Apple pide 44 px de lado como mínimo.
   assert.ok(parseFloat(regla('.tool').style.getPropertyValue('min-height')) >= 44);
@@ -581,7 +636,7 @@ test('al cambiar de pestaña de récords el foco se queda en la pestaña', () =>
   tabs[2].click();
   const activa = $('#stats-tabs [aria-selected="true"]');
   assert.equal(window.document.activeElement, activa, 'el foco sigue en el grupo de pestañas');
-  $('#dlg-stats').close();
+  $('#dlg-settings').close();
 });
 
 // --- contraste (WCAG 2.1) de los colores planos de los diálogos ---
@@ -709,6 +764,67 @@ test('el vuelo de las cartas va por su cuenta, no al ritmo de la interfaz', () =
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--card-speed)'), true);
   assert.equal(regla('.anim .card').style.getPropertyValue('transition').includes('var(--speed)'), false,
     'los botones y los diálogos siguen a su ritmo');
+});
+
+test('las animaciones no se salen del ancho de la pantalla', () => {
+  // El temblor de «esa no puede ser» mueve la carta, y las columnas de los
+  // extremos van pegadas al borde: el tablero tiene que reservar ese hueco.
+  const temblor = Math.max(...[...css.matchAll(/translate:\s*(-?[\d.]+)px/g)]
+    .map((m) => Math.abs(parseFloat(m[1]))));
+  assert.ok(temblor > 0, 'la animación de negar mueve la carta');
+  assert.ok(MARGEN_ANIM >= temblor,
+    `el tablero reserva ${MARGEN_ANIM} px a cada lado y el temblor mueve ${temblor}`);
+
+  // Y el latido de la pista la agranda: con la carta más ancha posible (104 px)
+  // eso son 3,6 px por lado, que también tienen que caber.
+  const latido = Math.max(...[...css.matchAll(/scale:\s*([\d.]+)/g)].map((m) => parseFloat(m[1])));
+  assert.ok(latido > 1);
+  assert.ok(MARGEN_ANIM >= (104 * (latido - 1)) / 2,
+    `la pista agranda hasta ${latido} y se sale del margen`);
+
+  // Y por si acaso, el tapete recorta a lo ancho en vez de sacar barra.
+  assert.equal(regla('.table').style.getPropertyValue('overflow-x'), 'clip');
+  assert.equal(regla('.table').style.getPropertyValue('overflow-y'), 'auto');
+});
+
+test('el tablero cabe siempre, por estrecha que sea la pantalla', () => {
+  const anchoTablero = () => 7 * cssVar('--cw') + 6 * cssVar('--gap');
+  const ancho = window.HTMLElement.prototype;
+  const original = Object.getOwnPropertyDescriptor(ancho, 'clientWidth');
+
+  for (const disponible of [280, 320, 375, 430, 768, 1100]) {
+    Object.defineProperty(ancho, 'clientWidth', { get() { return disponible; }, configurable: true });
+    board.settle();
+    assert.ok(anchoTablero() + 2 * MARGEN_ANIM <= disponible + 0.5,
+      `con ${disponible} px el tablero mide ${anchoTablero().toFixed(1)} y no deja hueco a las animaciones`);
+  }
+  Object.defineProperty(ancho, 'clientWidth', original);
+  board.settle();
+});
+
+test('nada de escalar la carta entera: le multiplicaría la posición', () => {
+  // `scale` se aplica antes que `transform`, y la posición de cada carta va en
+  // el transform. Escalar la carta le escala también el sitio: una de la última
+  // columna pegaba un salto de 22 px al despegar. Las caras sí pueden, que solo
+  // llevan el giro del volteo.
+  const sobreLaCarta = reglas()
+    .filter((r) => r.selectorText && r.style?.getPropertyValue('scale'))
+    .map((r) => r.selectorText)
+    .filter((sel) => !/\.face|\.back/.test(sel));
+  assert.deepEqual(sobreLaCarta, [], 'estas reglas escalan la carta entera');
+
+  // Lo mismo para las animaciones: si unos fotogramas tocan `scale`, quien los
+  // use tiene que ser una cara, no la carta.
+  const conEscala = [...css.matchAll(/@keyframes\s+([\w-]+)\s*\{([\s\S]*?)\n\}/g)]
+    .filter(([, , cuerpo]) => /\bscale:/.test(cuerpo))
+    .map(([, nombre]) => nombre);
+  assert.ok(conEscala.length, 'alguna animación crece, que si no esto no vigila nada');
+  for (const nombre of conEscala) {
+    for (const [, selector] of css.matchAll(new RegExp(`([^{}]+)\\{[^{}]*animation:[^;]*\\b${nombre}\\b`, 'g'))) {
+      assert.match(selector.trim(), /\.face|\.back/,
+        `«${selector.trim()}» crece con ${nombre} y eso le movería el sitio`);
+    }
+  }
 });
 
 test('las animaciones van a velocidad lineal, sin acelerones', () => {
@@ -1062,7 +1178,7 @@ test('deshacer durante el remate lo corta', async () => {
   partidaResuelta(5);
   botonFinal().click();
   await new Promise((r) => setTimeout(r, board.flightMs / 3));
-  $('#btn-undo').click();
+  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
   const tras = game.state.foundations.flat().length;
   await new Promise((r) => setTimeout(r, 400));
   assert.equal(game.state.foundations.flat().length, tras, 'la cascada se paró');
