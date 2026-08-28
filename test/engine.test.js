@@ -2,11 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as engine from '../src/engine.js';
 import { PILE } from '../src/engine.js';
-import { SUITS, createDeck, mulberry32, shuffle } from '../src/cards.js';
+import { SUITS, cardId, createDeck, mulberry32, shuffle } from '../src/cards.js';
 
 const F = (index) => ({ pile: PILE.FOUNDATION, index });
 const T = (index) => ({ pile: PILE.TABLEAU, index });
 const W = { pile: PILE.WASTE };
+
+/** Carta suelta para montar posiciones a mano, con el id de verdad de la baraja. */
+const carta = (rank, suit, faceUp = true) => ({ id: cardId(rank, suit), rank, suit, faceUp });
 
 function allCards(state) {
   return [
@@ -283,17 +286,192 @@ test('isStuck detecta la partida muerta y no confunde una ganada', () => {
   assert.equal(engine.isStuck(ganada), false);
 });
 
-test('hint devuelve siempre un movimiento legal', () => {
-  for (let seed = 1; seed <= 20; seed++) {
-    let s = engine.newGame({ seed, drawCount: 1 });
-    for (let i = 0; i < 60; i++) {
-      const h = engine.hint(s);
-      if (!h) break;
-      assert.ok(engine.isLegal(s, h), `pista ilegal con semilla ${seed}`);
-      s = engine.applyMove(s, h).state;
-      checkInvariants(s, `hint seed ${seed}`);
+test('los paseos entre columnas no mantienen viva una partida muerta', () => {
+  // Lo único legal es mover el 9S sobre el 10H una y otra vez: antes eso
+  // contaba como jugada y la partida parecía viva para siempre.
+  const st = engine.cloneState(engine.newGame({ seed: 41 }));
+  st.stock = []; st.waste = [];
+  st.foundations = [[], [], [], []];
+  st.tableau = [
+    [carta(10, 'H')],
+    [carta(9, 'S')],
+    [], [], [], [], [],
+  ];
+  assert.equal(engine.cardMoves(st).length, 1, 'lo único legal es pasear el 9S');
+  assert.deepEqual(engine.buscarSalida(st), { hay: false, paso: null }, 'ese paseo no desemboca en nada');
+  assert.equal(engine.isStuck(st), true, 'pasear sin destino no es estar vivo');
+
+  const vuelta = engine.applyMove(st, engine.cardMoves(st)[0]).state;
+  assert.equal(engine.isStuck(vuelta), true, 'después del paseo sigue muerta');
+});
+
+test('un paseo que abre una jugada sí cuenta, y buscarSalida dice por dónde se empieza', () => {
+  // Pasear el 3H sobre el 4C parece un paseo… pero deja a la vista el 4S, que sube.
+  const st = engine.cloneState(engine.newGame({ seed: 41 }));
+  st.stock = []; st.waste = [];
+  st.foundations = [
+    [1, 2, 3].map((r) => carta(r, 'S')),
+    [], [], [],
+  ];
+  st.tableau = [
+    [carta(4, 'S'), carta(3, 'H')],
+    [carta(4, 'C')],
+    [], [], [], [], [],
+  ];
+  assert.equal(engine.isStuck(st), false, 'el paseo lleva a una jugada de verdad');
+
+  const salida = engine.buscarSalida(st);
+  assert.equal(salida.hay, true);
+  assert.deepEqual(salida.paso, { type: 'move', from: T(0), to: T(1), count: 1 },
+    'y el primer paso del camino es justamente el paseo que descubre el 4S');
+
+  const despues = engine.applyMove(st, salida.paso).state;
+  assert.equal(engine.usefulMoves(despues).some((m) => m.to.pile === PILE.FOUNDATION), true, 'el 4S ya puede subir');
+});
+
+test('con una jugada de verdad a la vista, buscarSalida contesta sin recorrer nada', () => {
+  // El as sube ya: no hay laberinto que explorar, así que tampoco hay un primer
+  // paso que señalar. Ese `paso: null` es lo que distingue «no hace falta rodeo»
+  // de «hay que dar este rodeo».
+  const st = engine.cloneState(engine.newGame({ seed: 41 }));
+  st.stock = []; st.waste = [];
+  st.foundations = [[], [], [], []];
+  st.tableau = [[carta(1, 'S')], [carta(9, 'S')], [carta(10, 'H')], [], [], [], []];
+  assert.deepEqual(engine.buscarSalida(st), { hay: true, paso: null });
+  assert.equal(engine.isStuck(st), false);
+});
+
+test('buscarSalida no se marea: un paseo que vuelve sobre sus pasos no es una salida', () => {
+  // El 9S va del 10H al 10D y del 10D al 10H mientras el jugador aguante. Sin
+  // memoria de las posiciones ya vistas, esto sería un bucle infinito.
+  const st = engine.cloneState(engine.newGame({ seed: 41 }));
+  st.stock = []; st.waste = [];
+  st.foundations = [[], [], [], []];
+  st.tableau = [[carta(10, 'H')], [carta(10, 'D')], [carta(9, 'S')], [], [], [], []];
+  assert.equal(engine.usefulMoves(st).length, 2, 'el 9S tiene dos dieces donde apoyarse');
+  assert.deepEqual(engine.buscarSalida(st), { hay: false, paso: null });
+  assert.equal(engine.isStuck(st), true);
+});
+
+/** Recorre TODOS los paseos posibles, sin el tope del motor: ¿alguno abre una jugada? */
+function algunPaseoAbreJuego(state) {
+  const visto = new Set([engine.huellaEstado(state)]);
+  let frontera = [state];
+  while (frontera.length) {
+    const siguiente = [];
+    for (const s of frontera) {
+      for (const m of engine.usefulMoves(s)) {
+        if (!engine.esLateral(s, m)) continue;
+        const hijo = engine.applyMove(s, m).state;
+        const h = engine.huellaEstado(hijo);
+        if (visto.has(h)) continue;
+        visto.add(h);
+        if (engine.usefulMoves(hijo).some((x) => !engine.esLateral(hijo, x))) return true;
+        siguiente.push(hijo);
+      }
     }
+    frontera = siguiente;
   }
+  return false;
+}
+
+test('ante un laberinto de paseos, buscarSalida se rinde a favor del jugador', () => {
+  // Veinte cartas descubiertas que se dejan recolocar de más de dos mil maneras
+  // sin que ninguna abra nada. La búsqueda lleva tope, y al pasarlo prefiere
+  // decir que hay salida: dar por muerta una partida viva sería peor que callar.
+  const columnas = [
+    [[11, 'D'], [10, 'C'], [9, 'D'], [8, 'S']],
+    [[12, 'S'], [11, 'H']],
+    [[10, 'S'], [9, 'H'], [8, 'C'], [7, 'D']],
+    [[4, 'C'], [3, 'D'], [2, 'C']],
+    [[3, 'H']],
+    [[7, 'H'], [6, 'C'], [5, 'D'], [4, 'S']],
+    [[6, 'S'], [5, 'H']],
+  ];
+  const st = engine.cloneState(engine.newGame({ seed: 41 }));
+  st.stock = []; st.waste = [];
+  st.foundations = [[], [], [], []];
+  st.tableau = columnas.map((col) => col.map(([rank, suit]) => carta(rank, suit)));
+
+  assert.equal(engine.usefulMoves(st).every((m) => engine.esLateral(st, m)), true,
+    'no hay ni una jugada directa: todo lo que se puede hacer es recolocar cartas');
+  assert.equal(algunPaseoAbreJuego(st), false, 'y recorridos todos los paseos, ninguno abre nada');
+
+  assert.deepEqual(engine.buscarSalida(st), { hay: true, paso: null },
+    'aun así se da la salida por buena: el tope corta antes de agotar el laberinto');
+  assert.equal(engine.isStuck(st), false, 'y por eso no se anuncia el atasco');
+});
+
+test('la huella es la misma posición mirada dos veces, aunque cambien las columnas de sitio', () => {
+  // Es la memoria con la que el motor y el recomendador reconocen que están
+  // volviendo sobre sus pasos: si la misma posición diera huellas distintas, no
+  // habría forma de detectar los bucles.
+  const st = engine.cloneState(engine.newGame({ seed: 41 }));
+  st.stock = []; st.waste = [carta(4, 'D')];
+  st.foundations = [[carta(1, 'S')], [], [], []];
+  st.tableau = [[carta(7, 'C', false), carta(5, 'H')], [carta(6, 'S')], [], [], [], [], []];
+
+  assert.equal(engine.huellaEstado(st), engine.huellaEstado(st), 'la misma llamada dos veces');
+  assert.equal(engine.huellaEstado(st), engine.huellaEstado(engine.cloneState(st)), 'una copia es la misma posición');
+
+  const cambiadas = engine.cloneState(st);
+  cambiadas.tableau = [[carta(6, 'S')], [], [], [carta(7, 'C', false), carta(5, 'H')], [], [], []];
+  assert.equal(engine.huellaEstado(cambiadas), engine.huellaEstado(st),
+    'dos columnas intercambiadas son la misma posición a efectos de juego');
+
+  const movida = engine.applyMove(st, { type: 'move', from: T(0), to: T(1), count: 1 }).state;
+  assert.notEqual(engine.huellaEstado(movida), engine.huellaEstado(st),
+    'pero mover una carta de verdad sí cambia la huella');
+});
+
+test('la huella solo cuenta lo que está a la vista: el mazo no entra y lo tapado se marca como tapado', () => {
+  // El mazo es información que el jugador no tiene, así que no puede distinguir
+  // posiciones; lo que sí distingue es haber levantado una carta, porque eso
+  // cambia la partida para siempre.
+  const base = engine.cloneState(engine.newGame({ seed: 41 }));
+  base.waste = []; base.foundations = [[], [], [], []];
+  base.tableau = [[carta(7, 'C', false), carta(5, 'H')], [carta(6, 'S')], [], [], [], [], []];
+
+  const conMazo = { ...base, stock: [carta(9, 'S', false), carta(3, 'H', false)] };
+  const sinMazo = { ...base, stock: [] };
+  assert.equal(engine.huellaEstado(conMazo), engine.huellaEstado(sinMazo), 'el mazo no forma parte de la posición');
+
+  const destapada = engine.cloneState(sinMazo);
+  destapada.tableau[0][0].faceUp = true;
+  assert.notEqual(engine.huellaEstado(destapada), engine.huellaEstado(sinMazo),
+    'una carta levantada es otra posición, aunque las cartas estén en el mismo sitio');
+});
+
+test('esLateral separa el paseo entre columnas del movimiento que cambia algo', () => {
+  const st = engine.cloneState(engine.newGame({ seed: 41 }));
+  st.stock = [];
+  st.waste = [carta(8, 'S')];
+  st.foundations = [[carta(1, 'S')], [], [carta(1, 'D')], []];
+  st.tableau = [
+    [carta(5, 'C', false), carta(10, 'H'), carta(9, 'S')],
+    [carta(10, 'D')],
+    [carta(13, 'S')],
+    [carta(11, 'S')],
+    [],
+    [carta(9, 'H')],
+    [carta(2, 'D')],
+  ];
+
+  const paseo = { type: 'move', from: T(0), to: T(1), count: 1 };          // el 9S cambia de diez
+  const destapa = { type: 'move', from: T(0), to: T(3), count: 2 };        // el 10H-9S deja al aire la tapada
+  const vaciar = { type: 'move', from: T(2), to: T(4), count: 1 };         // el rey se muda de hueco
+  const subir = { type: 'move', from: T(6), to: F(2), count: 1 };          // el 2D a diamantes
+  const delDescarte = { type: 'move', from: W, to: T(5), count: 1 };       // el 8S sale del descarte
+  const rescate = { type: 'move', from: F(0), to: T(6), count: 1 };        // el As baja de la fundación
+  // Todos son jugadas de verdad: lo que se compara es cómo las clasifica, no si valen.
+  for (const m of [paseo, destapa, vaciar, subir, delDescarte, rescate]) assert.ok(engine.isLegal(st, m));
+
+  assert.equal(engine.esLateral(st, paseo), true, 'cambiar una carta de columna sin destapar nada es pasear');
+  assert.equal(engine.esLateral(st, vaciar), true, 'llevarse la columna entera tampoco destapa nada: sigue siendo un paseo');
+  assert.equal(engine.esLateral(st, destapa), false, 'dejar a la vista una carta tapada es progreso');
+  assert.equal(engine.esLateral(st, subir), false, 'subir a la fundación es progreso');
+  assert.equal(engine.esLateral(st, delDescarte), false, 'sacar una carta del descarte la devuelve al juego');
+  assert.equal(engine.esLateral(st, rescate), false, 'bajar de la fundación cambia el reparto de arriba');
 });
 
 test('paseo aleatorio largo: los invariantes aguantan', () => {

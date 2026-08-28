@@ -28,6 +28,7 @@ export function ficherosDelApp(raiz = RAIZ) {
     'manifest.webmanifest',
     ...listar('icons', (f) => /\.(svg|png)$/.test(f)),
     ...listar('src', (f) => f.endsWith('.js')),
+    ...listar('src/locales', (f) => f.endsWith('.js')),
   ];
 }
 

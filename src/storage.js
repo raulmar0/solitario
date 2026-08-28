@@ -24,7 +24,12 @@ export const DEFAULT_PREFS = {
   solvableOnly: false,  // repartir solo manos con solución comprobada
   theme: 'auto',
   playerName: '',
+  lang: 'auto',         // 'auto' mira el idioma del navegador
+  fourColor: false,     // baraja de cuatro colores: un palo, un color
+  haptics: true,        // el pequeño golpe al colocar y al negar (Android)
 };
+
+export const IDIOMAS_VALIDOS = ['es', 'en', 'fr', 'pt', 'ko'];
 
 const EMPTY_STATS = () => ({
   played: 0,
@@ -96,6 +101,11 @@ export function createStore(backend) {
       if (prefs.scoring !== 'standard' && prefs.scoring !== 'vegas') prefs.scoring = DEFAULT_PREFS.scoring;
       if (!['auto', 'light', 'dark'].includes(prefs.theme)) prefs.theme = DEFAULT_PREFS.theme;
       if (typeof prefs.playerName !== 'string') prefs.playerName = '';
+      // Un idioma que no conocemos vuelve a la detección automática: peor que
+      // acertar es plantarle a alguien media interfaz en un idioma vacío.
+      if (prefs.lang !== 'auto' && !IDIOMAS_VALIDOS.includes(prefs.lang)) prefs.lang = 'auto';
+      prefs.fourColor = !!prefs.fourColor;
+      prefs.haptics = prefs.haptics !== false;
       return prefs;
     },
     setPrefs(patch) {

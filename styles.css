@@ -6,8 +6,9 @@
   --gap: 12px;
   --radius: 9px;
   --speed: 180ms;         /* transiciones de la interfaz */
-  --card-speed: 324ms;    /* lo que tarda una carta en ir de un sitio a otro */
+  --card-speed: 324ms;    /* lo que tarda una carta como mucho en ir de un sitio a otro */
   --flip-speed: 240ms;    /* el volteo al destapar, un pelo más corto que el vuelo */
+  --vuelo: cubic-bezier(.2, .75, .25, 1);   /* arranca rápido, posa suave */
 
   --felt-1: #14663f;
   --felt-2: #0b3f28;
@@ -24,10 +25,29 @@
   --ok: #6ee7a8;
   --accent: #f0c453;
   --accent-ink: #2a2000;
+  --warn: var(--accent);              /* avisos dentro de un panel */
   --danger: #e06a5c;
+  /* Sobre el tapete y sobre la barra el fondo es oscuro en los dos temas, así
+     que el acento y el verde de los paneles se apagan ahí: estas dos son sus
+     versiones claras y no cambian con el tema. */
+  --felt-accent: #ffd97a;
+  --felt-accent-suave: rgba(255, 217, 122, .55);   /* el destino de la pista, más flojo que el origen */
+  --felt-ok: #8ff0bd;
+  --hueco-marca: var(--ink);          /* la «K» del hueco vacío; en claro va oscura */
   --card-face: #fdfcf8;
   --card-ink: #1b1b1b;
   --card-red: #c0392b;
+  /* Baraja de cuatro colores. La cara de la carta es la misma en los dos temas,
+     así que estos dos tampoco cambian: 7,2:1 el azul y 5,3:1 el verde sobre la
+     cara, los dos por encima del 4,5:1 que pide un texto pequeño.
+     El verde es más claro de lo que pedía el ojo (antes #0a4520) porque a oscuras
+     se confundía con el negro de las picas —1,5 veces de luminancia, ahora 3,2—,
+     que es justo el par que hay que separar. Queda un límite conocido: con el
+     rojo de corazones el verde comparte luminancia, así que quien no distinga
+     rojo de verde sigue apoyándose en el símbolo del palo para ese par; bajar más
+     el verde rompería el contraste sobre la cara. */
+  --card-diamond: #1553a8;
+  --card-club: #1a7a3c;
   --card-line: rgba(0, 0, 0, .16);
   --topbar-veil: rgba(0, 0, 0, .22);  /* el velo de la barra: en claro hace falta más cuerpo */
   --shadow: 0 2px 5px rgba(0, 0, 0, .3);
@@ -51,12 +71,23 @@ html[data-theme="light"] {
   --fill-strong: rgba(21, 45, 33, .14);
   --accent: #9a6510;
   --accent-ink: #ffffff;
+  --warn: #7d4f05;                    /* el acento se queda en 4,3:1 sobre panel blanco */
   --danger: #a4241c;
   --ok: #12734a;
   --topbar-veil: rgba(0, 0, 0, .44);
+  --hueco-marca: #0b3a24;             /* sobre el tapete claro, la tinta blanca no se veía */
   --shadow: 0 2px 5px rgba(0, 0, 0, .18);
   --shadow-lift: 0 14px 28px rgba(0, 0, 0, .28);
 }
+
+/* Quietud a petición. La pide el sistema (prefers-reduced-motion) o la pide el
+   jugador desde los ajustes, y motion.js la deja escrita en <html data-motion>;
+   las dos quieren exactamente lo mismo. En vez de repetir el bloque entero dos
+   veces, cada condición se limita a encender `--quieto`: todo lo que se mueve
+   lleva su valor de siempre como respaldo del var(), así que basta con que la
+   variable exista para que la declaración pase a valer `none`. */
+@media (prefers-reduced-motion: reduce) { :root { --quieto: none; } }
+html[data-motion="no"] { --quieto: none; }
 
 /* Sin esto, cualquier `display` propio gana al atributo hidden. */
 [hidden] { display: none !important; }
@@ -88,16 +119,16 @@ body {
 /* ---------- barra superior ---------- */
 
 .topbar {
+  position: relative;      /* la barra de progreso se ancla abajo en pantallas bajas */
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px 16px;
   flex-wrap: wrap;
   /* Instalada en iPhone la barra de estado se superpone (black-translucent +
      viewport-fit=cover), así que hay que dejarle su hueco. */
   padding: max(10px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 10px max(12px, env(safe-area-inset-left, 0px));
   background: var(--topbar-veil);
   border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(6px);
 }
 
 .brand { display: flex; align-items: center; gap: 8px; }
@@ -119,6 +150,7 @@ body {
   align-items: center;
   gap: 7px;
   padding: 7px 14px;
+  min-height: 44px;              /* objetivo de dedo, no de ratón */
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -127,7 +159,9 @@ body {
   border: 0;
   border-radius: 999px;
   cursor: pointer;
-  animation: latido 2.4s linear infinite;
+  /* Seis latidos y para: un pulso infinito en la barra no deja de moverse en
+     toda la partida y acaba cansando (y gastando batería). */
+  animation: var(--quieto, latido 2.4s linear 6);
 }
 .update-pill:hover { filter: brightness(1.08); }
 .update-pill:disabled { opacity: .6; cursor: progress; animation: none; }
@@ -142,8 +176,91 @@ body {
 .stat dt { font-size: 10px; text-transform: uppercase; letter-spacing: .7px; color: var(--ink-soft); }
 .stat dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .stat-wide dd { font-size: 13px; padding-top: 2px; }
-.stat.bump dd { animation: bump 320ms linear; }
-@keyframes bump { 40% { transform: scale(1.22); color: var(--accent); } }
+.stat.bump dd { animation: var(--quieto, bump 320ms linear); }
+/* Los números que brincan (marcador y contador del mazo) están los dos sobre
+   fondo oscuro en ambos temas, así que el resalte usa el acento claro: con el
+   del tema claro el número se apagaba justo en el fotograma en que quería
+   llamar la atención. */
+@keyframes bump { 40% { transform: scale(1.22); color: var(--felt-accent); } }
+
+/* El reloj parado: una pastilla ámbar dentro de su propia caja, para que se vea
+   que el tiempo no corre sin tener que mirar si los segundos avanzan. */
+.paused-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 0 7px;
+  border: 1px solid var(--felt-accent);
+  border-radius: 999px;
+  color: var(--felt-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+}
+
+/* La modalidad, de un vistazo y sin abrir nada; pulsarla lleva a los ajustes. */
+.mode-chip {
+  position: relative;
+  padding: 6px 12px;
+  min-height: 34px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-soft);
+  background: var(--fill);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--speed) linear, color var(--speed) linear;
+}
+.mode-chip:hover { background: var(--fill-strong); color: var(--ink); }
+.mode-chip:focus-visible { outline: 2px solid var(--felt-accent); outline-offset: 2px; }
+/* La píldora es baja a propósito (si no, la barra crece), pero el dedo necesita
+   sus 44 px: se los da una capa invisible que sobresale por arriba y por abajo. */
+.mode-chip::after { content: ''; position: absolute; inset: -5px 0; }
+
+/* El reparto se puede copiar para compartirlo, así que es un botón; parece
+   texto porque en la barra un botón de verdad pesaría demasiado. */
+.seed-chip {
+  position: relative;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  transition: color var(--speed) linear;
+}
+.seed-chip:hover { color: var(--felt-accent); }
+.seed-chip:focus-visible { outline: 2px solid var(--felt-accent); outline-offset: 3px; border-radius: 5px; }
+.seed-chip.copiado { color: var(--felt-ok); text-decoration: none; }
+.seed-chip::after { content: ''; position: absolute; inset: -13px -10px; }
+
+/* Cuántas cartas llevan colocadas las fundaciones. Va en su propia línea, de
+   ancho completo, y la última de la barra aunque en el HTML esté en medio. */
+.progress {
+  order: 1;
+  flex-basis: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--fill);
+  overflow: hidden;
+}
+.progress > i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--felt-accent);
+  border-radius: inherit;
+  transition: var(--quieto, width var(--speed) linear);
+}
 
 /* ---------- barra de acciones ---------- */
 /* Va al fondo de la pantalla a propósito: arriba, en un móvil grande, hay que
@@ -158,8 +275,18 @@ body {
   padding: 5px max(6px, env(safe-area-inset-right, 0px)) max(5px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
   background: var(--topbar-veil);
   border-top: 1px solid var(--line);
-  backdrop-filter: blur(6px);
 }
+
+/* El desenfoque de las dos barras, aparte: Safari lo pide con prefijo hasta muy
+   tarde y sin la consulta se quedaba sin él. 4 px bastan para separar la barra
+   del tapete; 6 obligaban a la GPU a trabajar de más en cada repintado. */
+@supports (backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px)) {
+  .topbar, .tools {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+}
+
 .tool {
   flex: 1 1 0;
   min-width: 0;
@@ -177,7 +304,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 10px;
   cursor: pointer;
-  transition: background var(--speed) linear, transform var(--speed) linear, opacity var(--speed) linear;
+  transition: var(--quieto, background var(--speed) linear, transform var(--speed) linear, opacity var(--speed) linear);
 }
 .ico {
   width: 22px;
@@ -232,6 +359,11 @@ body {
 }
 .slot-mark { font-size: calc(var(--cw) * .34); opacity: .3; }
 .slot-mark.red { color: #ffb3a7; }
+/* La «K» del hueco de columna recuerda qué se puede poner ahí, pero es una
+   marca de fondo: cualquier carta encima tiene que ganarle de calle. El color no
+   se hereda de la tinta porque en el tema claro es blanca y sobre el tapete
+   claro no quedaba nada; en negro al 22 % se lee en los dos. */
+.slot-tableau .slot-mark { opacity: .26; font-weight: 700; color: var(--hueco-marca); }
 .slot-stock { cursor: pointer; }
 .slot-stock.empty .slot-mark { opacity: .5; }
 .slot-stock.dead { cursor: not-allowed; }
@@ -255,36 +387,71 @@ body {
   height: var(--ch);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  will-change: transform;
   cursor: default;
   perspective: 700px;      /* el volteo necesita fondo para no verse plano */
 }
-/* La posición va a ritmo constante; el relieve entra y sale rápido, que es lo
-   que hace que parezca que la carta se coge y se posa, no que se desliza. */
-.anim .card {
-  transition: transform var(--card-speed) linear, box-shadow var(--card-speed) linear, translate 140ms linear;
+/* El relieve del vuelo va en una capa aparte, no en el box-shadow de la carta:
+   animar una sombra obliga a redibujarla en cada fotograma, mientras que
+   encender y apagar una capa ya pintada es solo opacidad. El `z-index: -1` la
+   deja por detrás de las dos caras (van a inset 0 y con fondo propio, la
+   taparían) y el radio lo copia de la carta para que no asome por las esquinas. */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--shadow-lift);
+  opacity: 0;
+  z-index: -1;
 }
-.anim .card .face, .anim .card .back { transition: transform var(--flip-speed) linear; }
+/* La posición vuela a la medida de la distancia (el JS ajusta la duración) y
+   entra y sale suave; el relieve entra y sale rápido, que es lo que hace que
+   parezca que la carta se coge y se posa, no que se desliza. */
+.anim .card { transition: var(--quieto, transform var(--card-speed) var(--vuelo), translate 140ms linear); }
+.anim .card::after { transition: var(--quieto, opacity var(--speed) linear); }
+.anim .card .face, .anim .card .back { transition: var(--quieto, transform var(--flip-speed) ease-in-out); }
 
 .card.playable { cursor: grab; }
-.card.dragging { cursor: grabbing; box-shadow: var(--shadow-lift); transition: none; }
+.card.dragging { cursor: grabbing; transition: none; }
 /* Levantada: mientras vuela sola o mientras la llevas en la mano.
    Sube unos píxeles en lugar de agrandarse, y por un motivo de peso: `scale` se
    aplica ANTES que el `transform`, así que agrandar la carta le multiplicaba
    también la posición que lleva el transform y las columnas de la derecha
    pegaban un salto de hasta 22 px al despegar. `translate` va por delante de
-   todo y solo desplaza. */
-.anim .card.volando { box-shadow: var(--shadow-lift); }
-.anim .card.volando, .anim .card.dragging { translate: 0 -4px; }
+   todo y solo desplaza.
+   La capa propia también va al vuelo: en reposo las 52 cartas no gastan
+   composición, la reserva quien la necesita. */
+.anim .card.volando::after, .card.dragging::after { opacity: 1; }
+.anim .card.volando, .anim .card.dragging { translate: var(--quieto, 0 -4px); }
+.card.volando, .card.dragging { will-change: transform, translate; }
 
 /* La pista: la carta que hay que tocar late fuerte; el sitio donde va, flojito.
    El crecer va en las dos caras y no en la carta, por lo mismo de antes: sobre
    la carta, `scale` le movería la posición. Sobre las caras, que están a inset 0
-   y solo llevan el giro del volteo, únicamente la agranda. */
-.card.hint { animation: pista 800ms linear 3; }
-.card.hint .face, .card.hint .back { animation: pista-cara 800ms linear 3; }
-.card.hint-destino, .slot.hint-destino { animation: pista-destino 800ms linear 3; }
-.card.nope { animation: nope 380ms linear; }
+   y solo llevan el giro del volteo, únicamente la agranda.
+   Debajo del latido hay un anillo fijo, y distinto para el origen y para el
+   destino: mientras late no se ve (una animación gana a la declaración) y sin
+   animación se queda puesto, que es la única pista que queda cuando no hay
+   movimiento. La clase dura lo mismo que las tres pasadas, así que no se ve el
+   relevo.
+   El color es `--felt-accent` y no `--accent` a propósito: el anillo cae sobre el
+   tapete, que es oscuro en los dos temas, y el acento claro (#9a6510) se hundía
+   ahí a 1,2:1. Sin movimiento este anillo es la única pista que queda, así que
+   tiene que verse sí o sí. */
+.card.hint {
+  box-shadow: 0 0 0 4px var(--felt-accent), var(--shadow);
+  animation: var(--quieto, pista 800ms linear 3);
+}
+.card.hint .face, .card.hint .back { animation: var(--quieto, pista-cara 800ms linear 3); }
+.card.hint-destino, .slot.hint-destino {
+  box-shadow: 0 0 0 3px var(--felt-accent-suave);
+  animation: var(--quieto, pista-destino 800ms linear 3);
+}
+.slot.hint {   /* la pista de robar: late el mazo */
+  box-shadow: 0 0 0 4px var(--felt-accent);
+  animation: var(--quieto, pista 800ms linear 3);
+}
+.card.nope { animation: var(--quieto, nope 380ms linear); }
 @keyframes nope {
   0%, 100% { translate: 0; box-shadow: var(--shadow); }
   20% { translate: -5px; }
@@ -294,7 +461,7 @@ body {
 }
 @keyframes pista {
   0%, 100% { box-shadow: var(--shadow); }
-  50% { box-shadow: 0 0 0 4px var(--accent), 0 14px 30px rgba(0, 0, 0, .45); }
+  50% { box-shadow: 0 0 0 4px var(--felt-accent), 0 14px 30px rgba(0, 0, 0, .45); }
 }
 @keyframes pista-cara {
   0%, 100% { scale: 1; }
@@ -302,7 +469,7 @@ body {
 }
 @keyframes pista-destino {
   0%, 100% { box-shadow: var(--shadow); }
-  50% { box-shadow: 0 0 0 3px rgba(240, 196, 83, .5); }
+  50% { box-shadow: 0 0 0 3px var(--felt-accent-suave); }
 }
 
 .card .face, .card .back {
@@ -324,6 +491,11 @@ body {
   grid-template-rows: auto 1fr auto;
 }
 .card.red .face { color: var(--card-red); }
+/* Baraja de cuatro colores: los corazones se quedan con el rojo de siempre y
+   rombos y tréboles pasan a azul y verde, que es la convención. Así el par de
+   palos que en la baraja normal comparte color deja de confundirse. */
+html[data-deck="4"] .card[data-suit="D"] .face { color: var(--card-diamond); }
+html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 
 .card .back {
   background:
@@ -384,6 +556,9 @@ body {
   font-variant-numeric: tabular-nums;
   line-height: 1.5;
 }
+/* Al robar cambia un número pequeño en una esquina: sin el brinco nadie se
+   entera de que el mazo ha bajado. */
+.stock-count.bump span { animation: var(--quieto, bump 320ms linear); }
 
 .banner {
   margin: 10px auto 0;
@@ -402,6 +577,7 @@ body {
 .finish {
   margin: 12px auto 0;
   padding: 11px 22px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -414,7 +590,9 @@ body {
   border-radius: 999px;
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(0, 0, 0, .32);
-  animation: latido 1.9s linear infinite;
+  /* Seis latidos para llamar la atención y luego quieto: el botón se queda a la
+     vista hasta que lo pulsen y no hace falta que siga moviéndose. */
+  animation: var(--quieto, latido 1.9s linear 6);
 }
 .finish:hover { filter: brightness(1.08); }
 .finish:active { transform: translateY(1px); }
@@ -423,7 +601,7 @@ body {
 @keyframes latido {
   50% { transform: scale(1.045); box-shadow: 0 10px 26px rgba(0, 0, 0, .38); }
 }
-.banner.warn { color: #ffd97a; font-weight: 600; }
+.banner.warn { color: var(--felt-accent); font-weight: 600; }
 
 /* ---------- diálogos ---------- */
 
@@ -450,8 +628,27 @@ body {
 .dlg-foot, .dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
 .dlg-actions { justify-content: center; }
 
+/* Lo que pasa dentro del diálogo se contesta dentro del diálogo: el aviso del
+   tablero queda detrás y no se lee. */
+.dlg-status {
+  margin: -4px 0 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--panel-line);
+  border-radius: 9px;
+  font-size: 13px;
+  color: var(--panel-ink);
+}
+/* Sin relleno de fondo a propósito: el rojo de `.err` sobre `--fill` se queda en
+   3,7:1 en el tema oscuro y sobre el panel a secas llega a 4,9:1.
+   Vacío no ocupa, pero sigue en el árbol: si se ocultara del todo, el lector de
+   pantalla no cantaría el texto que llega después. */
+.dlg-status:empty { margin: 0; padding: 0; border: 0; }
+.dlg-status.warn { color: var(--warn); border-color: var(--warn); }
+.dlg-status.err { color: var(--danger); border-color: var(--danger); }
+
 .btn {
   padding: 9px 15px;
+  min-height: 44px;              /* en un diálogo también se toca con el dedo */
   font: inherit; font-weight: 600;
   color: var(--panel-ink);
   background: var(--fill);
@@ -469,6 +666,7 @@ body {
 .icon-btn {
   background: none; border: 0; color: var(--panel-ink-soft);
   font-size: 17px; cursor: pointer; padding: 4px 8px; border-radius: 7px;
+  min-width: 44px; min-height: 44px;
 }
 .icon-btn:hover { background: var(--fill); color: var(--panel-ink); }
 
@@ -476,22 +674,33 @@ body {
 .field-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; }
 .field-label em, .switch em { font-style: normal; font-weight: 400; color: var(--panel-ink-soft); }
 .hint-text { font-size: 12.5px; color: var(--panel-ink-soft); margin: 6px 0 0; }
+/* El error va pegado a su control, no en el aviso de arriba: así se ve a la vez
+   qué está mal y dónde se arregla. */
+.field-error { margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--danger); }
 .row { display: flex; gap: 8px; }
 
 .seg { display: inline-flex; background: var(--fill); border: 1px solid var(--panel-line); border-radius: 9px; padding: 3px; gap: 3px; }
 .seg-btn {
-  padding: 6px 13px; font: inherit; font-size: 13px; font-weight: 600;
+  padding: 6px 13px; min-height: 44px; font: inherit; font-size: 13px; font-weight: 600;
   color: var(--panel-ink-soft); background: none; border: 0; border-radius: 7px; cursor: pointer;
 }
 .seg-btn:hover { color: var(--panel-ink); }
 .seg-btn[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); }
 
-.switch { display: flex; align-items: flex-start; gap: 10px; margin: 11px 0; cursor: pointer; font-size: 14px; }
+/* El relleno de arriba y abajo es el que le da la altura de dedo a la fila
+   entera, que es lo que se pulsa; la casilla sigue alineada con la primera
+   línea, que estos rótulos se van a dos y a tres renglones. */
+.switch {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin: 2px 0; padding: 10px 0; min-height: 44px;
+  cursor: pointer; font-size: 14px;
+}
 .switch input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--accent); cursor: pointer; }
 
 .text-input {
   flex: 1;
   padding: 8px 11px;
+  min-height: 44px;
   font: inherit;
   color: var(--panel-ink);
   background: var(--fill);
@@ -529,7 +738,7 @@ body {
 
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 .tab {
-  padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600;
+  padding: 6px 12px; min-height: 44px; font: inherit; font-size: 13px; font-weight: 600;
   color: var(--panel-ink-soft); background: var(--fill);
   border: 1px solid var(--panel-line); border-radius: 999px; cursor: pointer;
 }
@@ -543,6 +752,40 @@ body {
 }
 .grid-stats dt { font-size: 11px; color: var(--panel-ink-soft); text-transform: uppercase; letter-spacing: .5px; }
 .grid-stats dd { margin: 2px 0 0; font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+/* La evolución de las últimas partidas: una línea sin ejes ni números, que aquí
+   solo interesa la forma. */
+.spark {
+  display: block;
+  width: 100%;
+  height: 64px;
+  margin-top: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+}
+/* El viewBox se estira a lo ancho del panel (preserveAspectRatio="none"), así
+   que sin esto el trazo engordaría con él y saldría deforme. */
+.spark path, .spark polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+/* El punto de la última partida NO puede ser un <circle>: con
+   preserveAspectRatio="none" el viewBox se estira a lo ancho del panel y el
+   círculo sale con forma de huevo. Es un trazo de longitud cero con la punta
+   redonda y `non-scaling-stroke`, que se pinta en píxeles de pantalla y por eso
+   sale redondo mida lo que mida el panel. */
+.spark .punto {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 7;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
 
 .app-row {
   display: flex;
@@ -597,14 +840,37 @@ body {
 
 /* ---------- confeti ---------- */
 
-.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 60; }
+.confetti { display: var(--quieto, block); position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 60; }
 .confetti i {
   position: absolute; top: -14px;
   width: 9px; height: 14px; border-radius: 2px;
-  animation: fall linear forwards;
+  animation: var(--quieto, fall linear forwards);
 }
+/* La deriva y el giro los reparte panels.js pieza a pieza: si todas cayeran en
+   vertical y con la misma vuelta, setenta papelitos parecerían una persiana. */
 @keyframes fall {
-  to { transform: translateY(102vh) rotate(760deg); opacity: .1; }
+  to { transform: translate(var(--deriva, 0), 102vh) rotate(var(--giro, 760deg)); opacity: .1; }
+}
+
+/* Móvil apaisado: 844x390 es ancho, así que la compactación de arriba no entra,
+   pero de alto va justísimo. Con la cabecera de la 1.5 —chip de modalidad, caja
+   de fundaciones y barra de progreso— el tablero se quedaba 69 px corto y seis
+   cartas caían por debajo del borde, fuera del alcance del dedo (el tapete no se
+   desplaza a propósito). Aquí la cabecera se aprieta y la barra de progreso deja
+   de gastar una línea entera: se ancla al borde de abajo. */
+@media (max-height: 520px) {
+  .topbar { gap: 6px 12px; padding-top: max(6px, env(safe-area-inset-top, 0px)); padding-bottom: 6px; }
+  .brand h1 { display: none; }
+  .brand { order: -2; }
+  .mode-chip { order: -1; min-height: 28px; padding: 4px 10px; }
+  .stat { min-width: 52px; padding: 1px 7px; }
+  .stat dd { font-size: 14px; }
+  .progress { position: absolute; left: 0; right: 0; bottom: 0; flex-basis: auto; border-radius: 0; }
+  .paused-flag { margin-top: 1px; }
+  .table { padding-top: 6px; padding-bottom: 4px; }
+  .banner { margin-top: 6px; }
+  .tool { min-height: 40px; padding: 3px 2px; }
+  .rotulo { font-size: 9.5px; }
 }
 
 @media (max-width: 640px) {
@@ -614,18 +880,25 @@ body {
     gap: 8px;
     padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) 8px max(8px, env(safe-area-inset-left, 0px));
   }
+  /* En iOS un fondo fijo obliga a repintar el degradado entero cada vez que algo
+     se desplaza, y en una pantalla de móvil no se gana nada: no hay recorrido
+     donde notar que el tapete se queda quieto. */
+  body { background-attachment: scroll; }
+  /* Y por lo mismo, fuera el desenfoque: es el efecto más caro de la pantalla y
+     el que peor lleva un móvil justo de fuelle. El velo carga solo con separar
+     la barra del tapete, así que se le da más cuerpo. */
+  .topbar, .tools { --topbar-veil: rgba(0, 0, 0, .34); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  html[data-theme="light"] .topbar, html[data-theme="light"] .tools { --topbar-veil: rgba(0, 0, 0, .52); }
   .brand h1 { display: none; }
+  /* Sin el título, la primera línea de la barra se queda con el escudo y medio
+     ancho de aire, mientras el chip de modalidad se iba solo a una tercera fila.
+     Reordenándolo se cuela junto al escudo y la cabecera se ahorra una línea
+     entera, que en una pantalla de 640 px de alto se nota en el tapete. */
+  .brand { order: -2; }
+  .mode-chip { order: -1; }
   .stat { min-width: 54px; padding: 2px 7px; }
   .table { padding: 8px max(4px, env(safe-area-inset-right, 0px)) 6px max(4px, env(safe-area-inset-left, 0px)); }
   .tools { gap: 3px; padding-left: max(4px, env(safe-area-inset-left, 0px)); padding-right: max(4px, env(safe-area-inset-right, 0px)); }
   .tool { min-height: 48px; padding: 5px 2px; }
   .rotulo { font-size: 10px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .anim .card, .anim .card .face, .anim .card .back { transition: none; }
-  .anim .card.volando, .anim .card.dragging { translate: 0; }
-  .card.hint, .card.hint .face, .card.hint .back, .card.hint-destino,
-  .slot.hint-destino, .card.nope, .stat.bump dd, .finish, .update-pill { animation: none; }
-  .confetti { display: none; }
 }

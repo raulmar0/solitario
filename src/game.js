@@ -3,6 +3,7 @@
 
 import * as engine from './engine.js';
 import { PILE } from './engine.js';
+import * as advisor from './advisor.js';
 import { randomSeed, SUITS } from './cards.js';
 import { randomSolvableSeed } from './solvable-seeds.js';
 import { applyEvents, initialScore, timePenalty, winBonus } from './scoring.js';
@@ -26,7 +27,6 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
   let moves = 0;
   let undos = 0;
   let history = [];
-  let future = [];
   let status = 'idle';        // idle | playing | won | stuck
   let startedAt = null;       // instante del primer movimiento
   let elapsedMs = 0;          // tiempo acumulado antes de la pausa actual
@@ -45,7 +45,18 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
   function pushHistory() {
     history.push(snapshot());
     if (history.length > MAX_HISTORY) history.shift();
-    future = [];
+  }
+
+  /**
+   * Huellas de por dónde se ha pasado hace poco. El recomendador las usa para no
+   * proponer deshacer a mano lo que se acaba de hacer: doce pasos bastan para
+   * cazar los bucles cortos, que son los que marean, y no cuesta nada calcularlas
+   * en el momento (la pista la pide una persona, no un bucle).
+   */
+  function historialReciente() {
+    const huellas = new Set([advisor.huella(state)]);
+    for (const paso of history.slice(-12)) huellas.add(advisor.huella(paso.state));
+    return huellas;
   }
 
   /** Modalidad con la que se repartió: las preferencias pueden haber cambiado después. */
@@ -182,7 +193,10 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
     get baseScore() { return baseScore; },
     get elapsedMs() { return elapsed(); },
     get canUndo() { return history.length > 0; },
-    get canRedo() { return future.length > 0; },
+    /** ¿Está corriendo el reloj? La cabecera enseña un aviso cuando no. */
+    get clockRunning() { return running; },
+    /** Cuántas cartas hay ya arriba, de las 52. */
+    get foundationCount() { return state ? state.foundations.reduce((n, p) => n + p.length, 0) : 0; },
     get lastResult() { return lastResult; },
     get seed() { return state?.seed ?? null; },
     get epoch() { return selectionEpoch; },
@@ -210,7 +224,6 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       moves = 0;
       undos = 0;
       history = [];
-      future = [];
       status = 'playing';
       startedAt = null;
       elapsedMs = 0;
@@ -245,7 +258,6 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       history = (Array.isArray(saved.history) ? saved.history : [])
         .filter((h) => h && h.state)
         .map((h) => ({ ...h, state: rehidratar(h.state) }));
-      future = [];
       elapsedMs = saved.elapsedMs ?? 0;
       startedAt = null;
       running = false;
@@ -350,7 +362,6 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
 
     undo() {
       if (!history.length || status === 'won') return false;
-      future.push(snapshot());
       const prev = history.pop();
       state = prev.state;
       baseScore = prev.baseScore;
@@ -363,30 +374,25 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       return true;
     },
 
-    redo() {
-      if (!future.length || (status !== 'playing' && status !== 'stuck')) return false;
-      history.push(snapshot());
-      const next = future.pop();
-      state = next.state;
-      baseScore = next.baseScore;
-      moves = next.moves;
-      selectionEpoch += 1;
-      checkEnd();
-      persist();
-      emit();
-      return true;
+    /**
+     * La jugada recomendada, con su razón y las alternativas que la seguían de
+     * cerca: { move, reason, alternatives } o null si de verdad no hay nada.
+     */
+    hint() {
+      if (status !== 'playing' && status !== 'stuck') return null;
+      return advisor.recomendar(state, { historial: historialReciente() });
     },
 
-    hint() { return status === 'playing' || status === 'stuck' ? engine.hint(state) : null; },
-
     /**
-     * ¿Queda alguna jugada, contando la de bajar una carta de las fundaciones?
-     * Atascado (`stuck`) solo mira las jugadas útiles; esto distingue entre «no
-     * hay salida» y «te queda el recurso de bajar una carta de arriba».
+     * ¿Le queda al jugador el recurso de bajar a mano una carta de las
+     * fundaciones? «Atascado» ya significa que ningún movimiento de las cartas
+     * visibles —ni directos, ni tras paseos entre columnas— lleva a ningún sitio;
+     * esto distingue «no hay salida» de «te queda bajar una carta de arriba».
      */
     get hasAnyMove() {
       if (status !== 'playing' && status !== 'stuck') return false;
-      return engine.usefulMoves(state, { includeFoundationToTableau: true }).length > 0;
+      return engine.cardMoves(state, { includeFoundationToTableau: true })
+        .some((m) => m.from.pile === PILE.FOUNDATION);
     },
 
     pause() { stopClock(); emit(); },

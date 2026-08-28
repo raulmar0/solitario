@@ -16,9 +16,12 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
 
 ## Qué trae
 
-- **Klondike completo**: robar de una o de tres, deshacer y rehacer (hasta 400
-  jugadas), pistas, subida automática de las cartas que ya no estorban y autocompletado
+- **Klondike completo**: robar de una o de tres, deshacer (hasta 400 jugadas),
+  pistas, subida automática de las cartas que ya no estorban y autocompletado
   cuando la partida está resuelta.
+- **Cinco idiomas**: español, inglés, francés, portugués y coreano, con la misma
+  cobertura los cinco. Al entrar por primera vez se mira el idioma del navegador;
+  desde Ajustes se cambia en caliente, sin recargar y sin perder la partida.
 - **Dos sistemas de puntuación**
   - *Estándar* (tipo Microsoft Solitaire): +10 por carta a las pilas de arriba,
     +5 al destapar una carta o traer una del descarte a una columna, −15 al bajar
@@ -39,51 +42,81 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   mismo reparto. Con «solo manos con solución» se reparte de una lista de 150
   semillas resueltas por el buscador de `test/engine.test.js`.
 - **Picar una carta la mueve sola** a su mejor destino: primero la pila de arriba
-  y, si no, la columna que mejor le venga (los huecos vacíos se dejan para el
-  final, que hacen falta para los reyes). Para elegir el sitio a mano —dos huecos
-  libres, dos columnas donde encaja— se arrastra.
+  —si sube sin riesgo— y, si no, la columna que mejor le venga (los huecos
+  vacíos se dejan para el final, que hacen falta para los reyes). Subir
+  arriesgando y elegir el sitio a mano —dos huecos libres, dos columnas donde
+  encaja— se hace arrastrando.
 - **Reparto animado**: las 28 cartas del tableau salen del mazo de una en una y
   se destapan al llegar con un volteo, como en la mesa. Dura un segundo y un toque
   se lo salta.
 - **Cuántas quedan por robar**: el mazo lleva el número encima, sobre el montón.
-- **Pista con la carta señalada**: al pedir consejo, la carta que hay que tocar
-  late fuerte y el sitio donde va se marca flojito, para no confundirlos.
+- **Pista razonada**: `src/advisor.js` simula cada jugada posible y la puntúa —
+  destapar antes que subir seguro, subir seguro antes que sacar del descarte,
+  robar antes que pasear cartas de un lado a otro— penalizando las fundaciones
+  arriesgadas, gastar un hueco sin ganar nada y volver a una posición por la que
+  se acaba de pasar. El consejo se explica con palabras («Lleva el 7♥ de la
+  columna 2 al 8♠: así destapas la carta que tiene debajo») y señala el sitio: la
+  carta que hay que tocar late fuerte, el destino flojito, y si toca robar late
+  el propio mazo. Pulsando Pista otra vez sin jugar se enseña la siguiente
+  alternativa. **Picar una carta usa exactamente el mismo criterio**, así que la
+  pista y el toque nunca llevan la carta a sitios distintos.
 - **Sonidos**: los clics de las cartas y los avisos están sintetizados con Web
   Audio, sin un solo fichero de audio ni una petición a la red. Se apagan desde
   Ajustes. El navegador no deja sonar nada hasta que tocas la página, así que el
   reparto de bienvenida es mudo a propósito.
 - **Las acciones, abajo**: en un móvil grande, la parte de arriba de la pantalla
-  queda lejos del pulgar. Los cinco botones —nueva, repetir, rehacer, pista y
-  ajustes— van al fondo, con su rótulo debajo, iconos de trazo propios (no
+  queda lejos del pulgar. Los cinco botones —nueva, repetir, **deshacer**, pista
+  y menú— van al fondo, con su rótulo debajo, iconos de trazo propios (no
   emojis, que cada sistema dibuja a su manera) y 82 x 51 px de objetivo, muy por
-  encima del mínimo que pide Apple.
+  encima del mínimo que pide Apple. Rehacer se ha quitado: en un solitario se
+  deshace mucho y se rehace casi nunca, y el hueco lo aprovecha mejor deshacer.
+- **La cabecera cuenta la partida**: un chip con la modalidad del reparto
+  («Estándar · 1 carta · crono») que lleva a Ajustes, cuántas cartas llevas
+  arriba de las 52 con su barra de progreso, y un aviso cuando el reloj está
+  parado. Pulsar el número de reparto copia su enlace, con `?seed=` puesto, para
+  retar a alguien a la misma mano.
+- **Baraja de cuatro colores** para quien no distinga bien el rojo del negro:
+  cada palo con su color, separados también en luminosidad para que se lean en
+  escala de grises. Y un pequeño golpe de vibración al colocar y al fallar, en
+  los móviles que lo permiten.
 - **Un solo panel**: ajustes, récords y ayuda están en el mismo sitio, en tres
-  secciones. Antes eran tres diálogos y tres botones distintos. Deshacer y subir
-  las cartas que no estorban se quedaron sin botón: lo primero está en el
-  teclado y en el cartel de partida muerta, y lo segundo lo hace el botón de
-  rematar cuando toca.
-- **Sin salida**: cuando ya no queda ninguna jugada se dice en el tablero —el
-  aviso se queda fijo— y se abre un cartel que lo explica y ofrece la salida:
-  deshacer, repetir el mismo reparto o repartir de nuevo. Si aún cabe bajar una
-  carta de las pilas de arriba, se dice también.
+  secciones. Antes eran tres diálogos y tres botones distintos. Lo que pasa
+  dentro se cuenta dentro: la validación del reparto, exportar, importar o borrar
+  escriben en el propio diálogo, no en un cartel que queda tapado detrás. Los
+  récords enseñan además la evolución de tus últimas veinte partidas.
+- **Sin salida, dicho con precisión**: cuando ya no queda ninguna jugada se dice
+  en el tablero —el aviso se queda fijo— y se abre un cartel que lo explica y
+  ofrece la salida. Y se distinguen dos cosas distintas: que no queden jugadas
+  directas pero aún puedas bajar una carta de las pilas de arriba, o que la
+  partida esté de verdad muerta. Cuando algo no se puede hacer se explica por
+  qué: por qué esa carta no entra ahí, por qué el mazo no da más de sí, cuántas
+  pasadas te quedan en Vegas.
 - **Botón de rematar**: en cuanto la partida ya no tiene decisiones (todo boca
   arriba y sin mazo) aparece un botón que sube el resto en cascada, una carta
   cada 81 ms. Se puede detener a media cascada.
+- **Movimiento a la medida**: cada vuelo dura según lo lejos que va (entre 180 y
+  324 ms) y entra y sale con una curva, no a golpe seco. La capa de composición
+  se reserva solo mientras una carta vuela o se arrastra, no en las 52 a la vez.
+  Y hay un único interruptor de movimiento —la preferencia de Ajustes y la del
+  sistema (`prefers-reduced-motion`)— que gobierna todo: vuelos, volteos,
+  reparto, pistas, pulsos y confeti. Con el movimiento apagado la pista sigue
+  entendiéndose, con anillos fijos distintos para el origen y el destino.
 - Atajos de teclado, tema claro/oscuro, y funciona con el dedo en el móvil: sin
-  zoom por accidente (ni pellizco ni doble toque) y dejándole su hueco a la
-  muesca del iPhone. Las animaciones van a velocidad lineal, sin acelerones.
+  zoom por accidente (ni pellizco ni doble toque), dejándole su hueco a la muesca
+  del iPhone, con las cartas nunca por debajo de los 44 px que pide un objetivo
+  táctil y sin que el tablero llegue a hacer scroll.
 
 ## Aplicación instalable (PWA)
 
 Se instala en el móvil o en el escritorio y funciona **sin conexión**: el service
-worker precarga los 20 ficheros que necesita la aplicación, así que después del
+worker precarga los 29 ficheros que necesita la aplicación, así que después del
 primer arranque no hace falta internet para nada. Tampoco lo hacía antes: el
 juego nunca ha hablado con ningún servidor.
 
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.4.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.5.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -115,7 +148,7 @@ En `localStorage`, bajo el prefijo `solitario.v1.`:
 
 | Clave | Contenido |
 |---|---|
-| `solitario.v1.prefs` | ajustes (modalidad, tema, nombre…) |
+| `solitario.v1.prefs` | ajustes (modalidad, idioma, tema, nombre…) |
 | `solitario.v1.stats` | estadísticas por modalidad |
 | `solitario.v1.scores` | las 25 mejores partidas |
 | `solitario.v1.save` | la partida en curso |
@@ -130,12 +163,16 @@ al cerrar.
 ```
 src/cards.js           baraja, aleatoriedad reproducible (mulberry32)
 src/engine.js          reglas del Klondike, funciones puras
+src/advisor.js         qué jugada conviene y por qué (pista y toque, un solo criterio)
 src/scoring.js         los dos sistemas de puntuación
 src/storage.js         localStorage con reserva en memoria
 src/game.js            partida: motor + puntos + reloj + guardado + deshacer
 src/ui.js              tablero: dibujo y gestos
 src/panels.js          diálogos (récords, ajustes, ayuda, victoria)
 src/main.js            arranque, cabecera y teclado
+src/i18n.js            traducción: detección, plural, interpolación y DOM
+src/locales/*.js       los cinco diccionarios (es, en, fr, pt, ko)
+src/motion.js          un solo interruptor de movimiento para toda la aplicación
 src/pwa.js             service worker, actualización e instalación
 src/version.js         la versión, generada desde package.json
 src/solvable-seeds.js  150 repartos con solución comprobada
@@ -153,10 +190,13 @@ todo lo de `src/` menos `ui.js` se puede probar en Node sin navegador.
 npm test
 ```
 
-199 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+342 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
-persistencia, control de partida, una prueba de integración con jsdom que monta la
-página entera y simula arrastrar cartas, una regresión por cada fallo que
+persistencia, control de partida, el recomendador (que ninguna partida entre en
+bucle siguiendo sus consejos, que no mire cartas tapadas y que pista y toque no se
+contradigan), los cinco diccionarios (mismas claves, mismos marcadores, ni una
+cadena en español colada), dos pruebas de integración con jsdom que montan la
+página entera y simulan arrastrar cartas, una regresión por cada fallo que
 encontró la revisión del código, comprobaciones de contraste (WCAG AA) de los dos
 temas, y el service worker ejecutado dentro de un entorno fingido para comprobar
 la precarga, el borrado de cachés viejas y el funcionamiento sin conexión.
@@ -213,7 +253,7 @@ uno a otro.
 | Espacio | robar del mazo |
 | 1…7 | subir la carta de esa columna |
 | 0 | subir la carta del descarte |
-| Ctrl+Z / Ctrl+Y | deshacer / rehacer |
+| Ctrl+Z, U | deshacer |
 | H | pista |
 | A | subir automáticamente |
 | N / R | partida nueva / repetir reparto |

@@ -1,8 +1,11 @@
 // Diálogos: récords, ajustes, ayuda y final de partida.
+// Ni una cadena literal: todo lo que se lee aquí sale de `t()`, porque el idioma
+// puede cambiar con el panel abierto y hay que saber repintarlo (`retraducir`).
 
 import { formatTime } from './game.js';
-import { formatScore, MODE_LABEL } from './scoring.js';
+import { formatScore } from './scoring.js';
 import { isKnownSolvable } from './solvable-seeds.js';
+import { t, fecha, fijarIdioma, resolverIdioma } from './i18n.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const MODES = [
@@ -11,13 +14,16 @@ const MODES = [
   { scoring: 'vegas', drawCount: 1 },
   { scoring: 'vegas', drawCount: 3 },
 ];
-const modeName = ({ scoring, drawCount }) => `${MODE_LABEL[scoring]} · de ${drawCount === 1 ? 'una' : 'tres'}`;
+const modeName = ({ scoring, drawCount }) => t('modo.nombre', {
+  puntuacion: t(`modo.${scoring}`),
+  robo: t(`modo.robo.${drawCount}`),
+});
 
-const fecha = (iso) => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' });
-};
+const AVISO_MS = 5000;          // lo que dura un aviso dentro del diálogo
+const SVG_NS = 'http://www.w3.org/2000/svg';
+// El viewBox lo fija el HTML; el margen deja sitio al punto de la última partida,
+// que si no se comería el borde redondeado de la caja.
+const SPARK = { ancho: 300, alto: 64, margen: 8, radio: 3, maximo: 20, minimo: 3 };
 
 export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSettings = () => {} }) {
   const dlgWin = $('#dlg-win');
@@ -32,25 +38,64 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     });
   }
 
+  // ---------- avisos dentro del diálogo ----------
+
+  // Mientras el panel está abierto tapa el banner del tablero, así que lo que
+  // pasa dentro se cuenta dentro. Se guarda la clave, no el texto ya traducido:
+  // si cambia el idioma con el aviso en pantalla, hay que poder repintarlo.
+  let avisoTimer = null;
+  let avisoVivo = null;
+
+  function pintarAviso() {
+    const caja = $('#dlg-status');
+    if (!caja) return;
+    caja.textContent = avisoVivo ? t(avisoVivo.clave, avisoVivo.params) : '';
+    caja.className = avisoVivo?.tipo ? `dlg-status ${avisoVivo.tipo}` : 'dlg-status';
+  }
+
+  /** `tipo` ∈ ''|'warn'|'err'. Sin clave, borra el aviso que hubiera. */
+  function avisoPanel(clave, params = {}, tipo = '') {
+    clearTimeout(avisoTimer);            // un aviso viejo no puede apagar el nuevo
+    avisoVivo = clave ? { clave, params, tipo } : null;
+    pintarAviso();
+    if (clave) avisoTimer = setTimeout(() => avisoPanel(null), AVISO_MS);
+  }
+
+  // El error del reparto se queda a la vista hasta que se corrige (el aviso de
+  // arriba se va solo), de ahí que su clave se guarde aparte.
+  let claveErrorReparto = null;
+
+  function pintarErrorReparto(clave = claveErrorReparto) {
+    claveErrorReparto = clave;
+    const caja = $('#seed-error');
+    const input = $('#seed-input');
+    caja.textContent = clave ? t(clave) : '';
+    caja.hidden = !clave;
+    if (clave) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  }
+
+  // Al cerrar se limpia: lo que se dijo entonces no viene a cuento la próxima vez.
+  dlgSettings.addEventListener('close', () => {
+    avisoPanel(null);
+    pintarErrorReparto(null);
+  });
+
   // ---------- las tres secciones ----------
 
-  const SECCIONES = [
-    { id: 'ajustes', titulo: 'Ajustes' },
-    { id: 'records', titulo: 'Récords y estadísticas' },
-    { id: 'ayuda', titulo: 'Cómo se juega' },
-  ];
+  const SECCIONES = ['ajustes', 'records', 'ayuda'];
   let seccion = 'ajustes';
 
   function mostrarSeccion(cual, { foco = false } = {}) {
-    seccion = SECCIONES.some((x) => x.id === cual) ? cual : 'ajustes';
-    for (const s of SECCIONES) {
-      const pestana = $(`#tab-${s.id}`);
-      const panel = $(`#panel-${s.id}`);
-      const activa = s.id === seccion;
+    seccion = SECCIONES.includes(cual) ? cual : 'ajustes';
+    for (const id of SECCIONES) {
+      const pestana = $(`#tab-${id}`);
+      const panel = $(`#panel-${id}`);
+      const activa = id === seccion;
       pestana.setAttribute('aria-selected', String(activa));
       pestana.tabIndex = activa ? 0 : -1;   // el tabulador entra una vez; dentro, flechas
       panel.hidden = !activa;
-      if (activa) $('#panel-titulo').textContent = s.titulo;
+      if (activa) $('#panel-titulo').textContent = t(`dlg.titulo.${id}`);
     }
     if (seccion === 'records') renderStats();
     if (seccion === 'ajustes') renderSettings();
@@ -66,11 +111,11 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     const paso = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity }[event.key];
     if (paso === undefined || !event.target.closest('[role="tab"]')) return;
     event.preventDefault();
-    const i = SECCIONES.findIndex((x) => x.id === seccion);
+    const i = SECCIONES.indexOf(seccion);
     const destino = paso === -Infinity ? 0
       : paso === Infinity ? SECCIONES.length - 1
         : (i + paso + SECCIONES.length) % SECCIONES.length;
-    mostrarSeccion(SECCIONES[destino].id, { foco: true });
+    mostrarSeccion(SECCIONES[destino], { foco: true });
   });
 
   /** Abre el panel por la sección que se pida. */
@@ -82,6 +127,57 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   }
 
   // ---------- récords ----------
+
+  // `getScores` ordena por puntuación, que para una evolución no dice nada: aquí
+  // manda cuándo se jugó. Las filas viejas sin fecha se van al principio.
+  const cuando = (fila) => {
+    const ms = Date.parse(fila?.at ?? '');
+    return Number.isNaN(ms) ? 0 : ms;
+  };
+  const redondea = (n) => Math.round(n * 10) / 10;
+
+  /** La línea de puntuaciones de las últimas partidas de la modalidad. */
+  function renderSpark(scoring, drawCount) {
+    const caja = $('#spark-wrap');
+    const svg = $('#stats-spark');
+    const filas = store.getScores({ scoring, drawCount }).sort((a, b) => cuando(a) - cuando(b)).slice(-SPARK.maximo);
+    if (filas.length < SPARK.minimo) {
+      // Con dos partidas la línea sería un palo entre dos puntos: no dice nada.
+      caja.hidden = true;
+      svg.replaceChildren();
+      svg.removeAttribute('aria-label');
+      $('#spark-note').textContent = '';
+      return;
+    }
+
+    const valores = filas.map((r) => r.score ?? 0);
+    const min = Math.min(...valores);
+    const max = Math.max(...valores);
+    const util = SPARK.alto - SPARK.margen * 2;
+    const paso = (SPARK.ancho - SPARK.margen * 2) / (filas.length - 1);
+    const puntos = valores.map((v, i) => [
+      SPARK.margen + paso * i,
+      // Todas iguales: la línea se va al centro en vez de dividir por cero.
+      max === min ? SPARK.alto / 2 : SPARK.alto - SPARK.margen - ((v - min) / (max - min)) * util,
+    ]);
+
+    const linea = document.createElementNS(SVG_NS, 'polyline');
+    linea.setAttribute('points', puntos.map(([x, y]) => `${redondea(x)},${redondea(y)}`).join(' '));
+    // El punto de la última partida no es un <circle>: el viewBox se estira a lo
+    // ancho del panel y saldría ovalado. Es un trazo de longitud cero con la
+    // punta redonda, que el CSS pinta con `non-scaling-stroke` y por eso sale
+    // redondo mida lo que mida el panel.
+    const [ux, uy] = puntos.at(-1);
+    const ultima = document.createElementNS(SVG_NS, 'path');
+    ultima.setAttribute('class', 'punto');
+    ultima.setAttribute('d', `M${redondea(ux)} ${redondea(uy)}l0 0`);
+
+    svg.replaceChildren(linea, ultima);
+    // Dentro del SVG no va texto: lo que tenga que leerse lo dice el aria-label.
+    svg.setAttribute('aria-label', t('stats.evolucion.aria', { n: filas.length }));
+    $('#spark-note').textContent = t('stats.evolucion.nota', { count: filas.length });
+    caja.hidden = false;
+  }
 
   function renderStats() {
     statsMode = statsMode ?? { scoring: game.prefs.scoring, drawCount: game.prefs.drawCount };
@@ -115,29 +211,32 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     }));
 
     const { scoring, drawCount } = statsMode;
+    const vacio = t('hud.vacio');
     const s = store.getStats(scoring, drawCount);
     const pct = s.played ? Math.round((s.won / s.played) * 100) : 0;
     const media = s.played ? Math.round(s.totalScore / s.played) : 0;
     const campos = [
-      ['Partidas', s.played],
-      ['Ganadas', s.won],
-      ['% victorias', `${pct} %`],
-      ['Mejor puntuación', s.bestScore == null ? '—' : formatScore(scoring, s.bestScore)],
-      ['Media', s.played ? formatScore(scoring, media) : '—'],
-      ['Mejor tiempo', s.bestTimeMs == null ? '—' : formatTime(s.bestTimeMs)],
-      ['Menos jugadas', s.fewestMoves ?? '—'],
-      ['Racha actual', s.currentStreak],
-      ['Mejor racha', s.bestStreak],
+      ['stats.partidas', String(s.played)],
+      ['stats.ganadas', String(s.won)],
+      ['stats.porcentaje', t('stats.porcentaje.valor', { n: pct })],
+      ['stats.mejor.puntuacion', s.bestScore == null ? vacio : formatScore(scoring, s.bestScore)],
+      ['stats.media', s.played ? formatScore(scoring, media) : vacio],
+      ['stats.mejor.tiempo', s.bestTimeMs == null ? vacio : formatTime(s.bestTimeMs)],
+      ['stats.menos.jugadas', s.fewestMoves == null ? vacio : String(s.fewestMoves)],
+      ['stats.racha', String(s.currentStreak)],
+      ['stats.mejor.racha', String(s.bestStreak)],
     ];
-    $('#stats-grid').replaceChildren(...campos.map(([dt, dd]) => {
+    $('#stats-grid').replaceChildren(...campos.map(([clave, dd]) => {
       const wrap = document.createElement('div');
       const k = document.createElement('dt');
       const v = document.createElement('dd');
-      k.textContent = dt;
-      v.textContent = String(dd);
+      k.textContent = t(clave);
+      v.textContent = dd;
       wrap.append(k, v);
       return wrap;
     }));
+
+    renderSpark(scoring, drawCount);
 
     const bankRow = $('#bank-row');
     bankRow.hidden = scoring !== 'vegas';
@@ -148,13 +247,14 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     tbody.replaceChildren(...filas.map((r, i) => {
       const tr = document.createElement('tr');
       if (game.lastResult && r.at === game.lastResult.at) tr.className = 'me';
+      // Las cabeceras las traduce el HTML por data-i18n; estas celdas, nosotros.
       const celdas = [
         String(i + 1),
         formatScore(scoring, r.score ?? 0),
-        r.won ? 'Ganada' : 'Perdida',
+        t(r.won ? 'stats.ganada' : 'stats.perdida'),
         formatTime(r.timeMs ?? 0),
         String(r.moves ?? 0),
-        `#${r.seed ?? '—'}`,
+        r.seed == null ? vacio : t('hud.reparto.numero', { n: r.seed }),
         fecha(r.at),
       ];
       celdas.forEach((texto, col) => {
@@ -173,7 +273,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   }
 
   $('#btn-reset-bank').addEventListener('click', () => {
-    if (!confirm('¿Poner a cero la banca de Vegas de este modo?')) return;
+    if (!confirm(t('confirm.banca'))) return;
     store.resetBank(statsMode.drawCount);
     renderStats();
   });
@@ -186,7 +286,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     a.download = `solitario-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    onMessage('Datos exportados.');
+    avisoPanel('msg.datos.exportados');
   });
 
   $('#btn-import').addEventListener('click', () => $('#import-file').click());
@@ -196,22 +296,22 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (!file) return;
     try {
       const datos = JSON.parse(await file.text());
-      if (!confirm('Se sustituirán tus récords y ajustes por los del archivo. ¿Seguimos?')) return;
+      if (!confirm(t('confirm.importar'))) return;
       store.importAll(datos);
       renderStats();
       onPrefsChanged();
-      onMessage('Datos importados.');
+      avisoPanel('msg.datos.importados');
     } catch (err) {
-      alert(`No se pudo leer el archivo: ${err.message}`);
+      alert(t('msg.datos.error', { error: err.message }));
     }
   });
 
   $('#btn-wipe').addEventListener('click', () => {
-    if (!confirm('Se borran todos los récords, estadísticas y ajustes de este navegador. No hay vuelta atrás.')) return;
+    if (!confirm(t('confirm.borrar'))) return;
     store.resetAll();
     renderStats();
     onPrefsChanged();
-    onMessage('Datos borrados.');
+    avisoPanel('msg.datos.borrados');
   });
 
   // ---------- ajustes ----------
@@ -223,13 +323,14 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       btn.setAttribute('aria-checked', String(marcado));
       btn.tabIndex = marcado ? 0 : -1;
     }
-    for (const input of dlgSettings.querySelectorAll('input[data-pref]')) {
-      if (input.type === 'checkbox') input.checked = !!prefs[input.dataset.pref];
-      else input.value = prefs[input.dataset.pref] ?? '';
+    // El selector de idioma entra por aquí igual que las casillas y el nombre.
+    for (const control of dlgSettings.querySelectorAll('input[data-pref], select[data-pref]')) {
+      if (control.type === 'checkbox') control.checked = !!prefs[control.dataset.pref];
+      else control.value = prefs[control.dataset.pref] ?? '';
     }
-    $('#scoring-hint').textContent = prefs.scoring === 'vegas'
-      ? 'Vegas: pagas 52 $ y cobras 5 $ por carta subida. El saldo se acumula partida tras partida.'
-      : 'Estándar: puntos por cada carta que colocas, con bonificación si juegas contrarreloj.';
+    $('#scoring-hint').textContent = t(prefs.scoring === 'vegas'
+      ? 'settings.puntuacion.nota.vegas'
+      : 'settings.puntuacion.nota.standard');
   }
 
   dlgSettings.addEventListener('click', (event) => {
@@ -239,22 +340,24 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     const valor = pref === 'drawCount' ? Number(btn.dataset.value) : btn.dataset.value;
     const cambiaReparto = (pref === 'drawCount' || pref === 'scoring') && game.prefs[pref] !== valor
       && game.status === 'playing' && game.moves > 0;
-    if (cambiaReparto && !confirm('Cambiar de modalidad reparte de nuevo y la partida en curso cuenta como perdida. ¿Seguimos?')) {
-      return;
-    }
+    if (cambiaReparto && !confirm(t('confirm.modalidad'))) return;
     game.setPrefs({ [pref]: valor });
     renderSettings();
     onPrefsChanged();
   });
 
   dlgSettings.addEventListener('change', (event) => {
-    const input = event.target.closest('input[data-pref]');
-    if (!input) return;
-    const valor = input.type === 'checkbox' ? input.checked : input.value.trim();
-    game.setPrefs({ [input.dataset.pref]: valor });
-    if (input.dataset.pref === 'timed' && game.status !== 'idle' && game.moves > 0) {
-      onMessage('El contrarreloj se aplicará al próximo reparto.');
+    const control = event.target.closest('input[data-pref], select[data-pref]');
+    if (!control) return;
+    const pref = control.dataset.pref;
+    const valor = control.type === 'checkbox' ? control.checked : control.value.trim();
+    game.setPrefs({ [pref]: valor });
+    if (pref === 'timed' && game.status !== 'idle' && game.moves > 0) {
+      avisoPanel('msg.contrarreloj', {}, 'warn');
     }
+    // El idioma se cambia en caliente: recargar costaría la partida a medias, y
+    // quien acaba de elegirlo quiere verlo ya, sin cerrar el panel.
+    if (pref === 'lang') fijarIdioma(resolverIdioma(valor));
     renderSettings();
     onPrefsChanged();
   });
@@ -276,14 +379,20 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     const input = $('#seed-input');
     const seed = Number(input.value);
     if (!Number.isInteger(seed) || seed < 1 || seed > 999999) {
-      onMessage('Escribe un número de reparto entre 1 y 999999.');
+      // Dos sitios a propósito: junto al campo para quien mira, y en la región
+      // viva del diálogo para quien escucha.
+      pintarErrorReparto('msg.reparto.invalido');
+      avisoPanel('msg.reparto.invalido', {}, 'err');
+      input.focus();
       return;
     }
-    if (game.status === 'playing' && game.moves > 0
-      && !confirm('La partida en curso contará como perdida. ¿Repartimos igualmente?')) return;
+    pintarErrorReparto(null);
+    avisoPanel(null);        // el error ya está corregido: quien escucha no debe seguir oyéndolo
+    if (game.status === 'playing' && game.moves > 0 && !confirm(t('confirm.reparto'))) return;
     game.newGame(seed);
     dlgSettings.close();
-    onMessage(`Reparto #${seed}${isKnownSolvable(seed) ? ' · tiene solución comprobada' : ''}`);
+    // El panel ya está cerrado: esto se cuenta fuera, en el banner del tablero.
+    onMessage(isKnownSolvable(seed) ? 'msg.reparto.nuevo.comprobado' : 'msg.reparto.nuevo', { n: seed });
   });
 
   $('#seed-input').addEventListener('keydown', (event) => {
@@ -304,10 +413,29 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       p.style.animationDuration = `${1.6 + Math.random() * 1.6}s`;
       p.style.animationDelay = `${Math.random() * 0.6}s`;
       p.style.transform = `rotate(${Math.random() * 360}deg)`;
+      // Cada papelito cae por su lado y da sus vueltas: setenta iguales serían
+      // una persiana bajando, no una celebración.
+      p.style.setProperty('--deriva', `${redondea(Math.random() * 36 - 18)}vw`);
+      p.style.setProperty('--giro', `${Math.round(360 + Math.random() * 720)}deg`);
       piezas.push(p);
     }
     caja.replaceChildren(...piezas);
     setTimeout(() => caja.replaceChildren(), 4200);
+  }
+
+  /** Las medallas de la victoria; se repintan solas si cambia el idioma. */
+  function pintarNotasVictoria() {
+    const r = game.lastResult;
+    if (!r) return;
+    const stats = store.getStats(r.scoring, r.drawCount);
+    const notas = [];
+    if (stats.bestScore === r.score) notas.push(t('dlg.victoria.nota.puntuacion'));
+    if (stats.bestTimeMs === r.timeMs) notas.push(t('dlg.victoria.nota.tiempo'));
+    if (stats.currentStreak > 1) notas.push(t('dlg.victoria.nota.racha', { count: stats.currentStreak }));
+    if (r.scoring === 'vegas') {
+      notas.push(t('dlg.victoria.nota.banca', { valor: formatScore('vegas', store.getBank(r.drawCount)) }));
+    }
+    $('#win-note').textContent = notas.join(t('app.union'));
   }
 
   function showWin() {
@@ -316,14 +444,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     $('#win-score').textContent = formatScore(r.scoring, r.score);
     $('#win-time').textContent = formatTime(r.timeMs);
     $('#win-moves').textContent = String(r.moves);
-
-    const stats = store.getStats(r.scoring, r.drawCount);
-    const notas = [];
-    if (stats.bestScore === r.score) notas.push('Nueva mejor puntuación');
-    if (stats.bestTimeMs === r.timeMs) notas.push('Récord de tiempo');
-    if (stats.currentStreak > 1) notas.push(`${stats.currentStreak} victorias seguidas`);
-    if (r.scoring === 'vegas') notas.push(`Banca: ${formatScore('vegas', store.getBank(r.drawCount))}`);
-    $('#win-note').textContent = notas.join(' · ');
+    pintarNotasVictoria();
 
     confeti();
     dlgWin.showModal();
@@ -337,17 +458,19 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
 
   // ---------- partida sin salida ----------
 
+  // Atascado solo mira las jugadas útiles: puede quedar el recurso de bajar una
+  // carta de las pilas de arriba, y entonces no está todo perdido.
+  function pintarNotaBloqueo() {
+    $('#stuck-note').textContent = t(game.hasAnyMove ? 'msg.bloqueo.rescate' : 'msg.bloqueo.sinsalida');
+  }
+
   /**
    * La partida se ha quedado sin jugadas. Se dice claro y se ofrece la salida:
    * deshacer, repetir el mismo reparto o repartir de nuevo.
    */
   function showStuck() {
     if (game.status !== 'stuck' || api.anyOpen) return;
-    // Atascado solo mira las jugadas útiles: puede quedar el recurso de bajar
-    // una carta de las pilas de arriba, y entonces no está todo perdido.
-    $('#stuck-note').textContent = game.hasAnyMove
-      ? 'No queda ninguna jugada en las columnas ni cartas que robar. Solo puedes arrastrar hacia abajo una carta de las pilas de arriba, deshacer o repartir otra vez.'
-      : 'No queda ninguna carta que mover ni nada que robar: esta partida no tiene salida.';
+    pintarNotaBloqueo();
     $('#dlg-stuck [data-action="undo"]').disabled = !game.canUndo;
     dlgStuck.showModal();
   }
@@ -361,6 +484,21 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (accion === 'new') game.newGame();
   });
 
+  /**
+   * Cambio de idioma en caliente: lo estático lo repinta `traducirDom`, pero
+   * todo lo que hemos escrito nosotros por JS hay que rehacerlo. Sin cerrar el
+   * diálogo, sin cambiar de sección y devolviendo el foco donde estaba.
+   */
+  function retraducir() {
+    $('#panel-titulo').textContent = t(`dlg.titulo.${seccion}`);
+    renderSettings();
+    if (statsMode) renderStats();       // si aún no se han visto, no hay nada pintado
+    if (dlgWin.open) pintarNotasVictoria();
+    if (dlgStuck.open) pintarNotaBloqueo();
+    pintarAviso();
+    pintarErrorReparto();
+  }
+
   const api = {
     openStats() { abrir('records'); },
     openSettings() { abrir('ajustes'); },
@@ -368,6 +506,9 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     showWin,
     showStuck,
     renderSettings,
+    retraducir,
+    /** Avisar dentro del panel; `main.js` la usa para actualizar e instalar. */
+    avisoPanel,
     /** Qué sección se está viendo; las pruebas y el teclado lo usan. */
     get section() { return seccion; },
     get anyOpen() { return [dlgWin, dlgStuck, dlgSettings].some((d) => d.open); },

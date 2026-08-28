@@ -1,6 +1,7 @@
 // Regresiones: un caso por cada fallo que encontró la revisión.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as advisor from '../src/advisor.js';
 import * as engine from '../src/engine.js';
 import { PILE } from '../src/engine.js';
 import { createGame } from '../src/game.js';
@@ -94,8 +95,8 @@ test('pasar un rey de un hueco vacío a otro no cuenta como jugada: la partida e
   const movimientos = engine.cardMoves(st);
   assert.equal(movimientos.length, 1);
   assert.deepEqual(movimientos[0].to, { pile: PILE.TABLEAU, index: 6 }, 'lo único legal es pasar el rey de hueco a hueco');
-  assert.equal(engine.hint(st), null, 'pero no sirve para nada');
-  assert.equal(engine.isStuck(st), true, 'la pista y el atasco han de coincidir');
+  assert.equal(advisor.recomendar(st), null, 'pero no sirve para nada');
+  assert.equal(engine.isStuck(st), true, 'la recomendación y el atasco han de coincidir');
 
   const despues = engine.applyMove(st, movimientos[0]).state;
   assert.equal(engine.isStuck(despues), true, 'y sigue muerta después de hacerlo');
@@ -199,7 +200,7 @@ test('sin cronómetro no hay bonificación por ganar rápido', () => {
 test('apagar el cronómetro a mitad no cambia las reglas de la partida en curso', () => {
   const { game, reloj } = crear({ timed: true });
   game.newGame(5);
-  game.play(game.hint());
+  game.play(game.hint().move);
   reloj.t += 60000;
   const conTiempo = game.score;
   game.setPrefs({ timed: false });

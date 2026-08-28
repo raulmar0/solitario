@@ -5,6 +5,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { COLUMNA, VUELO_POR_DEFECTO, MARGEN_ANIM } from '../src/ui.js';
+// Los textos se comprueban leyendo su clave, no clavando la cadena: así la
+// prueba sigue valiendo aunque se retoque la redacción de un mensaje.
+import { t } from '../src/i18n.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
@@ -18,7 +21,12 @@ if (!window.matchMedia) {
 }
 if (!window.HTMLDialogElement.prototype.showModal) {
   window.HTMLDialogElement.prototype.showModal = function showModal() { this.open = true; };
-  window.HTMLDialogElement.prototype.close = function close() { this.open = false; };
+  // El evento importa: `panels.js` cuelga de él la limpieza de los avisos del
+  // panel, y sin dispararlo esa limpieza sería invisible para las pruebas.
+  window.HTMLDialogElement.prototype.close = function close() {
+    this.open = false;
+    this.dispatchEvent(new window.Event('close'));
+  };
 }
 window.confirm = () => true;
 window.alert = () => {};
@@ -49,6 +57,11 @@ globalThis.localStorage = window.localStorage;
 // panel que los ajustes se cruzaba con las pruebas a los 500 ms. Con una
 // partida ya apuntada, el juego entiende que no es un recién llegado.
 window.localStorage.setItem('solitario.v1.stats', JSON.stringify({ 'standard-1': { played: 1, won: 0 } }));
+// Toda la interfaz está traducida y en jsdom el navegador dice hablar inglés, así
+// que la aplicación arrancaría en inglés. Aquí se comparan textos en español: el
+// idioma se deja escrito antes de importar main.js, que es quien lee las
+// preferencias al arrancar; después ya sería tarde.
+window.localStorage.setItem('solitario.v1.prefs', JSON.stringify({ lang: 'es' }));
 
 await import('../src/main.js');
 const { game, board, panels, refresh, instalador, VERSION } = globalThis.solitario;
@@ -193,14 +206,25 @@ test('picar una carta la sube sola a su fundación', () => {
 });
 
 test('los botones de la barra responden', () => {
+  // Reparto limpio: hace falta una partida sin historial para ver el botón apagado.
+  game.newGame(1);
+  board.cancel();
+  assert.equal($('#btn-undo').disabled, true, 'recién repartida no hay nada que deshacer');
+
+  const p = centro(COLUMNA.stock, 0);
+  puntero('pointerdown', $('.slot-stock'), p.x, p.y);   // una jugada cualquiera: robar
   const jugadas = game.moves;
-  // Deshacer ya no tiene botón: queda el teclado y el cartel de partida muerta.
-  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
-  assert.ok(game.moves < jugadas, 'deshacer retrocede');
-  assert.equal($('#btn-redo').disabled, false, 'y entonces sí hay algo que rehacer');
-  $('#btn-redo').click();
-  assert.equal(game.moves, jugadas, 'rehacer vuelve');
-  assert.equal($('#btn-redo').disabled, true);
+  assert.equal(jugadas, 1, 'robar cuenta como jugada');
+  assert.equal($('#btn-undo').disabled, false, 'con una jugada hecha, el botón se enciende');
+
+  $('#btn-undo').click();
+  assert.equal(game.moves, jugadas - 1, 'y al pulsarlo se deshace de verdad');
+  assert.equal($('#btn-undo').disabled, true, 'sin historial vuelve a apagarse');
+
+  // Rehacer se retiró: no basta con quitar la acción, no puede quedar ni el dibujo.
+  assert.equal(window.document.querySelector('#btn-redo'), null, 'ya no hay botón de rehacer');
+  assert.equal(window.document.querySelector('symbol#i-rehacer'), null, 'ni su icono en el sprite');
+
   $('#btn-hint').click();
 });
 
@@ -210,7 +234,7 @@ test('el panel de récords se rellena', () => {
   assert.equal(panels.section, 'records');
   assert.equal($('#panel-records').hidden, false);
   assert.equal($('#panel-ajustes').hidden, true);
-  assert.equal($('#panel-titulo').textContent, 'Récords y estadísticas');
+  assert.equal($('#panel-titulo').textContent, t('dlg.titulo.records'));
   assert.equal($('#stats-tabs').children.length, 4);
   const activa = $('#stats-tabs [aria-selected="true"]');
   assert.ok(activa, 'siempre hay una pestaña activa');
@@ -227,7 +251,7 @@ test('las tres secciones viven en el mismo panel y se cambia entre ellas', () =>
 
   panels.openSettings();
   assert.equal(panels.section, 'ajustes');
-  assert.equal($('#panel-titulo').textContent, 'Ajustes');
+  assert.equal($('#panel-titulo').textContent, t('dlg.titulo.ajustes'));
 
   $('#tab-ayuda').click();
   assert.equal(panels.section, 'ayuda');
@@ -529,7 +553,7 @@ test('con la partida atascada las cartas siguen cogiéndose', () => {
   assert.equal($('#btn-hint').disabled, false);
 });
 
-test('sin jugadas se avisa de que ya no hay posibilidad y se ofrece la salida', async () => {
+test('sin jugadas se avisa de que aún queda bajar una carta de arriba y se ofrece la salida', async () => {
   const carta = (rank, suit) => ({ id: `${rank}${suit}`, rank, suit, faceUp: true });
   escenario({
     foundations: [[1, 2, 3, 4, 5].map((r) => carta(r, 'S')), [], [], []],
@@ -537,18 +561,24 @@ test('sin jugadas se avisa de que ya no hay posibilidad y se ofrece la salida', 
   });
   assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 0 }, to: { pile: 'tableau', index: 1 }, count: 1 }), true);
   assert.equal(game.status, 'stuck');
-  assert.match($('#banner').textContent, /ya no hay posibilidad/i, 'se dice en el tablero');
+  // Con el 5S todavía arriba, el aviso no es el de partida perdida: es el del rescate.
+  assert.equal($('#banner').textContent, t('msg.bloqueo.rescate'), 'se dice en el tablero');
   assert.equal($('#banner').classList.contains('warn'), true);
 
   await new Promise((r) => setTimeout(r, 600));
   assert.equal($('#dlg-stuck').open, true, 'y se dice a la cara');
-  assert.match($('#stuck-note').textContent, /pilas de arriba/,
-    'aquí aún cabe bajar el 5S, y eso se cuenta');
+  assert.equal($('#stuck-note').textContent, t('msg.bloqueo.rescate'),
+    'aquí aún cabe bajar el 5S, y eso se cuenta en vez de dar la partida por perdida');
   assert.equal($('#dlg-stuck [data-action="undo"]').disabled, false);
 
   $('#dlg-stuck [data-action="undo"]').click();
   assert.equal($('#dlg-stuck').open, false);
-  assert.equal(game.status, 'playing');
+  assert.equal(game.status, 'stuck', 'la posición de antes también estaba muerta: deshacer no la revive');
+  assert.equal($('#banner').textContent, t('msg.bloqueo.rescate'), 'así que el aviso sigue puesto');
+
+  // Bajar el 5S a mano —el rescate desde la fundación— sí la devuelve a la vida.
+  assert.equal(game.play({ type: 'move', from: { pile: 'foundation', index: 0 }, to: { pile: 'tableau', index: 0 }, count: 1 }), true);
+  assert.equal(game.status, 'playing', 'el rescate revive la partida');
   assert.equal($('#banner').textContent, '', 'con salida, el aviso se retira');
 });
 
@@ -607,9 +637,9 @@ test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', 
   assert.equal(window.document.querySelector('.topbar .tool'), null, 'y ya no arriba');
 
   const botones = [...barra.querySelectorAll('.tool')];
-  assert.equal(botones.length, 5, 'quedan cinco: nueva, repetir, rehacer, pista y ajustes');
+  assert.equal(botones.length, 5, 'quedan cinco: nueva, repetir, deshacer, pista y ajustes');
   assert.deepEqual(botones.map((b) => b.id),
-    ['btn-new', 'btn-restart', 'btn-redo', 'btn-hint', 'btn-settings']);
+    ['btn-new', 'btn-restart', 'btn-undo', 'btn-hint', 'btn-settings']);
   for (const b of botones) {
     assert.ok(b.getAttribute('aria-label'), `${b.id} necesita nombre para el lector de pantalla`);
     const icono = b.querySelector('.ico use')?.getAttribute('href');
@@ -827,30 +857,77 @@ test('nada de escalar la carta entera: le multiplicaría la posición', () => {
   }
 });
 
-test('las animaciones van a velocidad lineal, sin acelerones', () => {
-  const sinCurva = (valor, sel) => {
+test('el vuelo de las cartas acelera y frena; los controles van a velocidad fija', () => {
+  const raiz = reglas().find((r) => r.selectorText === ':root').style;
+  assert.match(raiz.getPropertyValue('--vuelo'), /cubic-bezier/, 'hay una curva de vuelo definida');
+
+  const vuelo = regla('.anim .card').style.getPropertyValue('transition');
+  assert.ok(vuelo.includes('var(--vuelo)'), 'la carta vuela con la curva');
+  assert.ok(vuelo.includes('translate 140ms linear'), 'y el levantamiento sigue a golpe fijo');
+
+  const volteo = regla('.anim .card .face, .anim .card .back').style.getPropertyValue('transition');
+  assert.ok(volteo.includes('ease-in-out'), 'el volteo entra y sale suave');
+
+  for (const sel of ['.tool', '.slot', '.btn']) {
+    const valor = regla(sel).style.getPropertyValue('transition');
     assert.match(valor, /\blinear\b/, `${sel} debería ir a velocidad lineal`);
     assert.equal(/ease|cubic-bezier/.test(valor), false, `${sel} no debería acelerar ni frenar`);
-  };
-  for (const sel of ['.anim .card', '.tool', '.slot', '.btn']) {
-    sinCurva(regla(sel).style.getPropertyValue('transition'), sel);
   }
   for (const sel of ['.card.hint', '.card.nope', '.stat.bump dd', '.finish', '.update-pill']) {
-    sinCurva(regla(sel).style.getPropertyValue('animation'), sel);
+    assert.match(regla(sel).style.getPropertyValue('animation'), /\blinear\b/, `${sel} debería ir a velocidad lineal`);
   }
+});
+
+test('la capa de composición se reserva al vuelo, no para siempre', () => {
+  assert.equal(regla('.card').style.getPropertyValue('will-change'), '',
+    'las 52 cartas en reposo no mantienen capa propia');
+  const alVuelo = regla('.card.volando, .card.dragging');
+  assert.ok(alVuelo, 'hay regla para quien vuela o se arrastra');
+  assert.match(alVuelo.style.getPropertyValue('will-change'), /transform/, 'y esa sí reserva la capa');
+});
+
+test('el vuelo dura según la distancia, no lo mismo para todo', () => {
+  escenario({
+    tableau: [
+      [{ id: '10C', rank: 10, suit: 'C', faceUp: true }],
+      [], [], [], [], [],
+      [{ id: '9H', rank: 9, suit: 'H', faceUp: true }],
+    ],
+    stock: [{ id: '2H', rank: 2, suit: 'H', faceUp: false }],
+  });
+  assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 6 }, to: { pile: 'tableau', index: 0 }, count: 1 }), true);
+  const largo = cartaEl('9H').style.transitionDuration;
+  // Dos duraciones, no tres: `.anim .card` transiciona `transform` y `translate`
+  // —la sombra vive en `.card::after`—, y una duración de más se descartaría por
+  // el final, dejando el levantamiento al ritmo del vuelo en vez de en 140 ms.
+  assert.match(largo, /^\d+ms, 140ms$/, 'el vuelo largo lleva su duración a medida y el alzado, la suya');
+
+  // Un salto a la columna de al lado dura bastante menos que cruzar el tablero.
+  escenario({
+    tableau: [
+      [],
+      [{ id: '4D', rank: 4, suit: 'D', faceUp: false }, { id: '3C', rank: 3, suit: 'C', faceUp: true }],
+      [{ id: '4H', rank: 4, suit: 'H', faceUp: true }],
+    ],
+    stock: [{ id: '2S', rank: 2, suit: 'S', faceUp: false }],
+  });
+  assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 1 }, to: { pile: 'tableau', index: 2 }, count: 1 }), true);
+  const corto = cartaEl('3C').style.transitionDuration;
+  assert.ok(parseFloat(corto) < parseFloat(largo), `un salto corto (${corto}) tarda menos que cruzar el tablero (${largo})`);
+  assert.ok(parseFloat(corto) >= 180, 'pero tampoco baja de 180 ms');
 });
 
 test('la pista marca fuerte la carta que hay que tocar y flojo el sitio donde va', () => {
   escenario({
     tableau: [
       [{ id: '8S', rank: 8, suit: 'S', faceUp: true }],
-      [{ id: '7H', rank: 7, suit: 'H', faceUp: true }],
+      [{ id: '4H', rank: 4, suit: 'H', faceUp: false }, { id: '7H', rank: 7, suit: 'H', faceUp: true }],
     ],
   });
-  const jugada = game.hint();
-  assert.deepEqual(jugada.from, { pile: 'tableau', index: 1 }, 'la única jugada útil es el 7H sobre el 8S');
+  const pista = game.hint();
+  assert.deepEqual(pista.move.from, { pile: 'tableau', index: 1 }, 'la mejor jugada es destapar poniendo el 7H sobre el 8S');
 
-  board.flashHint(jugada);
+  board.flashHint(pista.move);
   assert.equal(cartaEl('7H').classList.contains('hint'), true, 'la carta a tocar late');
   assert.equal(cartaEl('7H').classList.contains('hint-destino'), false);
   assert.equal(cartaEl('8S').classList.contains('hint-destino'), true, 'el destino se marca aparte');
@@ -861,10 +938,73 @@ test('la pista marca fuerte la carta que hay que tocar y flojo el sitio donde va
     tableau: [[], [{ id: '3D', rank: 3, suit: 'D', faceUp: false }, { id: 'KH', rank: 13, suit: 'H', faceUp: true }]],
   });
   const alHueco = game.hint();
-  assert.deepEqual(alHueco.to, { pile: 'tableau', index: 0 }, 'el rey se va al hueco y destapa el 3D');
-  board.flashHint(alHueco);
+  assert.deepEqual(alHueco.move.to, { pile: 'tableau', index: 0 }, 'el rey se va al hueco y destapa el 3D');
+  board.flashHint(alHueco.move);
   assert.equal(cartaEl('KH').classList.contains('hint'), true);
   assert.equal($('.slot-tableau[data-index="0"]').classList.contains('hint-destino'), true);
+});
+
+test('con mazo, la pista manda robar antes que pasear cartas, y el mazo late', () => {
+  escenario({
+    tableau: [
+      [{ id: '10H', rank: 10, suit: 'H', faceUp: true }],
+      [{ id: '9S', rank: 9, suit: 'S', faceUp: true }],
+    ],
+    stock: [{ id: '2C', rank: 2, suit: 'C', faceUp: false }],
+  });
+  const pista = game.hint();
+  assert.deepEqual(pista.move, { type: 'draw' }, 'mover el 9S de aquí para allá no le hace caso: mejor robar');
+
+  assert.ok(regla('.slot.hint'), 'hay regla que anima el hueco del mazo');
+  board.flashHint(pista.move);
+  assert.equal($('.slot-stock').classList.contains('hint'), true, 'el mazo parpadea');
+  assert.equal($('.slot-stock').classList.contains('hint-destino'), false);
+});
+
+test('pedir otra pista se lleva la anterior: no quedan marcas viejas', () => {
+  escenario({
+    tableau: [
+      [{ id: '8S', rank: 8, suit: 'S', faceUp: true }],
+      [{ id: '4H', rank: 4, suit: 'H', faceUp: false }, { id: '7H', rank: 7, suit: 'H', faceUp: true }],
+      [{ id: '3D', rank: 3, suit: 'D', faceUp: true }],
+      [{ id: '4S', rank: 4, suit: 'S', faceUp: false }, { id: '6C', rank: 6, suit: 'C', faceUp: true }],
+    ],
+  });
+  board.flashHint(game.hint().move);
+  assert.equal(cartaEl('7H').classList.contains('hint'), true, 'la primera pista señala el 7H');
+
+  // El 8S desaparece: ahora la mejor pista es el 6C sobre el 7H.
+  game.state.tableau[0] = [];
+  board.paint();
+  board.flashHint(game.hint().move);
+
+  assert.equal(cartaEl('7H').classList.contains('hint'), false, 'la marca de la pista vieja se retira');
+  assert.equal(cartaEl('8S').classList.contains('hint-destino'), false, 'también la del destino');
+  assert.equal(cartaEl('6C').classList.contains('hint'), true, 'y la nueva señala al 6C');
+  assert.equal(cartaEl('7H').classList.contains('hint-destino'), true, 'que ahora es destino');
+});
+
+test('picar no sube una carta arriesgada: para eso está el arrastre', () => {
+  escenario({
+    foundations: [[{ id: '8S', rank: 8, suit: 'S', faceUp: true }], [], [], []],
+    tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: true }]],
+    stock: [],
+  });
+  const p = centro(0, 1);
+  puntero('pointerdown', cartaEl('9S'), p.x, p.y);
+  puntero('pointerup', cartaEl('9S'), p.x, p.y);
+
+  assert.equal(game.state.foundations[0].length, 1, 'no sube sola: subir ahora sería arriesgado');
+  assert.equal(game.state.tableau[0].length, 1);
+  assert.equal(cartaEl('9S').classList.contains('nope'), true, 'y se avisa en la propia carta');
+  assert.equal($('#banner').textContent, t('msg.subida.riesgo'));
+
+  // Arrastrándola sí sube: esa decisión es del jugador.
+  const hasta = centro(COLUMNA.foundation(0), 0);
+  puntero('pointerdown', cartaEl('9S'), p.x, p.y);
+  puntero('pointermove', cartaEl('9S'), hasta.x, hasta.y);
+  puntero('pointerup', cartaEl('9S'), hasta.x, hasta.y);
+  assert.equal(game.state.foundations[0].length, 2, 'arrastrada sube');
 });
 
 test('la carta que se mueve se levanta de la mesa mientras vuela', async () => {
@@ -1129,7 +1269,7 @@ test('el botón de rematar solo aparece cuando ya no queda nada que decidir', ()
   partidaResuelta();
   assert.equal(game.canAutoComplete, true);
   assert.equal(botonFinal().hidden, false, 'ahora sí se ofrece');
-  assert.match(botonFinal().textContent, /Rematar/);
+  assert.ok(botonFinal().textContent.includes(t('tool.rematar')), 'el rótulo sale de tool.rematar');
 });
 
 test('el botón remata la partida carta a carta y la da por ganada', async () => {
@@ -1139,7 +1279,7 @@ test('el botón remata la partida carta a carta y la da por ganada', async () =>
 
   botonFinal().click();
   assert.equal(botonFinal().dataset.corriendo, 'si', 'mientras corre ofrece detenerse');
-  assert.match(botonFinal().textContent, /Detener/);
+  assert.ok(botonFinal().textContent.includes(t('tool.detener')), 'y al correr, de tool.detener');
 
   const limite = Date.now() + 8000;
   while (game.status !== 'won' && Date.now() < limite) await new Promise((r) => setTimeout(r, 60));
@@ -1200,7 +1340,7 @@ test('sin service worker, el botón de actualizar se desactiva y se explica', ()
   assert.equal(globalThis.solitario.pwa.soportado, false);
   panels.openSettings();
   assert.equal($('#btn-update').disabled, true);
-  assert.match($('#update-hint').textContent, /sin conexión/i);
+  assert.equal($('#update-hint').textContent, t('app.update.nosoportado'));
   $('#dlg-settings').close();
 });
 

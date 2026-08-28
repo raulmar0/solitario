@@ -9,7 +9,7 @@
      El juego no pide nada a ningún servidor, así que puede ser así de cerrada. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' blob:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0f5132">
-<title>Solitario</title>
+<title data-i18n="app.titulo">Solitario</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -27,9 +27,9 @@
   <symbol id="i-nueva" viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h9a2 2 0 0 1 2 2v12"/></symbol>
   <symbol id="i-repetir" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 3v5h5"/></symbol>
   <symbol id="i-deshacer" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a6 6 0 0 1 0 12h-3"/></symbol>
-  <symbol id="i-rehacer" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a6 6 0 0 0 0 12h3"/></symbol>
   <symbol id="i-pista" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2h5c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z"/><path d="M9.5 19h5"/><path d="M10.5 21.5h3"/></symbol>
   <symbol id="i-auto" viewBox="0 0 24 24"><path d="M5 4h14"/><path d="M12 21V8"/><path d="m7 13 5-5 5 5"/></symbol>
+  <symbol id="i-pausa" viewBox="0 0 24 24"><path d="M9 5v14"/><path d="M15 5v14"/></symbol>
   <symbol id="i-records" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M8 5.5H5A3 3 0 0 0 8 9"/><path d="M16 5.5h3A3 3 0 0 1 16 9"/><path d="M12 13v4"/><path d="M9 20h6"/><path d="M10 17h4"/></symbol>
   <symbol id="i-ajustes" viewBox="0 0 24 24"><path d="M4 7h9"/><path d="M19 7h1"/><circle cx="16" cy="7" r="2.2"/><path d="M4 17h5"/><path d="M15 17h5"/><circle cx="12" cy="17" r="2.2"/></symbol>
   <symbol id="i-ayuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .9-1 1.6v.4"/><path d="M12 17.4h.01"/></symbol>
@@ -38,227 +38,269 @@
 <header class="topbar">
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">♠</span>
-    <h1>Solitario</h1>
+    <h1 data-i18n="app.titulo">Solitario</h1>
   </div>
 
   <dl class="scoreboard" aria-live="off">
-    <div class="stat"><dt>Puntos</dt><dd id="score">0</dd></div>
-    <div class="stat"><dt>Tiempo</dt><dd id="clock">00:00</dd></div>
-    <div class="stat"><dt>Jugadas</dt><dd id="moves">0</dd></div>
-    <div class="stat stat-wide"><dt>Reparto</dt><dd id="seed">—</dd></div>
+    <div class="stat"><dt data-i18n="hud.puntos">Puntos</dt><dd id="score">0</dd></div>
+    <!-- El aviso de pausa vive dentro de la caja del reloj: si el crono se para,
+         se entiende al mirar el número, no en otra esquina de la pantalla. -->
+    <div class="stat" id="stat-clock"><dt data-i18n="hud.tiempo">Tiempo</dt><dd id="clock">00:00</dd><span class="paused-flag" id="clock-paused" hidden><span aria-hidden="true">⏸</span> <span data-i18n="hud.pausada">En pausa</span></span></div>
+    <div class="stat"><dt data-i18n="hud.jugadas">Jugadas</dt><dd id="moves">0</dd></div>
+    <div class="stat"><dt data-i18n="hud.fundaciones">Fundaciones</dt><dd id="foundations" data-i18n="hud.fundaciones.valor" data-i18n-params='{"n":0}'>0/52</dd></div>
+    <!-- El reparto es un botón porque copia su enlace: compartir una mano es
+         escribir el número a mano si no. -->
+    <div class="stat stat-wide"><dt data-i18n="hud.reparto">Reparto</dt><dd><button type="button" class="seed-chip" id="seed" aria-label="Copiar el enlace de este reparto" data-i18n-aria-label="hud.reparto.copiar" data-i18n="hud.vacio">—</button></dd></div>
   </dl>
 
+  <button type="button" class="mode-chip" id="mode-chip" title="Modalidad de juego: toca para cambiarla en Ajustes" data-i18n-title="hud.modo.titulo"></button>
+
+  <!-- Cuánto queda para las 52. Ocupa la línea entera bajo el marcador: es un
+       vistazo, no un dato que haya que leer. -->
+  <div class="progress" id="progress" aria-hidden="true"><i></i></div>
+
   <button type="button" class="update-pill" id="btn-update-pill" hidden>
-    <span aria-hidden="true">↑</span> Versión nueva · Actualizar
+    <span aria-hidden="true">↑</span> <span data-i18n="app.update.pill">Versión nueva · Actualizar</span>
   </button>
 </header>
 
 <main class="table" id="table">
   <div class="board" id="board">
     <!-- huecos de las pilas; las cartas se colocan encima -->
-    <div class="slot slot-stock" data-pile="stock" title="Mazo (Espacio)"><span class="slot-mark" aria-hidden="true">↻</span></div>
+    <div class="slot slot-stock" data-pile="stock" title="Mazo (Espacio)" data-i18n-title="tool.mazo"><span class="slot-mark" aria-hidden="true">↻</span></div>
     <div class="slot slot-waste" data-pile="waste"></div>
     <div class="slot slot-foundation" data-pile="foundation" data-index="0"><span class="slot-mark" aria-hidden="true">♠</span></div>
     <div class="slot slot-foundation" data-pile="foundation" data-index="1"><span class="slot-mark red" aria-hidden="true">♥</span></div>
     <div class="slot slot-foundation" data-pile="foundation" data-index="2"><span class="slot-mark red" aria-hidden="true">♦</span></div>
     <div class="slot slot-foundation" data-pile="foundation" data-index="3"><span class="slot-mark" aria-hidden="true">♣</span></div>
-    <div class="slot slot-tableau" data-pile="tableau" data-index="0"></div>
-    <div class="slot slot-tableau" data-pile="tableau" data-index="1"></div>
-    <div class="slot slot-tableau" data-pile="tableau" data-index="2"></div>
-    <div class="slot slot-tableau" data-pile="tableau" data-index="3"></div>
-    <div class="slot slot-tableau" data-pile="tableau" data-index="4"></div>
-    <div class="slot slot-tableau" data-pile="tableau" data-index="5"></div>
-    <div class="slot slot-tableau" data-pile="tableau" data-index="6"></div>
+    <!-- La K del hueco recuerda la única regla que se olvida: ahí solo baja un rey. -->
+    <div class="slot slot-tableau" data-pile="tableau" data-index="0"><span class="slot-mark" aria-hidden="true">K</span></div>
+    <div class="slot slot-tableau" data-pile="tableau" data-index="1"><span class="slot-mark" aria-hidden="true">K</span></div>
+    <div class="slot slot-tableau" data-pile="tableau" data-index="2"><span class="slot-mark" aria-hidden="true">K</span></div>
+    <div class="slot slot-tableau" data-pile="tableau" data-index="3"><span class="slot-mark" aria-hidden="true">K</span></div>
+    <div class="slot slot-tableau" data-pile="tableau" data-index="4"><span class="slot-mark" aria-hidden="true">K</span></div>
+    <div class="slot slot-tableau" data-pile="tableau" data-index="5"><span class="slot-mark" aria-hidden="true">K</span></div>
+    <div class="slot slot-tableau" data-pile="tableau" data-index="6"><span class="slot-mark" aria-hidden="true">K</span></div>
     <div class="cards" id="cards"></div>
     <!-- Cuántas cartas quedan por robar. Va aparte y por encima de las cartas
          porque el hueco del mazo lo tapa su propio montón. -->
     <div class="stock-count" id="stock-count" aria-hidden="true"><span></span></div>
   </div>
   <button type="button" class="finish" id="btn-finish" hidden>
-    <span aria-hidden="true">✨</span> Rematar la partida
+    <span aria-hidden="true">✨</span> <span data-i18n="tool.rematar">Rematar la partida</span>
   </button>
   <p class="banner" id="banner" role="status" aria-live="polite"></p>
 </main>
 
-<nav class="tools" id="tools" aria-label="Acciones">
-  <button id="btn-new" class="tool" type="button" aria-label="Partida nueva (N)" title="Partida nueva (N)"><svg class="ico" aria-hidden="true"><use href="#i-nueva"/></svg><span class="rotulo">Nueva</span></button>
-  <button id="btn-restart" class="tool" type="button" aria-label="Repetir este reparto (R)" title="Repetir este reparto (R)"><svg class="ico" aria-hidden="true"><use href="#i-repetir"/></svg><span class="rotulo">Repetir</span></button>
-  <button id="btn-redo" class="tool" type="button" aria-label="Rehacer (Ctrl+Y)" title="Rehacer (Ctrl+Y)"><svg class="ico" aria-hidden="true"><use href="#i-rehacer"/></svg><span class="rotulo">Rehacer</span></button>
-  <button id="btn-hint" class="tool" type="button" aria-label="Pista (H)" title="Pista (H)"><svg class="ico" aria-hidden="true"><use href="#i-pista"/></svg><span class="rotulo">Pista</span></button>
-  <button id="btn-settings" class="tool" type="button" aria-label="Ajustes, récords y ayuda (,)" title="Ajustes, récords y ayuda (,)"><svg class="ico" aria-hidden="true"><use href="#i-ajustes"/></svg><span class="rotulo">Ajustes</span></button>
+<nav class="tools" id="tools" aria-label="Acciones" data-i18n-aria-label="tool.acciones">
+  <button id="btn-new" class="tool" type="button" aria-label="Partida nueva (N)" title="Partida nueva (N)" data-i18n-aria-label="tool.nueva" data-i18n-title="tool.nueva"><svg class="ico" aria-hidden="true"><use href="#i-nueva"/></svg><span class="rotulo" data-i18n="tool.nueva.corto">Nueva</span></button>
+  <button id="btn-restart" class="tool" type="button" aria-label="Repetir este reparto (R)" title="Repetir este reparto (R)" data-i18n-aria-label="tool.repetir" data-i18n-title="tool.repetir"><svg class="ico" aria-hidden="true"><use href="#i-repetir"/></svg><span class="rotulo" data-i18n="tool.repetir.corto">Repetir</span></button>
+  <button id="btn-undo" class="tool" type="button" aria-label="Deshacer (Ctrl+Z)" title="Deshacer (Ctrl+Z)" data-i18n-aria-label="tool.deshacer" data-i18n-title="tool.deshacer"><svg class="ico" aria-hidden="true"><use href="#i-deshacer"/></svg><span class="rotulo" data-i18n="tool.deshacer.corto">Deshacer</span></button>
+  <button id="btn-hint" class="tool" type="button" aria-label="Pista (H)" title="Pista (H)" data-i18n-aria-label="tool.pista" data-i18n-title="tool.pista"><svg class="ico" aria-hidden="true"><use href="#i-pista"/></svg><span class="rotulo" data-i18n="tool.pista.corto">Pista</span></button>
+  <button id="btn-settings" class="tool" type="button" aria-label="Ajustes, récords y ayuda (,)" title="Ajustes, récords y ayuda (,)" data-i18n-aria-label="tool.menu" data-i18n-title="tool.menu"><svg class="ico" aria-hidden="true"><use href="#i-ajustes"/></svg><span class="rotulo" data-i18n="tool.menu.corto">Menú</span></button>
 </nav>
 
 <dialog id="dlg-win" class="dlg dlg-win">
   <div class="win-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
-  <h2>¡Ganaste!</h2>
+  <h2 data-i18n="dlg.victoria.titulo">¡Ganaste!</h2>
   <dl class="win-stats">
-    <div><dt>Puntuación</dt><dd id="win-score">0</dd></div>
-    <div><dt>Tiempo</dt><dd id="win-time">00:00</dd></div>
-    <div><dt>Jugadas</dt><dd id="win-moves">0</dd></div>
+    <div><dt data-i18n="dlg.victoria.puntuacion">Puntuación</dt><dd id="win-score">0</dd></div>
+    <div><dt data-i18n="dlg.victoria.tiempo">Tiempo</dt><dd id="win-time">00:00</dd></div>
+    <div><dt data-i18n="dlg.victoria.jugadas">Jugadas</dt><dd id="win-moves">0</dd></div>
   </dl>
   <p class="win-note" id="win-note"></p>
   <div class="dlg-actions">
-    <button class="btn primary" data-action="new">Otra partida</button>
-    <button class="btn" data-action="stats">Ver récords</button>
-    <button class="btn ghost" data-close>Cerrar</button>
+    <button class="btn primary" data-action="new" data-i18n="dlg.victoria.otra">Otra partida</button>
+    <button class="btn" data-action="stats" data-i18n="dlg.victoria.records">Ver récords</button>
+    <button class="btn ghost" data-close data-i18n="dlg.cerrar">Cerrar</button>
   </div>
 </dialog>
 
 <dialog id="dlg-stuck" class="dlg dlg-stuck">
   <div class="stuck-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
-  <h2>Ya no hay posibilidad</h2>
+  <h2 data-i18n="dlg.bloqueo.titulo">La partida se ha atascado</h2>
   <p class="stuck-note" id="stuck-note"></p>
   <div class="dlg-actions">
-    <button class="btn primary" data-action="undo">Deshacer la última</button>
-    <button class="btn" data-action="restart">Repetir reparto</button>
-    <button class="btn" data-action="new">Partida nueva</button>
-    <button class="btn ghost" data-close>Cerrar</button>
+    <button class="btn primary" data-action="undo" data-i18n="dlg.bloqueo.deshacer">Deshacer la última</button>
+    <button class="btn" data-action="restart" data-i18n="dlg.bloqueo.repetir">Repetir reparto</button>
+    <button class="btn" data-action="new" data-i18n="dlg.bloqueo.nueva">Partida nueva</button>
+    <button class="btn ghost" data-close data-i18n="dlg.cerrar">Cerrar</button>
   </div>
 </dialog>
 
 
 <dialog id="dlg-settings" class="dlg dlg-wide">
   <header class="dlg-head">
-    <h2 id="panel-titulo">Ajustes</h2>
-    <button class="icon-btn" data-close aria-label="Cerrar">✕</button>
+    <h2 id="panel-titulo" data-i18n="dlg.titulo.ajustes">Ajustes</h2>
+    <button class="icon-btn" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar">✕</button>
   </header>
 
   <!-- Tres secciones en un mismo sitio: lo que se toca, lo que se ha jugado y
        cómo se juega. Antes eran tres diálogos y tres botones en la barra. -->
-  <div class="tabs" id="panel-tabs" role="tablist" aria-label="Secciones">
-    <button class="tab" type="button" role="tab" id="tab-ajustes" aria-controls="panel-ajustes" aria-selected="true">Ajustes</button>
-    <button class="tab" type="button" role="tab" id="tab-records" aria-controls="panel-records" aria-selected="false" tabindex="-1">Récords</button>
-    <button class="tab" type="button" role="tab" id="tab-ayuda" aria-controls="panel-ayuda" aria-selected="false" tabindex="-1">Ayuda</button>
+  <div class="tabs" id="panel-tabs" role="tablist" aria-label="Secciones" data-i18n-aria-label="dlg.secciones">
+    <button class="tab" type="button" role="tab" id="tab-ajustes" aria-controls="panel-ajustes" aria-selected="true" data-i18n="dlg.tab.ajustes">Ajustes</button>
+    <button class="tab" type="button" role="tab" id="tab-records" aria-controls="panel-records" aria-selected="false" tabindex="-1" data-i18n="dlg.tab.records">Récords</button>
+    <button class="tab" type="button" role="tab" id="tab-ayuda" aria-controls="panel-ayuda" aria-selected="false" tabindex="-1" data-i18n="dlg.tab.ayuda">Ayuda</button>
   </div>
+
+  <!-- Lo que pasa dentro del diálogo se cuenta dentro del diálogo: el banner del
+       tablero queda tapado mientras está abierto. -->
+  <p class="dlg-status" id="dlg-status" role="status" aria-live="polite"></p>
 
   <section class="panel" id="panel-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" tabindex="0">
     <div class="field">
-      <span class="field-label">Cartas por robo</span>
-      <div class="seg" role="radiogroup" aria-label="Cartas por robo">
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="1">De una</button>
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="3">De tres</button>
+      <span class="field-label" data-i18n="settings.robo">Cartas por robo</span>
+      <div class="seg" role="radiogroup" aria-label="Cartas por robo" data-i18n-aria-label="settings.robo">
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="1" data-i18n="settings.robo.1">De una</button>
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="3" data-i18n="settings.robo.3">De tres</button>
       </div>
-      <p class="hint-text">De tres es la variante difícil: en Vegas solo permite tres pasadas al mazo.</p>
+      <p class="hint-text" data-i18n="settings.robo.nota">De tres es la variante difícil: en Vegas solo permite tres pasadas al mazo.</p>
     </div>
 
     <div class="field">
-      <span class="field-label">Puntuación</span>
-      <div class="seg" role="radiogroup" aria-label="Puntuación">
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="standard">Estándar</button>
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="vegas">Vegas</button>
+      <span class="field-label" data-i18n="settings.puntuacion">Puntuación</span>
+      <div class="seg" role="radiogroup" aria-label="Puntuación" data-i18n-aria-label="settings.puntuacion">
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="standard" data-i18n="modo.standard">Estándar</button>
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="vegas" data-i18n="modo.vegas">Vegas</button>
       </div>
       <p class="hint-text" id="scoring-hint"></p>
     </div>
 
-    <label class="switch"><input type="checkbox" data-pref="timed"><span>Contrarreloj <em>(−2 puntos cada 10 s y bonificación por ganar rápido)</em></span></label>
-    <label class="switch"><input type="checkbox" data-pref="autoSafe"><span>Subir solas las cartas que ya no estorban</span></label>
-    <label class="switch"><input type="checkbox" data-pref="solvableOnly"><span>Repartir solo manos con solución comprobada</span></label>
-    <label class="switch"><input type="checkbox" data-pref="animations"><span>Animaciones</span></label>
-    <label class="switch"><input type="checkbox" data-pref="sound"><span>Sonidos <em>(los clics de las cartas y los avisos)</em></span></label>
+    <label class="switch"><input type="checkbox" data-pref="timed"><span data-i18n-html="settings.contrarreloj">Contrarreloj <em>(−2 puntos cada 10 s y bonificación por ganar rápido)</em></span></label>
+    <label class="switch"><input type="checkbox" data-pref="autoSafe"><span data-i18n="settings.autosubir">Subir solas las cartas que ya no estorban</span></label>
+    <label class="switch"><input type="checkbox" data-pref="solvableOnly"><span data-i18n="settings.solucionables">Repartir solo manos con solución comprobada</span></label>
+    <label class="switch"><input type="checkbox" data-pref="animations"><span data-i18n="settings.animaciones">Animaciones</span></label>
+    <label class="switch"><input type="checkbox" data-pref="sound"><span data-i18n-html="settings.sonidos">Sonidos <em>(los clics de las cartas y los avisos)</em></span></label>
 
     <div class="field">
-      <label class="field-label" for="pref-name">Tu nombre <em>(se guarda con cada récord)</em></label>
-      <input id="pref-name" class="text-input" data-pref="playerName" type="text" maxlength="24" placeholder="Anónimo">
+      <label class="field-label" for="pref-name" data-i18n-html="settings.nombre">Tu nombre <em>(se guarda con cada récord)</em></label>
+      <input id="pref-name" class="text-input" data-pref="playerName" type="text" maxlength="24" placeholder="Anónimo" data-i18n-placeholder="settings.nombre.placeholder">
     </div>
 
     <div class="field">
-      <span class="field-label">Tema</span>
-      <div class="seg" role="radiogroup" aria-label="Tema">
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="auto">Automático</button>
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="light">Claro</button>
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="dark">Oscuro</button>
+      <span class="field-label" data-i18n="settings.tema">Tema</span>
+      <div class="seg" role="radiogroup" aria-label="Tema" data-i18n-aria-label="settings.tema">
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="auto" data-i18n="settings.tema.auto">Automático</button>
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="light" data-i18n="settings.tema.claro">Claro</button>
+        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="dark" data-i18n="settings.tema.oscuro">Oscuro</button>
       </div>
     </div>
 
+    <!-- Los nombres de los idiomas van en su propio idioma: quien se ha perdido
+         en una lengua que no entiende reconoce el suyo igual. -->
     <div class="field">
-      <label class="field-label" for="seed-input">Jugar un reparto concreto</label>
+      <label class="field-label" for="pref-lang" data-i18n="settings.idioma">Idioma</label>
+      <select id="pref-lang" class="text-input" data-pref="lang">
+        <option value="auto" data-i18n="settings.idioma.auto">Automático</option>
+        <option value="es">Español</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+        <option value="pt">Português</option>
+        <option value="ko">한국어</option>
+      </select>
+    </div>
+
+    <label class="switch"><input type="checkbox" data-pref="fourColor"><span data-i18n-html="settings.cuatroColores">Baraja de cuatro colores <em>(cada palo con su propio color)</em></span></label>
+    <label class="switch"><input type="checkbox" data-pref="haptics"><span data-i18n-html="settings.vibracion">Vibración <em>(un toque corto cuando una carta cae en su sitio)</em></span></label>
+
+    <div class="field">
+      <label class="field-label" for="seed-input" data-i18n="settings.reparto">Jugar un reparto concreto</label>
       <div class="row">
-        <input id="seed-input" class="text-input" type="number" min="1" max="999999" placeholder="p. ej. 1234" inputmode="numeric">
-        <button class="btn" id="btn-seed-go">Repartir</button>
+        <input id="seed-input" class="text-input" type="number" min="1" max="999999" placeholder="p. ej. 1234" inputmode="numeric" data-i18n-placeholder="settings.reparto.placeholder">
+        <button class="btn" id="btn-seed-go" data-i18n="settings.reparto.boton">Repartir</button>
       </div>
-      <p class="hint-text">El mismo número reparte siempre las mismas cartas. Útil para competir con alguien.</p>
+      <p class="field-error" id="seed-error" hidden></p>
+      <p class="hint-text" data-i18n="settings.reparto.nota">El mismo número reparte siempre las mismas cartas. Útil para competir con alguien.</p>
     </div>
 
     <div class="field">
-      <span class="field-label">Aplicación</span>
+      <span class="field-label" data-i18n="settings.aplicacion">Aplicación</span>
 
       <div class="app-row">
         <div class="app-row-info">
           <strong id="app-version">v—</strong>
-          <p class="hint-text" id="update-hint">Se instala en el dispositivo y funciona sin conexión.</p>
+          <p class="hint-text" id="update-hint" data-i18n="app.update.nota">Se instala en el dispositivo y funciona sin conexión.</p>
         </div>
-        <button class="btn small" id="btn-update" type="button">Buscar actualización</button>
+        <button class="btn small" id="btn-update" type="button" data-i18n="app.update.buscar">Buscar actualización</button>
       </div>
 
       <div class="app-row" id="install-row" hidden>
         <div class="app-row-info">
-          <strong>Instalar en el dispositivo</strong>
-          <p class="hint-text" id="install-hint">Se abre a pantalla completa, como una aplicación más.</p>
+          <strong data-i18n="app.install.titulo">Instalar en el dispositivo</strong>
+          <p class="hint-text" id="install-hint" data-i18n="app.install.nota">Se abre a pantalla completa, como una aplicación más.</p>
         </div>
-        <button class="btn small primary" id="btn-install" type="button">Instalar</button>
+        <button class="btn small primary" id="btn-install" type="button" data-i18n="app.install.boton">Instalar</button>
       </div>
     </div>
   <div class="field">
-    <span class="field-label">Tus datos</span>
-    <p class="hint-text">Los récords y los ajustes viven en este navegador, en tu equipo. Aquí puedes llevártelos o borrarlos.</p>
+    <span class="field-label" data-i18n="settings.datos">Tus datos</span>
+    <p class="hint-text" data-i18n="settings.datos.nota">Los récords y los ajustes viven en este navegador, en tu equipo. Aquí puedes llevártelos o borrarlos.</p>
     <div class="row wrap">
-      <button class="btn small" id="btn-export">Exportar</button>
-      <button class="btn small" id="btn-import">Importar</button>
-      <button class="btn small danger" id="btn-wipe">Borrar todo</button>
+      <button class="btn small" id="btn-export" data-i18n="settings.datos.exportar">Exportar</button>
+      <button class="btn small" id="btn-import" data-i18n="settings.datos.importar">Importar</button>
+      <button class="btn small danger" id="btn-wipe" data-i18n="settings.datos.borrar">Borrar todo</button>
       <input type="file" id="import-file" accept="application/json" hidden>
     </div>
   </div>
   </section>
 
   <section class="panel" id="panel-records" role="tabpanel" aria-labelledby="tab-records" tabindex="0" hidden>
-    <div class="tabs" id="stats-tabs" role="tablist" aria-label="Modalidad"></div>
+    <div class="tabs" id="stats-tabs" role="tablist" aria-label="Modalidad" data-i18n-aria-label="stats.modalidad"></div>
 
     <div id="stats-panel" role="tabpanel" tabindex="0">
       <dl class="grid-stats" id="stats-grid"></dl>
 
-      <div id="bank-row" class="bank-row" hidden>
-        <span>Banca de Vegas acumulada: <strong id="bank-value">0 $</strong></span>
-        <button class="btn small ghost" id="btn-reset-bank">Poner a cero</button>
+      <!-- La línea de puntuaciones dice de un vistazo si uno está mejorando;
+           con menos de tres partidas no dice nada y se queda escondida. -->
+      <div class="spark-wrap" id="spark-wrap" hidden>
+        <h3 data-i18n="stats.evolucion">Evolución</h3>
+        <svg class="spark" id="stats-spark" viewBox="0 0 300 64" preserveAspectRatio="none" role="img"></svg>
+        <p class="hint-text" id="spark-note"></p>
       </div>
 
-      <h3>Mejores partidas</h3>
+      <div id="bank-row" class="bank-row" hidden>
+        <span><span data-i18n="stats.banca">Banca de Vegas acumulada:</span> <strong id="bank-value">0 $</strong></span>
+        <button class="btn small ghost" id="btn-reset-bank" data-i18n="stats.banca.cero">Poner a cero</button>
+      </div>
+
+      <h3 data-i18n="stats.mejores">Mejores partidas</h3>
       <div class="table-wrap">
         <table class="scores" id="scores-table">
-          <thead><tr><th>#</th><th>Puntos</th><th>Resultado</th><th>Tiempo</th><th>Jugadas</th><th>Reparto</th><th>Fecha</th></tr></thead>
+          <thead><tr><th data-i18n="stats.col.pos">#</th><th data-i18n="stats.col.puntos">Puntos</th><th data-i18n="stats.col.resultado">Resultado</th><th data-i18n="stats.col.tiempo">Tiempo</th><th data-i18n="stats.col.jugadas">Jugadas</th><th data-i18n="stats.col.reparto">Reparto</th><th data-i18n="stats.col.fecha">Fecha</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <p class="empty" id="scores-empty" hidden>Aún no hay partidas guardadas en esta modalidad. Juega una y aparecerá aquí.</p>
+      <p class="empty" id="scores-empty" hidden data-i18n="stats.vacio">Aún no hay partidas guardadas en esta modalidad. Juega una y aparecerá aquí.</p>
     </div>
   </section>
 
   <section class="panel" id="panel-ayuda" role="tabpanel" aria-labelledby="tab-ayuda" tabindex="0" hidden>
-    <p>Sube las 52 cartas a las cuatro pilas de arriba, cada una de un palo y del as al rey.</p>
+    <p data-i18n="help.objetivo">Sube las 52 cartas a las cuatro pilas de arriba, cada una de un palo y del as al rey.</p>
     <ul class="rules">
-      <li>En las columnas se apila en orden <strong>descendente</strong> y <strong>alternando color</strong>.</li>
-      <li>En un hueco vacío solo entra un <strong>rey</strong> (con toda su secuencia detrás).</li>
-      <li><strong>Pica una carta</strong> y va sola a donde pueda: primero a su pila de arriba y, si no, a la columna que le venga.</li>
-      <li><strong>Arrástrala</strong> cuando quieras elegir tú el sitio, por ejemplo entre dos huecos libres.</li>
-      <li>Al destapar una carta se le da la vuelta sola.</li>
+      <li data-i18n-html="help.regla.orden">En las columnas se apila en orden <strong>descendente</strong> y <strong>alternando color</strong>.</li>
+      <li data-i18n-html="help.regla.hueco">En un hueco vacío solo entra un <strong>rey</strong> (con toda su secuencia detrás).</li>
+      <li data-i18n-html="help.regla.toque"><strong>Pica una carta</strong> y va sola a donde pueda: primero a su pila de arriba y, si no, a la columna que le venga.</li>
+      <li data-i18n-html="help.regla.arrastre"><strong>Arrástrala</strong> cuando quieras elegir tú el sitio, por ejemplo entre dos huecos libres.</li>
+      <li data-i18n="help.regla.voltear">Al destapar una carta se le da la vuelta sola.</li>
     </ul>
-    <h3>Atajos</h3>
+    <h3 data-i18n="help.atajos">Atajos</h3>
     <dl class="keys">
-      <div><dt>Espacio</dt><dd>robar del mazo</dd></div>
-      <div><dt>1…7</dt><dd>subir la carta de esa columna</dd></div>
-      <div><dt>0</dt><dd>subir la carta del descarte</dd></div>
-      <div><dt>Ctrl+Z / Ctrl+Y</dt><dd>deshacer y rehacer</dd></div>
-      <div><dt>H</dt><dd>pista</dd></div>
-      <div><dt>A</dt><dd>subir automáticamente</dd></div>
-      <div><dt>N / R</dt><dd>partida nueva / repetir reparto</dd></div>
-      <div><dt>, / P / ?</dt><dd>ajustes, récords y ayuda</dd></div>
-      <div><dt>Esc</dt><dd>cancelar el arrastre</dd></div>
+      <div><dt data-i18n="help.tecla.espacio">Espacio</dt><dd data-i18n="help.atajo.espacio">robar del mazo</dd></div>
+      <div><dt data-i18n="help.tecla.columnas">1…7</dt><dd data-i18n="help.atajo.columnas">subir la carta de esa columna</dd></div>
+      <div><dt data-i18n="help.tecla.descarte">0</dt><dd data-i18n="help.atajo.descarte">subir la carta del descarte</dd></div>
+      <div><dt data-i18n="help.tecla.deshacer">Ctrl+Z</dt><dd data-i18n="help.atajo.deshacer">deshacer</dd></div>
+      <div><dt data-i18n="help.tecla.pista">H</dt><dd data-i18n="help.atajo.pista">pista</dd></div>
+      <div><dt data-i18n="help.tecla.auto">A</dt><dd data-i18n="help.atajo.auto">subir automáticamente</dd></div>
+      <div><dt data-i18n="help.tecla.partida">N / R</dt><dd data-i18n="help.atajo.partida">partida nueva / repetir reparto</dd></div>
+      <div><dt data-i18n="help.tecla.menu">, / P / ?</dt><dd data-i18n="help.atajo.menu">ajustes, récords y ayuda</dd></div>
+      <div><dt data-i18n="help.tecla.cancelar">Esc</dt><dd data-i18n="help.atajo.cancelar">cancelar el arrastre</dd></div>
     </dl>
-    <h3>Puntuación</h3>
-    <p class="hint-text"><strong>Estándar:</strong> +10 por carta a las pilas de arriba, +5 al destapar una carta o traer una del descarte a una columna, −15 al bajar una carta de arriba, −100 al reciclar el mazo robando de una. <strong>Vegas:</strong> pagas 52 $ de entrada y cobras 5 $ por cada carta que subas; el saldo se acumula entre partidas.</p>
-    <p class="hint-text">Todo se guarda en este navegador, en tu equipo. No sale nada a ningún servidor.</p>
+    <h3 data-i18n="help.puntuacion">Puntuación</h3>
+    <p class="hint-text" data-i18n-html="help.puntuacion.detalle"><strong>Estándar:</strong> +10 por carta a las pilas de arriba, +5 al destapar una carta o traer una del descarte a una columna, −15 al bajar una carta de arriba, −100 al reciclar el mazo robando de una. <strong>Vegas:</strong> pagas 52 $ de entrada y cobras 5 $ por cada carta que subas; el saldo se acumula entre partidas.</p>
+    <p class="hint-text" data-i18n="help.privacidad">Todo se guarda en este navegador, en tu equipo. No sale nada a ningún servidor.</p>
   </section>
 
-  <footer class="dlg-foot"><button class="btn primary" data-close>Listo</button></footer>
+  <footer class="dlg-foot"><button class="btn primary" data-close data-i18n="dlg.listo">Listo</button></footer>
 </dialog>
 
 

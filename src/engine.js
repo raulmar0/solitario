@@ -273,34 +273,82 @@ export function usefulMoves(state, { includeFoundationToTableau = false } = {}) 
   });
 }
 
-/** Un movimiento útil para la pista, el que más adelante deje la partida. */
-export function hint(state) {
-  const moves = usefulMoves(state);
-
-  const rank = (m) => {
-    if (m.to.pile === PILE.FOUNDATION) return isSafeToFoundation(state, top(pileOf(state, m.from))) ? 0 : 2;
-    if (m.from.pile === PILE.TABLEAU) {
-      const src = state.tableau[m.from.index];
-      const under = src[src.length - m.count - 1];
-      if (under && !under.faceUp) return 1; // destapa una carta: lo mejor después de subir a fundación
-    }
-    if (m.from.pile === PILE.WASTE) return 3;
-    return 4;
-  };
-
-  moves.sort((a, b) => rank(a) - rank(b));
-  if (moves.length) return moves[0];
-  if (isLegal(state, { type: 'draw' })) return { type: 'draw' };
-  if (isLegal(state, { type: 'recycle' })) return { type: 'recycle' };
-  return null;
+/**
+ * ¿Es de los paseos entre columnas? Legal, reversible y sin progreso directo:
+ * ni destapa una carta, ni sube a fundación, ni saca nada del descarte. Solo
+ * reordena lo que ya está sobre la mesa.
+ */
+export function esLateral(state, m) {
+  if (m.from.pile !== PILE.TABLEAU || m.to.pile !== PILE.TABLEAU) return false;
+  const src = state.tableau[m.from.index];
+  const under = src[src.length - (m.count ?? 1) - 1];
+  return !under || under.faceUp;
 }
 
 /**
- * Sin jugadas que sirvan y sin poder robar. Es un aviso, no un final: bajar una carta
+ * Huella canónica del estado: misma posición de cartas, misma huella. No revela
+ * qué carta hay tapada, solo que la hay: el recomendador no puede hacer trampas
+ * con ella. Las columnas se ordenan porque dos columnas intercambiadas son la
+ * misma posición a efectos de juego.
+ */
+export function huellaEstado(s) {
+  // De una carta tapada solo se apunta que está: escribir su id haría que dos
+  // posiciones idénticas para el jugador dieran huellas distintas, y de paso
+  // filtraría por la API pública lo que el recomendador no debe mirar.
+  const col = (p) => p.map((c) => (c.faceUp ? c.id : '·')).join(' ');
+  return JSON.stringify([s.foundations.map(col), s.waste.map((c) => c.id), s.tableau.map(col).sort()]);
+}
+
+const SALIDA_LIMITE = 800;
+
+/**
+ * ¿Alguno de los paseos entre columnas lleva a una jugada de verdad (destapar,
+ * subir a fundación o jugar el descarte)? Recorre en anchura los paseos y
+ * devuelve el primero del camino más corto hacia esa jugada. Si el paseo se
+ * enrevesa más de la cuenta se da la salida por buena: dar por muerta una
+ * partida viva sería peor que al revés.
+ *
+ * `ignorar(estado, jugada)` permite descartar jugadas que no cuentan como
+ * salida. Lo usa el recomendador al valorar un rescate: volver a subir la carta
+ * que se acaba de bajar es legal, pero no desatasca nada, es deshacer el rescate.
+ */
+export function buscarSalida(state, { ignorar = null } = {}) {
+  const vale = (s, m) => !esLateral(s, m) && !(ignorar && ignorar(s, m));
+  const raiz = usefulMoves(state);
+  if (raiz.some((m) => vale(state, m))) return { hay: true, paso: null };
+  if (!raiz.length) return { hay: false, paso: null };
+
+  const visto = new Set([huellaEstado(state)]);
+  let frontera = [{ s: state, paso: null }];
+  while (frontera.length) {
+    const siguiente = [];
+    for (const { s, paso } of frontera) {
+      for (const m of usefulMoves(s)) {
+        if (!esLateral(s, m)) continue;
+        const r = applyMove(s, m);
+        if (!r) continue;
+        const h = huellaEstado(r.state);
+        if (visto.has(h)) continue;
+        visto.add(h);
+        if (visto.size > SALIDA_LIMITE) return { hay: true, paso: null };
+        const p = paso ?? m;
+        if (usefulMoves(r.state).some((x) => vale(r.state, x))) return { hay: true, paso: p };
+        siguiente.push({ s: r.state, paso: p });
+      }
+    }
+    frontera = siguiente;
+  }
+  return { hay: false, paso: null };
+}
+
+/**
+ * Sin jugadas que sirvan y sin poder robar. Los paseos entre columnas aquí no
+ * cuentan como jugadas: solo si alguno desencadena destapar, subir o jugar el
+ * descarte. Es un aviso, no un final: bajar una carta
  * de las fundaciones sigue siendo legal y el controlador deja seguir jugando.
  */
 export function isStuck(state) {
   if (isWon(state)) return false;
   if (state.stock.length || isLegal(state, { type: 'recycle' })) return false;
-  return usefulMoves(state).length === 0;
+  return !buscarSalida(state).hay;
 }

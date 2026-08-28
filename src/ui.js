@@ -3,12 +3,40 @@
 // así el navegador anima cada movimiento sin que haya que orquestar nada.
 
 import { RANK_LABEL, SUIT_GLYPH, isRed } from './cards.js';
+import * as advisor from './advisor.js';
 import * as engine from './engine.js';
+import * as motion from './motion.js';
 import { PILE } from './engine.js';
 
 const DRAG_THRESHOLD = 5;     // px antes de considerar que se está arrastrando
 const DOUBLE_TAP_MS = 320;
 const REPARTO_PASO = 25;      // ms entre carta y carta al repartir
+const BUMP_MS = 320;          // lo que dura el salto del contador del mazo
+/**
+ * Radio de rescate del toque. En las pantallas estrechas las columnas quedan a
+ * un pelo y el dedo cae en el filo de la carta de al lado, casi siempre una
+ * tapada: si a menos de esto hay una carta jugable, se entiende que iba a por
+ * ella. Más ancho empezaría a mover cartas que nadie ha pedido.
+ */
+const CERCANIA = 22;
+/**
+ * Ancho mínimo de carta: los 44 px que pide Apple para un objetivo táctil. Por
+ * debajo de eso el dedo deja de acertar y arrastrar se vuelve lotería.
+ *
+ * Es un suelo para lo que encoge por ALTO, no una promesa absoluta: siete
+ * columnas de 44 px con sus huecos piden 354 px y hay teléfonos de 320, así que
+ * a lo ancho manda lo que cabe — antes una carta estrecha que una barra de
+ * desplazamiento. Ahí el objetivo lo repone `cartaMasCercana`, que rescata el
+ * toque que cae en el filo de la columna de al lado.
+ */
+const ANCHO_MIN = 44;
+// Escalones de una columna, en fracción del alto de carta: lo que asoma de una
+// carta tapada y lo que asoma de una destapada, que enseña rango y palo.
+const PASO_ABAJO = 0.1;
+const PASO_ARRIBA = 0.24;
+// Hasta un tercio del escalón las cartas se siguen distinguiendo; por debajo son
+// una mancha. Es el suelo antes de empezar a encoger la carta entera.
+const ESCALON_MIN = 0.34;
 // Reserva por si el navegador no sabe resolver la variable de CSS. Tiene que
 // coincidir con --card-speed en styles.css; hay una prueba que lo vigila.
 export const VUELO_POR_DEFECTO = 324;
@@ -35,7 +63,15 @@ export const COLUMNA = {
   stock: 6,
 };
 
-export function createBoard({ root, game, onMessage = () => {}, onNegar = () => {} }) {
+/**
+ * El tablero no escribe ni una frase: `onMessage(clave, params, opciones)` recibe
+ * claves de traducción y quien las reciba las traduce. `onDropIlegal({from, to,
+ * count})` es opcional y avisa de que el jugador ha soltado donde no se podía,
+ * para poder explicarle la regla en vez de devolverle la carta sin más.
+ */
+export function createBoard({
+  root, game, onMessage = () => {}, onNegar = () => {}, onDropIlegal = () => {},
+}) {
   const layer = root.querySelector('#cards');
   const contador = root.querySelector('#stock-count');
   const slots = [...root.querySelectorAll('.slot')];
@@ -48,6 +84,9 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
   let relojes = [];            // temporizadores del reparto
   let volando = new Map();     // id -> temporizador; mientras vuela, la carta va arriba del todo
   let posiciones = new Map();  // id -> {x, y} del último pintado, para saber qué se ha movido
+  let resaltada = null;        // carta que el ratón señala sin llegar a pulsarla
+  let bumpTimer = null;
+  let ultimoMazo = null;       // cuántas cartas tenía el mazo la última vez que se pintó
 
   // --- creación de las cartas (una sola vez) ---
   for (const suit of ['S', 'H', 'D', 'C']) {
@@ -57,6 +96,7 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
       const glyph = SUIT_GLYPH[suit];
       el.className = `card${isRed(suit) ? ' red' : ''}${rank > 10 ? ' court' : ''}`;
       el.dataset.id = `${label}${suit}`;
+      el.dataset.suit = suit;      // la baraja de cuatro colores se pinta por palo desde el CSS
       el.innerHTML =
         '<div class="back"></div>'
         + '<div class="face">'
@@ -74,34 +114,110 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
     slots.find((s) => s.dataset.pile === pile && (index == null || Number(s.dataset.index) === index));
 
   // --- medidas ---
-  function measure() {
+
+  /** El aire entre la fila de arriba y las columnas, que va con el alto de carta. */
+  const huecoFila = (alto) => Math.max(9, alto * 0.13);
+
+  /**
+   * Lo que pide en escalones la columna más larga, en múltiplos del alto de
+   * carta. Es la única parte del tablero que crece durante la partida, y por eso
+   * se mide aparte de la talla de la carta.
+   */
+  function escalonesNecesarios(state) {
+    let peor = 0;
+    for (const pila of state?.tableau ?? []) {
+      const abajo = pila.filter((c) => !c.faceUp).length;
+      const arriba = pila.length - abajo;
+      // Cada carta se apoya en la anterior, así que el escalón lo pone la de debajo.
+      const pasos = arriba
+        ? abajo * PASO_ABAJO + (arriba - 1) * PASO_ARRIBA
+        : Math.max(0, abajo - 1) * PASO_ABAJO;
+      if (pasos > peor) peor = pasos;
+    }
+    return peor;
+  }
+
+  const numero = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+
+  /**
+   * El alto que le queda de verdad al tablero: lo que mide su contenedor menos
+   * su relleno y menos lo que ocupan sus hermanos —el cartel de avisos, que
+   * siempre reserva su línea, y el botón de rematar cuando aparece—. Antes se
+   * descontaba un 30 fijo que solo cubría el relleno, y en un móvil apaisado el
+   * tablero pedía 69 px más de los que había: seis cartas quedaban por debajo
+   * del borde, y como el tapete no se desplaza, fuera del alcance del dedo.
+   */
+  function altoDisponible(host) {
+    const cs = window.getComputedStyle(host);
+    let libre = host.clientHeight - numero(cs.paddingTop) - numero(cs.paddingBottom);
+    for (const hermano of host.children) {
+      // `offsetParent` nulo es «no se está pintando»: ni el botón oculto ni,
+      // en jsdom, ningún hermano. Ahí manda el alto del contenedor y ya está.
+      if (hermano === root || hermano.hidden || hermano.offsetParent === null) continue;
+      const hs = window.getComputedStyle(hermano);
+      libre -= hermano.offsetHeight + numero(hs.marginTop) + numero(hs.marginBottom);
+    }
+    return libre;
+  }
+
+  function measure(state) {
     const host = root.parentElement;
-    // El suelo es solo para que un contenedor sin medir (0 px) no dé cartas
+    // Los suelos son solo para que un contenedor sin medir (0 px) no dé cartas
     // negativas: por encima de eso manda siempre lo que hay, que si no el
-    // tablero se salía de las pantallas más estrechas.
+    // tablero se salía de la pantalla.
     const availW = Math.max(140, host.clientWidth - 2 * MARGEN_ANIM);
-    const availH = Math.max(320, host.clientHeight - 30);
+    const availH = Math.max(120, altoDisponible(host));
 
     const gap = Math.max(5, Math.min(13, availW * 0.013));
     const cabeALoAncho = (availW - 6 * gap) / 7;
     let cw = Math.min(cabeALoAncho, 104);
     let ch = cw * 1.4;
-    const rowGap = Math.max(9, ch * 0.13);
-    // Reservamos sitio para una columna razonablemente larga; si no cabe, se encogen las cartas.
-    const needed = ch + rowGap + ch + 6.5 * (ch * 0.24);
-    if (needed > availH) {
-      // Encogen por alto, pero nunca hasta ser más anchas de lo que cabe.
-      cw = Math.min(cabeALoAncho, Math.max(40, cw * (availH / needed)));
+    // Reserva para una columna razonablemente larga: así la talla de la carta la
+    // decide la pantalla y no la partida, y las cartas no cambian de tamaño a
+    // media jugada. Lo que de verdad haya sobre la mesa se ajusta luego.
+    const reserva = 2 * ch + huecoFila(ch) + 6.5 * (ch * PASO_ARRIBA);
+    if (reserva > availH) {
+      // Encogen por alto, pero nunca más anchas de lo que cabe ni por debajo del
+      // objetivo táctil: una carta más estrecha que la yema no se puede coger.
+      cw = Math.min(cabeALoAncho, Math.max(ANCHO_MIN, cw * (availH / reserva)));
       ch = cw * 1.4;
     }
-    return { cw, ch, gap, rowGap: Math.max(9, ch * 0.13), tableauY: ch + Math.max(9, ch * 0.13) };
+
+    // Y ahora, la columna que de verdad hay. Primero se aprietan los escalones
+    // —solaparse un poco más se sigue leyendo— y solo si con ellos al mínimo
+    // sigue sin caber se encoge la carta: el tablero no hace scroll.
+    const escalones = escalonesNecesarios(state);
+    const alto = (c, k) => 2 * c + huecoFila(c) + escalones * k * c;
+    const apretar = (c) => (availH - 2 * c - huecoFila(c)) / (escalones * c);
+    let factor = 1;
+    if (escalones > 0 && alto(ch, 1) > availH) {
+      factor = Math.min(1, Math.max(ESCALON_MIN, apretar(ch)));
+      if (alto(ch, factor) > availH) {
+        // Se despeja el alto de carta que cabe, con las dos ramas del hueco de
+        // la fila: el 13 % y el suelo de 9 px.
+        const base = 2 + escalones * factor;
+        let cabe = availH / (base + 0.13);
+        if (cabe * 0.13 < 9) cabe = (availH - 9) / base;
+        cw = Math.min(cw, Math.max(ANCHO_MIN, cabe / 1.4));
+        ch = cw * 1.4;
+        // Con la carta ya en su mínimo solo queda apretar más los escalones:
+        // antes un solapamiento feo que una barra de desplazamiento.
+        if (alto(ch, factor) > availH) factor = Math.max(0, apretar(ch));
+      }
+    }
+
+    const rowGap = huecoFila(ch);
+    return {
+      cw, ch, gap, rowGap, tableauY: ch + rowGap,
+      stepDown: ch * PASO_ABAJO * factor, stepUp: ch * PASO_ARRIBA * factor,
+    };
   }
 
   const colX = (i, m) => i * (m.cw + m.gap);
 
   /** Dónde va cada carta y cuáles se pueden coger. */
   function computeLayout(state) {
-    const m = measure();
+    const m = measure(state);
     // Atascado es solo un aviso: se sigue pudiendo coger cartas (bajar una de la
     // fundación al tableau suele ser justo lo que desatasca la partida).
     const enJuego = game.status === 'playing' || game.status === 'stuck';
@@ -145,23 +261,11 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
 
     state.tableau.forEach((pile, index) => {
       const x = colX(index, m);
-      const downs = pile.filter((c) => !c.faceUp).length;
-      const ups = pile.length - downs;
-      let stepDown = m.ch * 0.1;
-      let stepUp = m.ch * 0.24;
-      const room = Math.max(m.ch * 2.2, root.clientHeight - m.tableauY);
-      const needed = m.ch + downs * stepDown + Math.max(0, ups - 1) * stepUp;
-      if (needed > room && needed > m.ch) {
-        const k = (room - m.ch) / (needed - m.ch);
-        stepDown *= k;
-        stepUp *= k;
-      }
-
+      // Los escalones ya vienen ajustados de `measure`, y son los mismos para las
+      // siete columnas: apretar solo la larga las dejaría descuadradas entre sí.
       let y = m.tableauY;
-      let firstUp = -1;
       pile.forEach((card, i) => {
-        if (i > 0) y += pile[i - 1].faceUp ? stepUp : stepDown;
-        if (card.faceUp && firstUp < 0) firstUp = i;
+        if (i > 0) y += pile[i - 1].faceUp ? m.stepUp : m.stepDown;
         positions.set(card.id, {
           x, y, z: z++, faceUp: card.faceUp,
           playable: card.faceUp && enJuego && engine.isValidRun(pile, i),
@@ -180,7 +284,7 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
    * z-index natural es el del sitio al que va, y por el camino cruza columnas
    * que están más arriba en la pila. Se le sube mientras dura la transición.
    */
-  function alzar(id) {
+  function alzar(id, duracion = vueloMs()) {
     clearTimeout(volando.get(id));
     els.get(id)?.classList.add('volando');
     volando.set(id, setTimeout(() => {
@@ -189,7 +293,23 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
       if (!el) return;
       el.classList.remove('volando');
       if (el.dataset.z != null) el.style.zIndex = el.dataset.z;
-    }, vueloMs() + 30));
+    }, duracion + 30));
+  }
+
+  /**
+   * Que el número del mazo cambie sin más no se ve; el salto de la cifra es lo
+   * que dice «has robado». El token evita que un salto viejo apague el de ahora.
+   */
+  function acusarMazo(n) {
+    if (ultimoMazo === n) return;
+    const primerPintado = ultimoMazo === null;
+    ultimoMazo = n;
+    if (primerPintado) return;      // colocar el tablero no es robar
+    clearTimeout(bumpTimer);
+    contador.classList.remove('bump');
+    void contador.offsetWidth;      // reinicia la animación
+    contador.classList.add('bump');
+    bumpTimer = setTimeout(() => contador.classList.remove('bump'), BUMP_MS);
   }
 
   function paint({ vuelo = true } = {}) {
@@ -224,6 +344,7 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
       contador.hidden = state.stock.length === 0;
       contador.firstElementChild.textContent = String(state.stock.length);
       contador.style.transform = `translate3d(${mazoX}px, 0, 0)`;
+      acusarMazo(state.stock.length);
     }
     for (const [id, el] of els) {
       const p = positions.get(id);
@@ -240,7 +361,18 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
         // no levantar ninguna.
         const antes = posiciones.get(id);
         const seMueve = antes && (Math.abs(antes.x - x) > 0.5 || Math.abs(antes.y - y) > 0.5);
-        if (vuelo && seMueve && animando()) alzar(id);
+        if (vuelo && seMueve && animando()) {
+          const dur = motion.duracionVuelo(Math.hypot(antes.x - x, antes.y - y), vueloMs());
+          // Vuelo a la medida de la distancia. Son DOS duraciones porque en la
+          // hoja de estilos `.anim .card` transiciona dos propiedades, transform
+          // y translate: la sombra se mudó a `.card::after`. Si se manda una de
+          // más, el navegador la descarta —se emparejan por índice— y el 140 fijo
+          // del levantamiento se perdía dejándolo al ritmo del vuelo.
+          el.style.transitionDuration = `${dur}ms, 140ms`;
+          alzar(id, dur);
+        } else if (el.style.transitionDuration) {
+          el.style.transitionDuration = '';
+        }
         posiciones.set(id, { x, y });
         el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         // Sumar p.z mantiene el orden entre las cartas que vuelan a la vez
@@ -252,6 +384,8 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
       if (!drag || !drag.ids.includes(id)) el.classList.remove('dragging');
     }
 
+    // `measure` ya ha encogido escalones y carta para que esto quepa en el alto
+    // útil del contenedor: aquí solo se recoge el resultado, sin sorpresas.
     root.style.minHeight = `${Math.max(...layout.columns.map((c) => c.bottom), m.ch)}px`;
   }
 
@@ -308,6 +442,7 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
    * cada una se destapa al llegar. Un toque en cualquier sitio se lo salta.
    */
   function repartir() {
+    ultimoMazo = null;      // un reparto nuevo no es una carta robada: el contador no salta
     cortarReparto({ pintar: false });
     if (!animando()) { paint(); return; }
 
@@ -388,6 +523,25 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
     return { from: p.from, count: 1 };
   }
 
+  /**
+   * La carta jugable cuyo centro cae más cerca del punto, si es que hay alguna a
+   * tiro. Con las columnas casi pegadas el dedo se come el filo de la carta de al
+   * lado —casi siempre una tapada, que no hace nada— y el toque se pierde: esto
+   * rescata la intención sin llegar a adivinar.
+   */
+  function cartaMasCercana(x, y) {
+    if (!layout) return null;
+    const { m, positions } = layout;
+    const rect = root.getBoundingClientRect();
+    let mejor = null;
+    for (const [id, p] of positions) {
+      if (!p.playable || !p.from) continue;
+      const dist = Math.hypot(x - (rect.left + p.x + m.cw / 2), y - (rect.top + p.y + m.ch / 2));
+      if (dist <= CERCANIA && (!mejor || dist < mejor.dist)) mejor = { id, dist };
+    }
+    return mejor?.id ?? null;
+  }
+
   function pileOf(from) {
     if (!from) return null;
     if (from.pile === PILE.WASTE) return game.state.waste;
@@ -425,6 +579,26 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
 
   const clearHighlights = () => slots.forEach((s) => s.classList.remove('drop-ok'));
 
+  /**
+   * Con ratón no hace falta pulsar nada para ver dónde cabe una carta: basta con
+   * pasar por encima. Con el dedo no existe ese «encima», y por eso ahí los
+   * destinos salen en cuanto se apoya —lo hace `startDrag`— y siguen puestos
+   * mientras no se levante, que es lo que se espera de una pulsación mantenida.
+   */
+  function resaltarAlPasar(id) {
+    if (drag || resaltada === id) return;
+    const grab = id ? grabbable(id) : null;
+    if (!grab) { quitarResaltado(); return; }
+    resaltada = id;
+    highlightTargets(grab);
+  }
+
+  function quitarResaltado() {
+    if (!resaltada) return;
+    resaltada = null;
+    if (!drag) clearHighlights();   // en pleno arrastre las marcas son del arrastre
+  }
+
   function startDrag(event, id, grab) {
     const ids = idsOf(grab);
     if (!ids.length) return;
@@ -443,6 +617,7 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
       el.classList.add('dragging');
       el.style.zIndex = String(Z_ARRASTRE + i);
     });
+    resaltada = null;       // a partir de aquí las marcas son del arrastre
     highlightTargets(grab);
   }
 
@@ -460,7 +635,9 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
   function cancelDrag() {
     if (!drag) return;
     drag.ids.forEach((cid) => {
-      els.get(cid)?.classList.remove('dragging');
+      const el = els.get(cid);
+      el?.classList.remove('dragging');
+      if (el) el.style.transitionDuration = '';   // la vuelta va al ritmo de siempre
       if (animando()) alzar(cid);       // vuelve volando desde donde estuviera el dedo
     });
     clearHighlights();
@@ -471,7 +648,9 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
   function endDrag(event) {
     const { ids, grab, moved, id } = drag;
     ids.forEach((cid) => {
-      els.get(cid).classList.remove('dragging');
+      const el = els.get(cid);
+      el.classList.remove('dragging');
+      el.style.transitionDuration = '';      // la vuelta va al ritmo de siempre
       if (moved && animando()) alzar(cid);   // el trayecto de vuelta también va por arriba
     });
     clearHighlights();
@@ -491,41 +670,56 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
     if (zone) {
       const move = { type: 'move', from: grab.from, to: zone.to, count: grab.count };
       const subeCarta = grab.count === 1 && grab.from.pile !== PILE.FOUNDATION;
-      if (!game.play(move) && subeCarta && zone.to.pile === PILE.FOUNDATION) {
-        game.sendToFoundation(grab.from, ids[0]);   // soltó sobre la fundación equivocada: probamos la suya
+      if (!game.play(move)) {
+        // Soltó sobre la fundación equivocada: se prueba la suya antes de negar.
+        const colada = subeCarta && zone.to.pile === PILE.FOUNDATION
+          && game.sendToFoundation(grab.from, ids[0]);
+        // Y si de verdad no cabía, que alguien explique la regla: devolver la
+        // carta a su sitio sin decir nada deja al jugador sin saber qué falló.
+        if (!colada) onDropIlegal({ from: grab.from, to: zone.to, count: grab.count });
       }
     }
     paint();
   }
 
   /**
-   * De todas las jugadas posibles con esas cartas, la que más suele convenir:
-   * primero la fundación, luego una columna con carta y solo al final un hueco
-   * vacío, que conviene guardar para un rey.
+   * A dónde va la carta que se pica. Lo decide el consejero, el mismo que da las
+   * pistas: así el toque nunca lleva la carta a un sitio distinto del que acaba
+   * de señalar la pista. Subir arriesgando queda fuera —eso lo decide el jugador
+   * arrastrando—, y cuando no sale nada hay que distinguir «lo único que cabía
+   * era una subida arriesgada» de «esa carta no tiene jugada», que al jugador le
+   * dicen cosas muy distintas.
    */
   function mejorDestino(ref) {
-    const mismoOrigen = (m) => m.from.pile === ref.from.pile
+    const elegido = advisor.mejorDestinoPara(game.state, ref.from, ref.count);
+    if (elegido) return { move: elegido.move, arriesgada: false };
+    // Si desde este mismo origen queda alguna jugada útil a una fundación, es por
+    // fuerza insegura: el consejero ya se ha quedado con todas las seguras.
+    const arriesgada = engine.usefulMoves(game.state).some((m) => m.to.pile === PILE.FOUNDATION
+      && m.from.pile === ref.from.pile
       && (m.from.index ?? null) === (ref.from.index ?? null)
-      && (m.count ?? 1) === ref.count;
-
-    // usefulMoves ya descarta pasar una columna entera de un hueco a otro.
-    const candidatos = engine.usefulMoves(game.state).filter(mismoOrigen);
-    if (!candidatos.length) return null;
-
-    const rango = (m) => (m.to.pile === PILE.FOUNDATION ? 0
-      : game.state.tableau[m.to.index].length ? 1 : 2);
-    candidatos.sort((a, b) => rango(a) - rango(b) || a.to.index - b.to.index);
-    return candidatos[0];
+      && (m.count ?? 1) === ref.count);
+    return { move: null, arriesgada };
   }
+
+  /** Un toque en la palma, si el jugador lo quiere y el aparato sabe darlo. */
+  function vibrar(patron) {
+    if (game.prefs.haptics === false) return;
+    globalThis.navigator?.vibrate?.(patron);
+  }
+
+  let nopeTimer = null;
 
   function negar(id) {
     onNegar();
+    vibrar([12, 40, 12]);      // dos golpes secos: el «no» se nota sin mirar
     const el = els.get(id);
     if (!el) return;
-    el.classList.remove('nope');
+    clearTimeout(nopeTimer);                  // un aviso viejo no puede apagar el nuevo
+    for (const otro of els.values()) otro.classList.remove('nope');
     void el.offsetWidth;
     el.classList.add('nope');
-    setTimeout(() => el.classList.remove('nope'), 400);
+    nopeTimer = setTimeout(() => el.classList.remove('nope'), 400);
   }
 
   /**
@@ -539,23 +733,38 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
     if (Date.now() - ultimoAuto.at < DOUBLE_TAP_MS
       && Math.hypot(x - ultimoAuto.x, y - ultimoAuto.y) < 24) return;
 
+    // Si la pista está señalando justo esta carta, se hace lo que la pista dice.
+    // Es la regla que impide que señale un sitio y el dedo la lleve a otro: pasaba
+    // al ciclar entre alternativas (misma carta, destino distinto) y, con el
+    // rescate, al marcar una carta de las pilas de arriba que el toque rechazaba.
+    const sugerida = jugadaSugerida(grab);
+    if (sugerida) {
+      if (game.play(sugerida)) {
+        ultimoAuto = { at: Date.now(), x, y };
+        vibrar(8);
+      }
+      return;
+    }
+
     if (grab.from.pile === PILE.FOUNDATION) {
-      onMessage('Para bajar una carta de las pilas de arriba, arrástrala.');
+      onMessage('msg.fundacion.arrastrar');
       return;
     }
 
     const ref = { ...grab, ids: grab.ids ?? idsOf(grab) };
     if (!sigueValida(ref)) return;      // el tablero cambió entre el toque y el dedo levantado
 
-    const move = mejorDestino(ref);
+    const { move, arriesgada } = mejorDestino(ref);
     if (!move) {
       negar(id);
-      onMessage(ref.count > 1
-        ? 'Esa secuencia no tiene dónde ir ahora mismo.'
-        : 'Esa carta no tiene jugada ahora mismo.');
+      onMessage(arriesgada ? 'msg.subida.riesgo'
+        : ref.count > 1 ? 'msg.sin.jugada.secuencia' : 'msg.sin.jugada');
       return;
     }
-    if (game.play(move)) ultimoAuto = { at: Date.now(), x, y };
+    if (game.play(move)) {
+      ultimoAuto = { at: Date.now(), x, y };
+      vibrar(8);      // la carta ya va a su sitio: un golpecito y a otra cosa
+    }
   }
 
   /** Los huecos ya no reciben cartas por toque; el único que hace algo es el mazo. */
@@ -571,13 +780,18 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
     if (game.status !== 'playing' && game.status !== 'stuck') return;
     const cardEl = event.target.closest('.card');
     if (cardEl) {
-      const id = cardEl.dataset.id;
-      const grab = grabbable(id);
+      let id = cardEl.dataset.id;
+      let grab = grabbable(id);
       if (!grab) {
         // Carta tapada del tableau o del mazo: solo cuenta si es el mazo.
         const p = layout?.positions.get(id);
-        if (p && !p.from) game.stockClick();     // carta boca abajo del mazo
-        return;
+        if (p && !p.from) { game.stockClick(); return; }   // carta boca abajo del mazo
+        // Si no, puede ser puntería: en pantallas estrechas la jugable de al lado
+        // está a un pelo y es a la que iba el dedo.
+        const cerca = cartaMasCercana(event.clientX, event.clientY);
+        grab = cerca ? grabbable(cerca) : null;
+        if (!grab) return;
+        id = cerca;
       }
       event.preventDefault();
       root.setPointerCapture?.(event.pointerId);
@@ -586,6 +800,23 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
     }
     const slot = event.target.closest('.slot');
     if (slot) { event.preventDefault(); tapSlot(slot); }
+  });
+
+  // Solo el ratón: con el dedo, `pointerover` llega pegado al `pointerdown` y
+  // resaltaría lo mismo que ya resalta la pulsación, además de dejar las marcas
+  // encendidas después de levantar el dedo, que no tiene dónde «salirse».
+  root.addEventListener('pointerover', (event) => {
+    if (event.pointerType !== 'mouse') return;
+    if (game.status !== 'playing' && game.status !== 'stuck') return;
+    resaltarAlPasar(event.target.closest?.('.card')?.dataset.id ?? null);
+  });
+
+  root.addEventListener('pointerout', (event) => {
+    // Ir de una carta a otra dispara `out` antes que `over`: aquí solo se apaga
+    // cuando el puntero se va del tablero; lo de dentro lo arregla el `over`.
+    if (event.pointerType !== 'mouse') return;
+    if (event.relatedTarget && root.contains(event.relatedTarget)) return;
+    quitarResaltado();
   });
 
   root.addEventListener('pointermove', (event) => {
@@ -603,13 +834,41 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
   root.addEventListener('dblclick', (event) => event.preventDefault());
 
   // --- api ---
+  let pistaTimer = null;
+  let pistaEls = [];              // lo marcado por la pista que está activa
+  let pistaMove = null;           // la jugada que está señalando, para que el toque la respete
+  let pistaEpoch = -1;            // en qué versión del tablero se pidió
+
+  /**
+   * ¿Está la pista señalando estas cartas? Solo cuenta si sigue viva y si el
+   * tablero no ha cambiado desde que se pidió.
+   */
+  function jugadaSugerida(grab) {
+    if (!pistaMove || pistaEpoch !== game.epoch) return null;
+    if (pistaMove.type !== 'move') return null;
+    const mismo = pistaMove.from.pile === grab.from.pile
+      && (pistaMove.from.index ?? null) === (grab.from.index ?? null)
+      && (pistaMove.count ?? 1) === grab.count;
+    return mismo && engine.isLegal(game.state, pistaMove) ? pistaMove : null;
+  }
+
+  /** Retira la pista que haya: ninguna marca ni ningún temporizador viejo. */
+  function quitarPista() {
+    clearTimeout(pistaTimer);
+    pistaMove = null;
+    for (const [el, clase] of pistaEls) el?.classList.remove(clase);
+    pistaEls = [];
+  }
+
   const api = {
     paint,
     /** Corta cualquier gesto o reparto a medias (la tecla Escape, y las pruebas). */
     cancel() {
       cortarReparto({ pintar: false });
       cancelDrag();
+      resaltada = null;
       clearHighlights();
+      quitarPista();
       ultimoAuto = { at: 0, x: 0, y: 0 };   // el guardián del doble clic también se suelta
       paint();
     },
@@ -621,33 +880,45 @@ export function createBoard({ root, game, onMessage = () => {}, onNegar = () => 
     /**
      * Marca la jugada sugerida: la carta que hay que tocar late fuerte y el
      * sitio al que va, flojito. Así se distingue de un vistazo qué se pica.
+     * Solo hay una pista a la vez: pedir otra (o cancelar) se lleva la anterior.
      */
     flashHint(move) {
+      quitarPista();
       if (!move) return;
       const marcar = (el, clase = 'hint') => {
         if (!el) return;
         el.classList.remove('hint', 'hint-destino');
         void el.offsetWidth;      // reinicia la animación
         el.classList.add(clase);
-        setTimeout(() => el.classList.remove(clase), PISTA_MS);
+        pistaEls.push([el, clase]);
       };
-      if (move.type === 'draw' || move.type === 'recycle') { marcar(slotFor('stock')); return; }
-      for (const id of idsOf({ from: move.from, count: move.count ?? 1 })) marcar(els.get(id));
-      if (move.to.pile !== PILE.FOUNDATION && move.to.pile !== PILE.TABLEAU) return;
-      const destino = move.to.pile === PILE.FOUNDATION
-        ? slotFor('foundation', move.to.index)
-        : slotFor('tableau', move.to.index);
-      if (destino && (move.to.pile === PILE.FOUNDATION ? game.state.foundations[move.to.index].length === 0
-        : game.state.tableau[move.to.index].length === 0)) marcar(destino, 'hint-destino');
+      if (move.type === 'draw' || move.type === 'recycle') { marcar(slotFor('stock')); }
       else {
-        const pila = move.to.pile === PILE.FOUNDATION ? game.state.foundations[move.to.index] : game.state.tableau[move.to.index];
-        marcar(els.get(engine.top(pila)?.id), 'hint-destino');
+        for (const id of idsOf({ from: move.from, count: move.count ?? 1 })) marcar(els.get(id));
+        if (move.to.pile === PILE.FOUNDATION || move.to.pile === PILE.TABLEAU) {
+          const destino = move.to.pile === PILE.FOUNDATION
+            ? slotFor('foundation', move.to.index)
+            : slotFor('tableau', move.to.index);
+          if (destino && (move.to.pile === PILE.FOUNDATION ? game.state.foundations[move.to.index].length === 0
+            : game.state.tableau[move.to.index].length === 0)) marcar(destino, 'hint-destino');
+          else {
+            const pila = move.to.pile === PILE.FOUNDATION ? game.state.foundations[move.to.index] : game.state.tableau[move.to.index];
+            marcar(els.get(engine.top(pila)?.id), 'hint-destino');
+          }
+        }
       }
+      pistaMove = move;
+      pistaEpoch = game.epoch;
+      pistaTimer = setTimeout(quitarPista, PISTA_MS);
     },
   };
 
   let ultimoReparto = game.dealId;
   game.subscribe(() => {
+    // La pista señala una posición concreta: en cuanto el tablero cambia, esas
+    // marcas están sobre cartas que ya no están ahí. Sin esto, pedir pista y
+    // repartir dejaba dos cartas del reparto anterior latiendo sobre el nuevo.
+    if (pistaMove && pistaEpoch !== game.epoch) quitarPista();
     if (game.dealId === ultimoReparto) return;
     ultimoReparto = game.dealId;
     repartir();
