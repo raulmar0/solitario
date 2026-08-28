@@ -102,7 +102,7 @@ export default {
   // pista — una por cada RAZON del recomendador
   'pista.destapar': 'Lleva {carta} de {origen} a {destino}: así destapas la carta que tiene debajo.',
   'pista.fundacion-segura': 'Sube {carta} de {origen} a {destino}: ya no le hace falta a nadie abajo.',
-  'pista.fundacion-riesgo': 'Solo veo subir {carta} de {origen} a {destino}, aunque puede que la eches de menos abajo.',
+  'pista.fundacion-riesgo': 'Sube {carta} de {origen} a {destino}.',
   'pista.descarte': 'Saca {carta} de {origen} a {destino} antes de que se entierre en el montón.',
   'pista.vaciar-columna': 'Lleva {carta} de {origen} a {destino} y te quedas {origen} libre para un rey.',
   'pista.movilidad': 'Lleva {carta} de {origen} a {destino}: no destapa nada, pero abre juego.',

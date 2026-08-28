@@ -105,7 +105,7 @@ export default {
   // pista — una por cada RAZON del recomendador
   'pista.destapar': '{origen}의 {carta} 카드를 {destino}에 놓으세요. 밑에 있는 카드가 뒤집혀요.',
   'pista.fundacion-segura': '{origen}의 {carta} 카드를 {destino}에 올리세요. 이제 아래에서 쓸 일이 없어요.',
-  'pista.fundacion-riesgo': '{origen}의 {carta} 카드를 {destino}에 올리는 수밖에 안 보여요. 나중에 아래에서 아쉬울 수도 있고요.',
+  'pista.fundacion-riesgo': '{origen}의 {carta} 카드를 {destino}에 올리세요.',
   'pista.descarte': '{origen}의 {carta} 카드가 더 깊이 묻히기 전에 {destino}에 옮겨 두세요.',
   'pista.vaciar-columna': '{origen}의 {carta} 카드를 {destino}에 놓으면 {origen} 자리가 비어서 킹을 받을 수 있어요.',
   'pista.movilidad': '{origen}의 {carta} 카드를 {destino}에 놓으세요. 뒤집히는 카드는 없지만 숨통이 트여요.',

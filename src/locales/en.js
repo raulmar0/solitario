@@ -104,7 +104,7 @@ export default {
   // pista — una por cada RAZON del recomendador
   'pista.destapar': 'Take the {carta} from {origen} to {destino}: that flips the card underneath.',
   'pista.fundacion-segura': 'Send the {carta} from {origen} up to {destino}: nobody down here needs it any more.',
-  'pista.fundacion-riesgo': 'All I can see is sending the {carta} from {origen} up to {destino}, though you might miss it down here.',
+  'pista.fundacion-riesgo': 'Send the {carta} from {origen} up to {destino}.',
   'pista.descarte': 'Get the {carta} out of {origen} to {destino} before it gets buried in the pile.',
   'pista.vaciar-columna': 'Take the {carta} from {origen} to {destino} and {origen} is left free for a king.',
   'pista.movilidad': 'Take the {carta} from {origen} to {destino}: it flips nothing, but it opens up the game.',

@@ -104,7 +104,7 @@ export default {
   // pista — una por cada RAZON del recomendador
   'pista.destapar': 'Déplacez {carta} depuis {origen} vers {destino} : vous retournez la carte du dessous.',
   'pista.fundacion-segura': 'Montez {carta} depuis {origen} vers {destino} : plus personne n’en a besoin en bas.',
-  'pista.fundacion-riesgo': 'Je ne vois que monter {carta} depuis {origen} vers {destino}, même si vous risquez d’en avoir besoin en bas.',
+  'pista.fundacion-riesgo': 'Montez {carta} depuis {origen} vers {destino}.',
   'pista.descarte': 'Sortez {carta} depuis {origen} vers {destino} avant que cette carte ne soit enterrée sous le tas.',
   'pista.vaciar-columna': 'Déplacez {carta} depuis {origen} vers {destino} : {origen} se libère pour un roi.',
   'pista.movilidad': 'Déplacez {carta} depuis {origen} vers {destino} : ça ne retourne rien, mais ça ouvre le jeu.',

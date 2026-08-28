@@ -113,11 +113,11 @@ test('subir a fundación arriesgando pierde contra cualquier alternativa segura'
   assert.ok(riesgo.score < r.score);
 });
 
-test('sin nada más sobre la mesa sí se ofrece la subida arriesgada, avisando del riesgo', () => {
+test('sin nada más sobre la mesa sí se ofrece la subida arriesgada', () => {
   const s = escenario({ foundations: [picasHasta(8)], tableau: [[C(9, 'S')]] });
 
   const r = recomendar(s);
-  assert.equal(r.reason, RAZON.FUNDACION_RIESGO, 'no queda otra: arriba, y se dice que es arriesgado');
+  assert.equal(r.reason, RAZON.FUNDACION_RIESGO, 'no queda otra: arriba');
   assert.deepEqual(r.move.to, F(0));
   assert.deepEqual(r.alternatives, []);
 });
