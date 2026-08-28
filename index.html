@@ -50,7 +50,7 @@
     <div class="stat"><dt data-i18n="hud.fundaciones">Fundaciones</dt><dd id="foundations" data-i18n="hud.fundaciones.valor" data-i18n-params='{"n":0}'>0/52</dd></div>
     <!-- El reparto es un botón porque copia su enlace: compartir una mano es
          escribir el número a mano si no. -->
-    <div class="stat stat-wide"><dt data-i18n="hud.reparto">Reparto</dt><dd><button type="button" class="seed-chip" id="seed" aria-label="Copiar el enlace de este reparto" data-i18n-aria-label="hud.reparto.copiar" data-i18n="hud.vacio">—</button></dd></div>
+    <div class="stat stat-wide"><dt data-i18n="hud.reparto">Reparto</dt><dd><button type="button" class="seed-chip" id="seed" data-i18n="hud.vacio">—</button></dd></div>
   </dl>
 
   <button type="button" class="mode-chip" id="mode-chip" title="Modalidad de juego: toca para cambiarla en Ajustes" data-i18n-title="hud.modo.titulo"></button>
@@ -100,9 +100,9 @@
   <button id="btn-settings" class="tool" type="button" aria-label="Ajustes, récords y ayuda (,)" title="Ajustes, récords y ayuda (,)" data-i18n-aria-label="tool.menu" data-i18n-title="tool.menu"><svg class="ico" aria-hidden="true"><use href="#i-ajustes"/></svg><span class="rotulo" data-i18n="tool.menu.corto">Menú</span></button>
 </nav>
 
-<dialog id="dlg-win" class="dlg dlg-win">
+<dialog id="dlg-win" class="dlg dlg-win" aria-labelledby="win-titulo">
   <div class="win-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
-  <h2 data-i18n="dlg.victoria.titulo">¡Ganaste!</h2>
+  <h2 id="win-titulo" data-i18n="dlg.victoria.titulo">¡Ganaste!</h2>
   <dl class="win-stats">
     <div><dt data-i18n="dlg.victoria.puntuacion">Puntuación</dt><dd id="win-score">0</dd></div>
     <div><dt data-i18n="dlg.victoria.tiempo">Tiempo</dt><dd id="win-time">00:00</dd></div>
@@ -116,9 +116,9 @@
   </div>
 </dialog>
 
-<dialog id="dlg-stuck" class="dlg dlg-stuck">
+<dialog id="dlg-stuck" class="dlg dlg-stuck" aria-labelledby="stuck-titulo">
   <div class="stuck-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
-  <h2 data-i18n="dlg.bloqueo.titulo">La partida se ha atascado</h2>
+  <h2 id="stuck-titulo" data-i18n="dlg.bloqueo.titulo">La partida se ha atascado</h2>
   <p class="stuck-note" id="stuck-note"></p>
   <div class="dlg-actions">
     <button class="btn primary" data-action="undo" data-i18n="dlg.bloqueo.deshacer">Deshacer la última</button>
@@ -129,7 +129,7 @@
 </dialog>
 
 
-<dialog id="dlg-settings" class="dlg dlg-wide">
+<dialog id="dlg-settings" class="dlg dlg-wide" aria-labelledby="panel-titulo">
   <header class="dlg-head">
     <h2 id="panel-titulo" data-i18n="dlg.titulo.ajustes">Ajustes</h2>
     <button class="icon-btn" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar">✕</button>
@@ -206,7 +206,7 @@
     <div class="field">
       <label class="field-label" for="seed-input" data-i18n="settings.reparto">Jugar un reparto concreto</label>
       <div class="row">
-        <input id="seed-input" class="text-input" type="number" min="1" max="999999" placeholder="p. ej. 1234" inputmode="numeric" data-i18n-placeholder="settings.reparto.placeholder">
+        <input id="seed-input" class="text-input" type="number" aria-describedby="seed-error" min="1" max="999999" placeholder="p. ej. 1234" inputmode="numeric" data-i18n-placeholder="settings.reparto.placeholder">
         <button class="btn" id="btn-seed-go" data-i18n="settings.reparto.boton">Repartir</button>
       </div>
       <p class="field-error" id="seed-error" hidden></p>

@@ -137,6 +137,7 @@ $('#btn-install').addEventListener('click', async () => {
 
 let bannerTimer = null;
 let bannerFijo = null;         // el aviso que no caduca, para reescribirlo si cambia el idioma
+let bannerVivo = null;         // el de paso que está puesto ahora, por el mismo motivo
 let copiadoTimer = null;
 let autoTimer = null;
 let winShownFor = null;
@@ -160,14 +161,19 @@ function message(clave, params = {}, { aviso = false, fijo = false } = {}) {
   clearTimeout(bannerTimer);
   // El aviso fijo se recuerda para poder reescribirlo si cambia el idioma; los de
   // paso pasan por encima sin borrarlo, y un mensaje vacío se lo lleva.
-  if (!texto) bannerFijo = null;
-  else if (fijo) bannerFijo = { clave, params, aviso };
+  if (!texto) { bannerFijo = null; bannerVivo = null; }
+  else if (fijo) { bannerFijo = { clave, params, aviso }; bannerVivo = null; }
   else {
+    bannerVivo = { clave, params, aviso };
     // Al caducar no se borra en seco: si había un aviso fijo —la partida sin
     // salida— se repone. Si no, el cartel de bloqueo desaparecía para siempre en
     // cuanto el jugador tocaba una carta muerta.
     bannerTimer = setTimeout(() => {
-      if (bannerFijo) message(bannerFijo.clave, bannerFijo.params, { aviso: bannerFijo.aviso, fijo: true });
+      bannerVivo = null;
+      // El cartel se reescribe sin tocar su temporizador: reemitir el aviso de paso
+  // con message() le regalaría otros 4,2 s de vida solo por cambiar de idioma.
+  if (bannerFijo) message(bannerFijo.clave, bannerFijo.params, { aviso: bannerFijo.aviso, fijo: true });
+  else if (bannerVivo) $('#banner').textContent = t(bannerVivo.clave, bannerVivo.params);
       else { el.textContent = ''; el.classList.remove('warn'); }
     }, 4200);
   }
@@ -224,6 +230,11 @@ function refreshHeader() {
     ? t('hud.vacio')
     : t(comprobado ? 'hud.reparto.comprobado' : 'hud.reparto.numero', { n: semilla });
   $('#seed').title = comprobado ? t('hud.reparto.titulo') : '';
+  // El número va DENTRO del nombre accesible: con un aria-label fijo, el lector
+  // leía «Copiar el enlace de este reparto» y se comía el único dato que importa.
+  $('#seed').setAttribute('aria-label', semilla == null
+    ? t('hud.reparto.copiar')
+    : t('hud.reparto.copiar.n', { n: semilla }));
   $('#mode-chip').textContent = textoModo();
 
   if (ultimaPuntuacion !== null && puntos !== ultimaPuntuacion) {
@@ -487,6 +498,11 @@ addEventListener('keydown', (event) => {
 
   const tecla = event.key;
   if (tecla === ' ') {
+    // Con un botón o un desplegable enfocado, el espacio es «púlsalo», no «roba».
+    // Sin esta salida el preventDefault() de abajo cancelaba la activación nativa
+    // y el atajo del mazo se comía la pulsación: quien navega con el tabulador
+    // pulsaba «Deshacer» y robaba una carta —o reciclaba, −100 puntos—.
+    if (event.target.closest?.('button, select')) return;
     event.preventDefault();
     if (!game.stockClick()) explicarMazo();
     return;
@@ -572,7 +588,10 @@ alCambiarIdioma(() => {
   delete $('#btn-finish').dataset.estado;   // su rótulo va cacheado: se invalida a mano
   refresh();
   pintarAjustesApp();
+  // El cartel se reescribe sin tocar su temporizador: reemitir el aviso de paso
+  // con message() le regalaría otros 4,2 s de vida solo por cambiar de idioma.
   if (bannerFijo) message(bannerFijo.clave, bannerFijo.params, { aviso: bannerFijo.aviso, fijo: true });
+  else if (bannerVivo) $('#banner').textContent = t(bannerVivo.clave, bannerVivo.params);
   panels.retraducir?.();
 });
 

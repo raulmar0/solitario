@@ -33,6 +33,7 @@ export default {
   'hud.reparto.comprobado': 'n° {n} ✓',
   'hud.reparto.titulo': 'Cette donne a une solution vérifiée',
   'hud.reparto.copiar': 'Copier le lien de cette donne',
+  'hud.reparto.copiar.n': 'Copier le lien de la donne nº{n}',
   'hud.pausada': 'En pause',
   'hud.modo.titulo': 'Mode de jeu : touchez pour le changer dans les Réglages',
   'hud.vacio': '—',
@@ -103,15 +104,15 @@ export default {
   // pista — una por cada RAZON del recomendador
   'pista.destapar': 'Déplacez {carta} depuis {origen} vers {destino} : vous retournez la carte du dessous.',
   'pista.fundacion-segura': 'Montez {carta} depuis {origen} vers {destino} : plus personne n’en a besoin en bas.',
-  'pista.fundacion-riesgo': 'Je ne vois que monter {carta} depuis {origen} vers {destino}, même si elle risque de vous manquer en bas.',
-  'pista.descarte': 'Sortez {carta} depuis {origen} vers {destino} avant qu’elle ne soit enterrée sous le tas.',
+  'pista.fundacion-riesgo': 'Je ne vois que monter {carta} depuis {origen} vers {destino}, même si vous risquez d’en avoir besoin en bas.',
+  'pista.descarte': 'Sortez {carta} depuis {origen} vers {destino} avant que cette carte ne soit enterrée sous le tas.',
   'pista.vaciar-columna': 'Déplacez {carta} depuis {origen} vers {destino} : {origen} se libère pour un roi.',
   'pista.movilidad': 'Déplacez {carta} depuis {origen} vers {destino} : ça ne retourne rien, mais ça ouvre le jeu.',
   'pista.robar': 'Piochez : il n’y a rien de mieux sur la table.',
   'pista.reciclar': 'Recyclez la défausse et repassez la pioche.',
   'pista.rescate': 'Redescendez {carta} depuis {origen} vers {destino} : c’est la seule chose qui débloque la partie.',
   'pista.ninguna': 'Je ne vois aucun coup.',
-  'pista.mas': 'C’était le meilleur ; en voici un autre : {detalle}',
+  'pista.mas': 'C’était le meilleur ; en voici un autre. {detalle}',
 
   // dlg — diálogos (victoria, bloqueo, panel)
   'dlg.cerrar': 'Fermer',

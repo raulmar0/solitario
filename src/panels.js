@@ -298,6 +298,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       const datos = JSON.parse(await file.text());
       if (!confirm(t('confirm.importar'))) return;
       store.importAll(datos);
+      recargarPrefs();
       renderStats();
       onPrefsChanged();
       avisoPanel('msg.datos.importados');
@@ -309,12 +310,25 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   $('#btn-wipe').addEventListener('click', () => {
     if (!confirm(t('confirm.borrar'))) return;
     store.resetAll();
+    recargarPrefs();
     renderStats();
     onPrefsChanged();
     avisoPanel('msg.datos.borrados');
   });
 
   // ---------- ajustes ----------
+
+  /**
+   * Importar y borrar escriben las preferencias en disco, pero `game` guarda su
+   * propia copia en memoria: sin releerla, el idioma (y el tema, y la modalidad)
+   * del archivo importado se quedaban guardados sin llegar a aplicarse, y el
+   * selector seguía enseñando el idioma anterior.
+   */
+  function recargarPrefs() {
+    game.setPrefs({});                 // relee del almacén y avisa a la interfaz
+    fijarIdioma(resolverIdioma(game.prefs.lang));
+    renderSettings();
+  }
 
   function renderSettings() {
     const prefs = game.prefs;

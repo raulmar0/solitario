@@ -31,9 +31,14 @@
      que el acento y el verde de los paneles se apagan ahí: estas dos son sus
      versiones claras y no cambian con el tema. */
   --felt-accent: #ffd97a;
-  --felt-accent-suave: rgba(255, 217, 122, .55);   /* el destino de la pista, más flojo que el origen */
+  /* El destino de la pista: más flojo que el origen, pero por encima del 3:1 que
+     pide una marca no textual. Al 55 % de opacidad se quedaba en 2:1 sobre el
+     tapete claro; opaco y un punto más apagado que el origen se distingue de él
+     sin desaparecer. */
+  --felt-accent-suave: #f2c66b;
+  --felt-filo: rgba(24, 12, 0, .72);   /* el filo oscuro que envuelve al anillo */
   --felt-ok: #8ff0bd;
-  --hueco-marca: var(--ink);          /* la «K» del hueco vacío; en claro va oscura */
+  --hueco-marca: var(--ink);          /* la «K» del hueco vacío */
   --card-face: #fdfcf8;
   --card-ink: #1b1b1b;
   --card-red: #c0392b;
@@ -75,7 +80,6 @@ html[data-theme="light"] {
   --danger: #a4241c;
   --ok: #12734a;
   --topbar-veil: rgba(0, 0, 0, .44);
-  --hueco-marca: #0b3a24;             /* sobre el tapete claro, la tinta blanca no se veía */
   --shadow: 0 2px 5px rgba(0, 0, 0, .18);
   --shadow-lift: 0 14px 28px rgba(0, 0, 0, .28);
 }
@@ -363,7 +367,11 @@ body {
    marca de fondo: cualquier carta encima tiene que ganarle de calle. El color no
    se hereda de la tinta porque en el tema claro es blanca y sobre el tapete
    claro no quedaba nada; en negro al 22 % se lee en los dos. */
-.slot-tableau .slot-mark { opacity: .26; font-weight: 700; color: var(--hueco-marca); }
+/* Blanca y no oscura: sobre el hueco (negro al 14 % encima del tapete) la tinta
+   clara rinde más que cualquier tono oscuro —medido, 1,7:1 frente a 1,3:1—, y el
+   .38 la deja a la altura de los glifos de las fundaciones, que es la misma clase
+   de marca y se leen bien en los dos temas. */
+.slot-tableau .slot-mark { opacity: .38; font-weight: 700; color: var(--hueco-marca); }
 .slot-stock { cursor: pointer; }
 .slot-stock.empty .slot-mark { opacity: .5; }
 .slot-stock.dead { cursor: not-allowed; }
@@ -434,21 +442,25 @@ body {
    animación se queda puesto, que es la única pista que queda cuando no hay
    movimiento. La clase dura lo mismo que las tres pasadas, así que no se ve el
    relevo.
-   El color es `--felt-accent` y no `--accent` a propósito: el anillo cae sobre el
-   tapete, que es oscuro en los dos temas, y el acento claro (#9a6510) se hundía
-   ahí a 1,2:1. Sin movimiento este anillo es la única pista que queda, así que
+   El anillo va a dos tonos —ámbar claro por dentro, un filo oscuro por fuera— y
+   no de un color solo. El tapete es un degradado que va de #35a066 a #1d7146 en
+   claro y de #14663f a #0b3f28 en oscuro: contra ese recorrido ningún color único
+   se despega de los dos extremos (el ámbar da 2,4:1 arriba y 4,4:1 abajo, y uno
+   oscuro justo al revés). Con los dos filos, el que no contrasta con el fondo lo
+   hace con su compañero, que es como se resuelve un indicador sobre fondo
+   desconocido. Sin movimiento este anillo es la única pista que queda, así que
    tiene que verse sí o sí. */
 .card.hint {
-  box-shadow: 0 0 0 4px var(--felt-accent), var(--shadow);
+  box-shadow: 0 0 0 4px var(--felt-accent), 0 0 0 6px var(--felt-filo), var(--shadow);
   animation: var(--quieto, pista 800ms linear 3);
 }
 .card.hint .face, .card.hint .back { animation: var(--quieto, pista-cara 800ms linear 3); }
 .card.hint-destino, .slot.hint-destino {
-  box-shadow: 0 0 0 3px var(--felt-accent-suave);
+  box-shadow: 0 0 0 3px var(--felt-accent-suave), 0 0 0 5px var(--felt-filo);
   animation: var(--quieto, pista-destino 800ms linear 3);
 }
 .slot.hint {   /* la pista de robar: late el mazo */
-  box-shadow: 0 0 0 4px var(--felt-accent);
+  box-shadow: 0 0 0 4px var(--felt-accent), 0 0 0 6px var(--felt-filo);
   animation: var(--quieto, pista 800ms linear 3);
 }
 .card.nope { animation: var(--quieto, nope 380ms linear); }
@@ -461,7 +473,7 @@ body {
 }
 @keyframes pista {
   0%, 100% { box-shadow: var(--shadow); }
-  50% { box-shadow: 0 0 0 4px var(--felt-accent), 0 14px 30px rgba(0, 0, 0, .45); }
+  50% { box-shadow: 0 0 0 4px var(--felt-accent), 0 0 0 6px var(--felt-filo), 0 14px 30px rgba(0, 0, 0, .45); }
 }
 @keyframes pista-cara {
   0%, 100% { scale: 1; }
@@ -469,7 +481,7 @@ body {
 }
 @keyframes pista-destino {
   0%, 100% { box-shadow: var(--shadow); }
-  50% { box-shadow: 0 0 0 3px var(--felt-accent-suave); }
+  50% { box-shadow: 0 0 0 3px var(--felt-accent-suave), 0 0 0 5px var(--felt-filo); }
 }
 
 .card .face, .card .back {
@@ -679,7 +691,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .field-error { margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--danger); }
 .row { display: flex; gap: 8px; }
 
-.seg { display: inline-flex; background: var(--fill); border: 1px solid var(--panel-line); border-radius: 9px; padding: 3px; gap: 3px; }
+/* Envuelve: en francés «Automatique / Clair / Sombre» pide 275 px y en una
+   pantalla de 320 el grupo se salía del diálogo y sacaba barra horizontal. */
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--fill); border: 1px solid var(--panel-line); border-radius: 9px; padding: 3px; gap: 3px; }
 .seg-btn {
   padding: 6px 13px; min-height: 44px; font: inherit; font-size: 13px; font-weight: 600;
   color: var(--panel-ink-soft); background: none; border: 0; border-radius: 7px; cursor: pointer;

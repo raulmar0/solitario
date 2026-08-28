@@ -33,6 +33,7 @@ export default {
   'hud.reparto.comprobado': '#{n} ✓',
   'hud.reparto.titulo': 'Esta distribuição tem solução comprovada',
   'hud.reparto.copiar': 'Copiar o link desta distribuição',
+  'hud.reparto.copiar.n': 'Copiar o link da distribuição #{n}',
   'hud.pausada': 'Em pausa',
   'hud.modo.titulo': 'Modo de jogo: toque para mudar nos Ajustes',
   'hud.vacio': '—',
@@ -101,17 +102,17 @@ export default {
   'msg.contrarreloj': 'O contrarrelógio começa na próxima distribuição.',
 
   // pista — una por cada RAZON del recomendador
-  'pista.destapar': 'Leve {carta} de {origen} para {destino}: assim vira a carta que está debaixo.',
-  'pista.fundacion-segura': 'Suba {carta} de {origen} para {destino}: já ninguém precisa dela nas colunas.',
-  'pista.fundacion-riesgo': 'Só vejo subir {carta} de {origen} para {destino}, embora depois possa fazer falta nas colunas.',
-  'pista.descarte': 'Tire {carta} de {origen} para {destino} antes que fique soterrada.',
-  'pista.vaciar-columna': 'Leve {carta} de {origen} para {destino} e {origen} fica livre para um rei.',
-  'pista.movilidad': 'Leve {carta} de {origen} para {destino}: não vira nada, mas abre jogo.',
+  'pista.destapar': 'Leve {carta} desde {origen} para {destino}: assim vira a carta que está debaixo.',
+  'pista.fundacion-segura': 'Suba {carta} desde {origen} para {destino}: já ninguém precisa dela nas colunas.',
+  'pista.fundacion-riesgo': 'Só vejo subir {carta} desde {origen} para {destino}, embora depois possa fazer falta nas colunas.',
+  'pista.descarte': 'Tire {carta} desde {origen} para {destino} antes que essa carta fique soterrada.',
+  'pista.vaciar-columna': 'Leve {carta} desde {origen} para {destino} e {origen} fica livre para um rei.',
+  'pista.movilidad': 'Leve {carta} desde {origen} para {destino}: não vira nada, mas abre jogo.',
   'pista.robar': 'Vire uma carta do monte: não há nada melhor na mesa.',
   'pista.reciclar': 'Recicle o descarte e passe o monte outra vez.',
-  'pista.rescate': 'Baixe {carta} de {origen} para {destino}: é a única coisa que desbloqueia a partida.',
+  'pista.rescate': 'Baixe {carta} desde {origen} para {destino}: é a única coisa que desbloqueia a partida.',
   'pista.ninguna': 'Não vejo nenhuma jogada.',
-  'pista.mas': 'Essa era a melhor; aqui vai outra: {detalle}',
+  'pista.mas': 'Essa era a melhor; aqui vai outra. {detalle}',
 
   // dlg — diálogos (victoria, bloqueo, panel)
   'dlg.cerrar': 'Fechar',
@@ -261,8 +262,8 @@ export default {
   'carta.palo.C': 'paus',
 
   // pila — nombres de las pilas
-  'pila.tableau': 'coluna {n}',
-  'pila.foundation': 'fundação de {palo}',
-  'pila.waste': 'descarte',
-  'pila.stock': 'monte',
+  'pila.tableau': 'a coluna {n}',
+  'pila.foundation': 'a fundação de {palo}',
+  'pila.waste': 'o descarte',
+  'pila.stock': 'o monte',
 };

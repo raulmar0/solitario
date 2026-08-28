@@ -842,14 +842,22 @@ export function createBoard({
   /**
    * ¿Está la pista señalando estas cartas? Solo cuenta si sigue viva y si el
    * tablero no ha cambiado desde que se pidió.
+   *
+   * No se exige que el toque coja exactamente las mismas cartas: la pista marca
+   * la secuencia entera, y quien toca una carta de en medio está señalando esa
+   * misma jugada. Pedir que `count` coincidiera dejaba fuera justo ese caso y la
+   * carta se iba a otro sitio del que estaba latiendo.
    */
   function jugadaSugerida(grab) {
     if (!pistaMove || pistaEpoch !== game.epoch) return null;
     if (pistaMove.type !== 'move') return null;
-    const mismo = pistaMove.from.pile === grab.from.pile
-      && (pistaMove.from.index ?? null) === (grab.from.index ?? null)
-      && (pistaMove.count ?? 1) === grab.count;
-    return mismo && engine.isLegal(game.state, pistaMove) ? pistaMove : null;
+    const mismoOrigen = pistaMove.from.pile === grab.from.pile
+      && (pistaMove.from.index ?? null) === (grab.from.index ?? null);
+    if (!mismoOrigen || !engine.isLegal(game.state, pistaMove)) return null;
+    // Y que la carta tocada sea de verdad una de las marcadas.
+    const marcadas = idsOf({ from: pistaMove.from, count: pistaMove.count ?? 1 });
+    const cogidas = idsOf(grab);
+    return cogidas.some((id) => marcadas.includes(id)) ? pistaMove : null;
   }
 
   /** Retira la pista que haya: ninguna marca ni ningún temporizador viejo. */

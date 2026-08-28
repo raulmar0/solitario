@@ -4,6 +4,7 @@
 // la quietud a petición, el tablero en pantallas estrechas y la evolución de
 // récords. Mismo montaje que test/dom.test.js.
 import test from 'node:test';
+import * as engine from '../src/engine.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
@@ -105,6 +106,13 @@ function escenario({ tableau = [], waste = [], stock = [], foundations = [[], []
 }
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Un gesto de puntero como el de dom.test.js: jsdom no trae PointerEvent. */
+function puntero(tipo, target, x, y) {
+  const ev = new window.MouseEvent(tipo, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 });
+  Object.defineProperty(ev, 'pointerId', { value: 1 });
+  target.dispatchEvent(ev);
+}
 
 
 // ---------- deshacer, y ni rastro de rehacer ----------
@@ -284,6 +292,61 @@ function tableroConAlternativas() {
     stock: [carta(2, 'C', false)],
   });
 }
+
+test('con un botón enfocado, el espacio lo pulsa en vez de robar del mazo', () => {
+  // El atajo del mazo es global y hacía preventDefault() sin mirar dónde estaba
+  // el foco, así que cancelaba la activación nativa del botón: quien navega con
+  // el tabulador pulsaba «Deshacer» y se comía una carta —o un reciclado, que en
+  // la puntuación estándar son cien puntos—.
+  escenario({
+    tableau: [[{ id: '8S', rank: 8, suit: 'S', faceUp: true }]],
+    stock: [{ id: '2C', rank: 2, suit: 'C', faceUp: false }, { id: '3D', rank: 3, suit: 'D', faceUp: false }],
+  });
+  const mazo = () => game.state.stock.length;
+
+  const antes = mazo();
+  $('#btn-hint').focus();
+  $('#btn-hint').dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+  assert.equal(mazo(), antes, 'con el foco en un botón, el espacio no roba');
+
+  // Y el atajo de siempre sigue funcionando cuando el foco no está en un control.
+  window.document.body.focus?.();
+  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+  assert.equal(mazo(), antes - 1, 'sobre el tablero, el espacio sigue robando');
+});
+
+test('tocar una carta de en medio de la secuencia que marca la pista hace lo que la pista dice', () => {
+  // La pista marca la secuencia entera. Si el toque solo respetaba la jugada
+  // cuando se cogían exactamente las mismas cartas, picar una de en medio se
+  // salía del consejo y la llevaba a otro sitio del que estaba latiendo.
+  escenario({
+    tableau: [
+      [{ id: '10H', rank: 10, suit: 'H', faceUp: true }],
+      [
+        { id: '4C', rank: 4, suit: 'C', faceUp: false },
+        { id: '9S', rank: 9, suit: 'S', faceUp: true },
+        { id: '8H', rank: 8, suit: 'H', faceUp: true },
+      ],
+    ],
+  });
+  const pista = game.hint();
+  assert.deepEqual(pista.move.from, { pile: 'tableau', index: 1 });
+  assert.equal(pista.move.count, 2, 'la jugada mueve el 9S con el 8H detrás');
+  board.flashHint(pista.move);
+
+  // Se toca el 8H, que NO es la cabeza: por sí solo no tiene dónde ir (no hay
+  // otro nueve negro a la vista), así que si el toque no respetara la pista, esa
+  // carta se quedaría donde está. Es el caso que distingue un arreglo del otro.
+  assert.equal(engine.usefulMoves(game.state)
+    .filter((m) => m.from.pile === 'tableau' && m.from.index === 1 && (m.count ?? 1) === 1).length, 0,
+  'el 8H suelto no tiene jugada propia');
+  const el = cartaEl('8H');
+  const r = el.getBoundingClientRect?.() ?? { left: 0, top: 0, width: 10, height: 10 };
+  puntero('pointerdown', el, r.left + 2, r.top + 2);
+  puntero('pointerup', el, r.left + 2, r.top + 2);
+  assert.deepEqual(game.state.tableau[0].map((c) => c.id), ['10H', '9S', '8H'],
+    'la secuencia va donde señalaba la pista');
+});
 
 test('jugar o repartir se lleva las marcas de la pista, que ya no señalan nada', () => {
   escenario({
@@ -568,11 +631,12 @@ test('los huecos del tableau enseñan la K: ahí solo baja un rey', () => {
     assert.equal(m.textContent, 'K');
     assert.equal(m.getAttribute('aria-hidden'), 'true', 'es un recordatorio a la vista, no algo que leer');
   }
-  // Tenue, pero no invisible: al .16 de la primera versión la K no se distinguía
-  // del tapete en el tema claro. El techo es el .3 de los glifos de las
-  // fundaciones, que son la misma clase de marca y sí se leen.
+  // Tenue, pero no invisible. Al .16 de la primera versión la K no se distinguía
+  // del tapete en el tema claro, y teñirla de oscuro lo empeoró (1,3:1 frente a
+  // 1,7:1 de la tinta clara): sobre el hueco, que es negro al 14 % encima del
+  // tapete, lo que rinde es subir la opacidad de la tinta de siempre.
   const opacidad = parseFloat(regla('.slot-tableau .slot-mark').style.getPropertyValue('opacity'));
-  assert.ok(opacidad >= 0.2 && opacidad <= 0.3, `la K del hueco va a ${opacidad} de opacidad`);
+  assert.ok(opacidad >= 0.3 && opacidad <= 0.45, `la K del hueco va a ${opacidad} de opacidad`);
 
   // Y con la columna vacía nada la tapa: es justo cuando hace falta.
   escenario({ tableau: [[], [], [], [], [], [], [carta(13, 'S')]] });

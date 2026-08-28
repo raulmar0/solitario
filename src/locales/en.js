@@ -33,6 +33,7 @@ export default {
   'hud.reparto.comprobado': '#{n} ✓',
   'hud.reparto.titulo': 'This deal is known to be solvable',
   'hud.reparto.copiar': 'Copy the link to this deal',
+  'hud.reparto.copiar.n': 'Copy the link to deal #{n}',
   'hud.pausada': 'Paused',
   'hud.modo.titulo': 'Game mode: tap to change it in Settings',
   'hud.vacio': '—',
@@ -90,7 +91,7 @@ export default {
   'msg.subida.riesgo': 'Sending it up now would be risky: drag it to its foundation if you want it anyway.',
   'msg.sin.jugada': 'That card has nowhere to go right now.',
   'msg.sin.jugada.secuencia': 'That run has nowhere to go right now.',
-  'msg.ilegal.tableau': 'Columns build down in rank and alternate color: the {carta} doesn’t fit on {destino}.',
+  'msg.ilegal.tableau': 'Columns build down in rank and alternate color: the {carta} doesn’t fit on the {destino}.',
   'msg.ilegal.fundacion': 'The foundations build up by suit, from ace to king: the {carta} doesn’t go there.',
   'msg.ilegal.hueco': 'An empty column only takes a king, with its run behind it.',
   'msg.ilegal.sitio': 'The {carta} can’t go there.',
@@ -111,7 +112,7 @@ export default {
   'pista.reciclar': 'Recycle the waste and go through the stock again.',
   'pista.rescate': 'Bring the {carta} down from {origen} to {destino}: it’s the only thing that gets the game moving again.',
   'pista.ninguna': 'I don’t see a single move.',
-  'pista.mas': 'That was the best one; here’s another: {detalle}',
+  'pista.mas': 'That was the best one; here’s another. {detalle}',
 
   // dlg — diálogos (victoria, bloqueo, panel)
   'dlg.cerrar': 'Close',

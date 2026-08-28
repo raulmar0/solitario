@@ -34,6 +34,7 @@ export default {
   'hud.reparto.comprobado': '#{n} ✓',
   'hud.reparto.titulo': '해답이 확인된 판이에요',
   'hud.reparto.copiar': '이 판 링크 복사',
+  'hud.reparto.copiar.n': '{n}번 판 링크 복사',
   'hud.pausada': '일시정지',
   'hud.modo.titulo': '게임 방식: 누르면 설정에서 바꿀 수 있어요',
   'hud.vacio': '—',

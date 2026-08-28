@@ -34,6 +34,7 @@ export default {
   'hud.reparto.comprobado': '#{n} ✓',
   'hud.reparto.titulo': 'Este reparto tiene solución comprobada',
   'hud.reparto.copiar': 'Copiar el enlace de este reparto',
+  'hud.reparto.copiar.n': 'Copiar el enlace del reparto #{n}',
   'hud.pausada': 'En pausa',
   'hud.modo.titulo': 'Modalidad de juego: toca para cambiarla en Ajustes',
   'hud.vacio': '—',
@@ -109,7 +110,7 @@ export default {
   'pista.reciclar': 'Recicla el descarte y vuelve a pasar el mazo.',
   'pista.rescate': 'Baja {carta} de {origen} a {destino}: es lo único que desatasca la partida.',
   'pista.ninguna': 'No veo ninguna jugada.',
-  'pista.mas': 'Esa era la mejor; te enseño otra: {detalle}',
+  'pista.mas': 'Esa era la mejor; te enseño otra. {detalle}',
 
   // dlg — diálogos (victoria, bloqueo, panel)
   'dlg.cerrar': 'Cerrar',
