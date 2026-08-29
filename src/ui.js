@@ -101,6 +101,7 @@ export function createBoard({
   let resaltada = null;        // carta que el ratón señala sin llegar a pulsarla
   let bumpTimer = null;
   let ultimoMazo = null;       // cuántas cartas tenía el mazo la última vez que se pintó
+  let ultimoDescarte = null;   // y cuántas el descarte, para distinguir un robo de un deshacer
 
   // --- creación de las cartas (una sola vez) ---
   for (const suit of ['S', 'H', 'D', 'C']) {
@@ -391,6 +392,12 @@ export function createBoard({
   function retrasosDelRobo(state, mazoX) {
     const n = Math.min(state.drawCount ?? 1, state.waste.length);
     if (!n) return null;
+    // Un robo hace crecer el descarte como mucho en `drawCount`. Deshacer un
+    // reciclado también saca cartas del montón del mazo hacia el descarte —las
+    // veinticuatro de golpe—, y sin esta cuenta las tres últimas volvían boca
+    // abajo y escalonadas mientras las otras veintiuna volvían a la vez.
+    const crecio = ultimoDescarte === null ? 0 : state.waste.length - ultimoDescarte;
+    if (crecio <= 0 || crecio > (state.drawCount ?? 1)) return null;
     // De las de arriba del descarte, las que estaban en el montón del mazo. Hay
     // que mirar también la Y: `COLUMNA.stock` es 6, o sea que el mazo y la
     // séptima columna caen en la misma X, y sin la Y una carta que vuelve del
@@ -464,6 +471,7 @@ export function createBoard({
     // entero para saber cuál sale primero, y dentro del bucle solo se aplica.
     const retrasos = vuelo && animando() ? retrasosDelRobo(state, mazoX) : null;
     if (retrasos) { cortarRobo(); for (const id of retrasos.keys()) robadas.add(id); }
+    ultimoDescarte = state.waste.length;
 
     for (const [id, el] of els) {
       const p = positions.get(id);
@@ -592,6 +600,7 @@ export function createBoard({
    */
   function repartir() {
     ultimoMazo = null;      // un reparto nuevo no es una carta robada: el contador no salta
+    ultimoDescarte = null;
     cortarReparto({ pintar: false });
     // Y el robo del reparto anterior, también: sus temporizadores llegaban con
     // las cartas ya barajadas y destapaban una que estaba sobre el mazo nuevo.

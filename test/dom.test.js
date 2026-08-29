@@ -1074,6 +1074,31 @@ test('volver del tableau al descarte no es robar, aunque el mazo caiga en la mis
   assert.equal(cartaEl('7S').style.transitionDelay, '', 'y no espera turno de robo');
 });
 
+test('deshacer un reciclado devuelve el descarte entero de una vez, y de cara', async () => {
+  // Deshacer un reciclado también saca cartas del montón del mazo hacia el
+  // descarte —todas, y desde la misma X y la misma Y que un robo—. Sin contar
+  // cuánto crece el descarte, las tres últimas volvían boca abajo y escalonadas
+  // mientras las otras veintiuna volvían a la vez y de cara.
+  board.cancel();
+  game.setPrefs({ drawCount: 3 });
+  game.newGame(1);
+  board.cancel();
+  while (game.state.stock.length) game.stockClick();
+  await new Promise((r) => setTimeout(r, board.flightMs + 250));
+  assert.equal(game.stockClick(), true, 'con el mazo vacío, el toque recicla');
+  assert.equal(game.state.waste.length, 0);
+
+  assert.equal(game.undo(), true, 'se deshace el reciclado');
+  assert.ok(game.state.waste.length > 3, 'el descarte vuelve entero');
+  for (const carta of game.state.waste.slice(-3)) {
+    assert.equal(cartaEl(carta.id).classList.contains('down'), false,
+      `${carta.id} vuelve de cara: deshacer un reciclado no es robar`);
+    assert.equal(cartaEl(carta.id).style.transitionDelay, '', `${carta.id} no espera turno de robo`);
+  }
+  game.setPrefs({ drawCount: 1 });
+  board.cancel();
+});
+
 test('coger una carta a media jugada la baja del aire: no se queda pegada a la mesa', async () => {
   // Mientras `volando` está puesta, su animación fija el levantamiento y la
   // sombra, y una animación gana a las declaraciones del arrastre. Además, el
