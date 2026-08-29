@@ -108,7 +108,7 @@ test('cada carta se coloca en su sitio y las de la misma columna se escalonan', 
   assert.notEqual(ta, tb, 'dos cartas de la misma columna no pueden pisarse');
 });
 
-test('tocar el mazo roba una carta y actualiza la cabecera', () => {
+test('tocar el mazo roba una carta: sale boca abajo y se destapa al llegar al descarte', async () => {
   const antes = game.state.stock.length;
   const p = centro(COLUMNA.stock, 0);
   puntero('pointerdown', $('.slot-stock'), p.x, p.y);
@@ -116,8 +116,31 @@ test('tocar el mazo roba una carta y actualiza la cabecera', () => {
   assert.equal(game.state.waste.length, 1);
   assert.equal($('#moves').textContent, '1');
   const carta = cartaEl(game.state.waste[0].id);
-  assert.equal(carta.classList.contains('down'), false, 'la carta robada se ve');
+  // Como en la mesa: la carta se voltea al posarse, no al despegar. Verla ya de
+  // cara mientras cruza el tablero es lo único que no hace una mano de verdad.
+  assert.equal(carta.classList.contains('down'), true, 'mientras vuela sigue boca abajo');
   assert.equal(carta.classList.contains('playable'), true);
+  await new Promise((r) => setTimeout(r, board.flightMs + 120));
+  assert.equal(carta.classList.contains('down'), false, 'y al llegar se destapa');
+});
+
+test('deshacer un robo a medio vuelo devuelve la carta al mazo, y boca abajo', async () => {
+  // La carta robada se destapa al aterrizar, con un temporizador. Si por el
+  // camino se deshace la jugada, ese temporizador llegaba igual y le quitaba la
+  // tapa a una carta que ya había vuelto al mazo: se veía su cara desde arriba.
+  board.cancel();
+  game.newGame(3);
+  board.cancel();
+  const antes = game.state.stock.length;
+  game.draw();
+  const id = game.state.waste.at(-1).id;
+  assert.equal(cartaEl(id).classList.contains('down'), true, 'sale del mazo tapada');
+
+  assert.equal(game.undo(), true, 'se deshace antes de que aterrice');
+  assert.equal(game.state.stock.length, antes, 'la carta ha vuelto al mazo');
+  await new Promise((r) => setTimeout(r, board.flightMs + 200));
+  assert.equal(cartaEl(id).classList.contains('down'), true,
+    'en el mazo se queda boca abajo, por mucho que el reloj del robo llegue tarde');
 });
 
 test('arrastrar una carta hasta su fundación la sube', () => {
@@ -245,7 +268,7 @@ test('el panel de récords se rellena', () => {
   $('#dlg-settings').close();
 });
 
-test('las tres secciones viven en el mismo panel y se cambia entre ellas', () => {
+test('las cuatro secciones viven en el mismo panel y se cambia entre ellas', () => {
   assert.equal(window.document.querySelector('#dlg-stats'), null, 'ya no hay diálogo de récords aparte');
   assert.equal(window.document.querySelector('#dlg-help'), null, 'ni de ayuda');
 
@@ -263,13 +286,15 @@ test('las tres secciones viven en el mismo panel y se cambia entre ellas', () =>
 
   // La tecla llega desde la pestaña que tiene el foco, y sube por burbuja.
   $('#tab-ayuda').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-  assert.equal(panels.section, 'ajustes', 'la última da la vuelta a la primera');
+  assert.equal(panels.section, 'reto', 'la última da la vuelta a la primera');
 
   // Y las teclas de siempre siguen abriendo cada cosa por su sección.
   panels.openHelp();
   assert.equal(panels.section, 'ayuda');
   panels.openStats();
   assert.equal(panels.section, 'records');
+  panels.openReto();
+  assert.equal(panels.section, 'reto');
   assert.equal($('#dlg-settings').open, true, 'sin cerrar y volver a abrir por el camino');
   $('#dlg-settings').close();
 });
@@ -615,18 +640,28 @@ test('no se puede hacer zoom: ni pellizco ni doble toque', () => {
   assert.equal(dedos(1), false, 'con un dedo se sigue pudiendo desplazar');
 });
 
-test('la barra de arriba deja su hueco a la muesca también en el móvil', () => {
+test('las zonas seguras se apartan por margen, y las pinta el tapete', () => {
   // jsdom no sabe leer `max()` ni `env()`, así que se mira la hoja tal cual.
+  // Las cuatro zonas van por variable: se ven de un vistazo y se pueden simular.
+  const raiz = regla(':root').style;
+  for (const lado of ['top', 'right', 'bottom', 'left']) {
+    assert.match(raiz.getPropertyValue(`--safe-${lado}`), new RegExp(`env\\(safe-area-inset-${lado}`),
+      `--safe-${lado} tiene que salir de la zona segura del sistema`);
+  }
+
+  // Arriba y abajo el hueco se aparta con MARGEN, no con relleno: así esa franja
+  // la pinta el fondo de la página y no el velo de la barra, que la dejaba negra.
+  assert.equal(regla('.topbar').style.getPropertyValue('margin-top'), 'var(--safe-top)');
+  assert.equal(regla('.tools').style.getPropertyValue('margin-bottom'), 'var(--safe-bottom)');
+
+  // A los lados sí es relleno: ahí la barra tiene que llegar al borde.
   const movil = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)[1];
   const barra = /\.topbar \{([\s\S]*?)\}/.exec(movil)[1];
-  assert.match(barra, /padding:[^;]*env\(safe-area-inset-top/,
-    'el padding del móvil no puede pisar la zona segura de arriba');
-  assert.match(barra, /padding:[^;]*env\(safe-area-inset-left/);
-  assert.match(barra, /padding:[^;]*env\(safe-area-inset-right/);
-  // Abajo el hueco lo guarda la barra de acciones, que es la que pega al borde.
-  const acciones = /\n\.tools \{([\s\S]*?)\n\}/.exec(css)[1];
-  assert.match(acciones, /padding:[^;]*env\(safe-area-inset-bottom/,
-    'la barra de acciones no puede pisar la raya del iPhone');
+  assert.match(barra, /padding:[^;]*var\(--safe-left/);
+  assert.match(barra, /padding:[^;]*var\(--safe-right/);
+  // Y nadie se salta la variable volviendo a `env()` por su cuenta.
+  const sueltos = css.split('\n').filter((l) => l.includes('env(safe-area-inset') && !l.includes('--safe-'));
+  assert.deepEqual(sueltos, [], 'las zonas seguras se leen solo desde :root');
 });
 
 test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', () => {
@@ -653,10 +688,12 @@ test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', 
   assert.equal(/\.rotulo\s*\{[^}]*display:\s*none/.test(movil), false,
     'los rótulos se quedan a la vista');
 
+  // Y el hueco de la raya del iPhone lo guarda esta barra, con margen para que lo
+  // pinte el tapete en vez del velo (ver la prueba de las zonas seguras).
+  assert.equal(regla('.tools').style.getPropertyValue('margin-bottom'), 'var(--safe-bottom)');
+
   // Objetivo de dedo: Apple pide 44 px de lado como mínimo.
   assert.ok(parseFloat(regla('.tool').style.getPropertyValue('min-height')) >= 44);
-  const acciones = /\n\.tools \{([\s\S]*?)\n\}/.exec(css)[1];
-  assert.match(acciones, /padding:[^;]*env\(safe-area-inset-bottom/);
 });
 
 test('al cambiar de pestaña de récords el foco se queda en la pestaña', () => {
@@ -944,21 +981,40 @@ test('la pista marca fuerte la carta que hay que tocar y flojo el sitio donde va
   assert.equal($('.slot-tableau[data-index="0"]').classList.contains('hint-destino'), true);
 });
 
-test('con mazo, la pista manda robar antes que pasear cartas, y el mazo late', () => {
+test('con mazo, la pista manda robar y late la carta de arriba del montón', () => {
   escenario({
     tableau: [
       [{ id: '10H', rank: 10, suit: 'H', faceUp: true }],
       [{ id: '9S', rank: 9, suit: 'S', faceUp: true }],
     ],
-    stock: [{ id: '2C', rank: 2, suit: 'C', faceUp: false }],
+    // El 8D del mazo cabe sobre el 9S: mientras al mazo le quede algo colocable,
+    // la partida está viva y robar es mejor que pasear el 9S de aquí para allá.
+    stock: [{ id: '2C', rank: 2, suit: 'C', faceUp: false }, { id: '8D', rank: 8, suit: 'D', faceUp: false }],
   });
   const pista = game.hint();
   assert.deepEqual(pista.move, { type: 'draw' }, 'mover el 9S de aquí para allá no le hace caso: mejor robar');
 
-  assert.ok(regla('.slot.hint'), 'hay regla que anima el hueco del mazo');
   board.flashHint(pista.move);
-  assert.equal($('.slot-stock').classList.contains('hint'), true, 'el mazo parpadea');
-  assert.equal($('.slot-stock').classList.contains('hint-destino'), false);
+  // El anillo va en la carta que se toca, no en el hueco que hay debajo: el
+  // hueco lo tapa el propio montón y la marca se quedaba enterrada.
+  const arriba = cartaEl(game.state.stock[game.state.stock.length - 1].id);
+  assert.equal(arriba.classList.contains('hint'), true, 'late la carta de encima del mazo');
+  assert.equal($('.slot-stock').classList.contains('hint'), false, 'y no el hueco de debajo');
+
+  // Con el mazo vacío ya no hay carta que marcar: entonces sí, late el hueco.
+  assert.ok(regla('.slot.hint'), 'hay regla que anima el hueco del mazo');
+  escenario({
+    tableau: [[{ id: '10H', rank: 10, suit: 'H', faceUp: true }], [{ id: '9S', rank: 9, suit: 'S', faceUp: true }]],
+    waste: [
+      { id: '4D', rank: 4, suit: 'D', faceUp: true },
+      { id: '8D', rank: 8, suit: 'D', faceUp: true },
+      { id: '2C', rank: 2, suit: 'C', faceUp: true },
+    ],
+  });
+  const reciclar = game.hint();
+  assert.deepEqual(reciclar.move, { type: 'recycle' });
+  board.flashHint(reciclar.move);
+  assert.equal($('.slot-stock').classList.contains('hint'), true, 'sin cartas, late el hueco');
 });
 
 test('pedir otra pista se lleva la anterior: no quedan marcas viejas', () => {
@@ -994,17 +1050,116 @@ test('picar no sube una carta arriesgada: para eso está el arrastre', () => {
   puntero('pointerdown', cartaEl('9S'), p.x, p.y);
   puntero('pointerup', cartaEl('9S'), p.x, p.y);
 
-  assert.equal(game.state.foundations[0].length, 1, 'no sube sola: subir ahora sería arriesgado');
-  assert.equal(game.state.tableau[0].length, 1);
-  assert.equal(cartaEl('9S').classList.contains('nope'), true, 'y se avisa en la propia carta');
-  assert.equal($('#banner').textContent, t('msg.subida.riesgo'));
+  assert.equal(game.state.foundations[0].length, 2, 'sube: era lo único que se podía hacer con ella');
+  assert.equal(game.state.tableau[0].length, 0);
+  assert.equal(cartaEl('9S').classList.contains('nope'), false, 'nada de negarse ni de dar explicaciones');
+});
 
-  // Arrastrándola sí sube: esa decisión es del jugador.
-  const hasta = centro(COLUMNA.foundation(0), 0);
-  puntero('pointerdown', cartaEl('9S'), p.x, p.y);
-  puntero('pointermove', cartaEl('9S'), hasta.x, hasta.y);
-  puntero('pointerup', cartaEl('9S'), hasta.x, hasta.y);
-  assert.equal(game.state.foundations[0].length, 2, 'arrastrada sube');
+test('volver del tableau al descarte no es robar, aunque el mazo caiga en la misma columna', async () => {
+  // `COLUMNA.stock` es 6, o sea que el montón del mazo y la séptima columna
+  // comparten X. Mirando solo la X, deshacer una jugada que llevó una carta del
+  // descarte a esa columna la devolvía tapada y con el retraso de un robo.
+  const c = (id, rank, suit, faceUp = true) => ({ id, rank, suit, faceUp });
+  escenario({
+    tableau: [[], [], [], [], [], [], [c('8H', 8, 'H')]],
+    waste: [c('7S', 7, 'S')],
+    stock: [c('KD', 13, 'D', false)],
+  });
+  assert.equal(game.play({ type: 'move', from: { pile: 'waste' }, to: { pile: 'tableau', index: 6 }, count: 1 }), true);
+  await new Promise((r) => setTimeout(r, board.flightMs + 120));
+
+  assert.equal(game.undo(), true, 'el 7S vuelve al descarte');
+  assert.equal(cartaEl('7S').classList.contains('down'), false,
+    'una carta que vuelve al descarte se ve: no viene del mazo');
+  assert.equal(cartaEl('7S').style.transitionDelay, '', 'y no espera turno de robo');
+});
+
+test('coger una carta a media jugada la baja del aire: no se queda pegada a la mesa', async () => {
+  // Mientras `volando` está puesta, su animación fija el levantamiento y la
+  // sombra, y una animación gana a las declaraciones del arrastre. Además, el
+  // temporizador del vuelo devolvía el z natural a una carta que el jugador
+  // tenía cogida y la hundía por debajo del tablero.
+  const c = (id, rank, suit, faceUp = true) => ({ id, rank, suit, faceUp });
+  escenario({
+    tableau: [[c('10H', 10, 'H')], [], [], [], [], [], []],
+    stock: [c('KD', 13, 'D', false), c('9S', 9, 'S', false)],
+  });
+  assert.equal(game.draw(), true);
+  assert.equal(cartaEl('9S').classList.contains('volando'), true, 'sale volando del mazo');
+
+  const el = cartaEl('9S');
+  const p = centro(COLUMNA.waste, 0);
+  puntero('pointerdown', el, p.x, p.y);
+  puntero('pointermove', el, p.x + 40, p.y + 40);
+  assert.equal(el.classList.contains('dragging'), true);
+  assert.equal(el.classList.contains('volando'), false, 'en la mano ya no vuela');
+
+  const z = Number(el.style.zIndex);
+  assert.ok(z >= 2000, `la que se lleva en la mano va por encima de todo, y va en z=${z}`);
+  await new Promise((r) => setTimeout(r, board.flightMs + 200));
+  assert.equal(Number(el.style.zIndex), z, 'y el reloj del vuelo no se la baja mientras la sujeta');
+  board.cancel();
+});
+
+test('repartir de nuevo corta el robo que estuviera en el aire', async () => {
+  const c = (id, rank, suit, faceUp = true) => ({ id, rank, suit, faceUp });
+  // La QH se roba aquí y en el reparto 5 le toca ser la ÚLTIMA de las 28: cuando
+  // vence el reloj de este robo sigue apilada sobre el mazo esperando su turno, y
+  // ahí es donde se veía el fallo —enseñaba la cara sobre el montón—.
+  escenario({
+    tableau: [[c('10H', 10, 'H')], [], [], [], [], [], []],
+    stock: [c('KD', 13, 'D', false), c('QH', 12, 'H', false)],
+  });
+  assert.equal(game.draw(), true);
+  assert.equal(cartaEl('QH').classList.contains('down'), true, 'aún viene de camino, tapada');
+
+  game.newGame(5);                    // el reparto anterior se va con todo lo suyo
+  // El reloj del robo viejo vence en mitad del reparto nuevo, cuando las 28 del
+  // tableau todavía están apiladas sobre el mazo esperando su turno. Ninguna
+  // carta que esté ahí puede enseñar la cara.
+  const enElMontonDelMazo = (el) => {
+    const m = /translate3d\(([-\d.]+)px, ([-\d.]+)px/.exec(el.style.transform);
+    if (!m) return false;
+    const x = Number(m[1]);
+    const y = Number(m[2]);
+    const cw = parseFloat(window.getComputedStyle(window.document.documentElement).getPropertyValue('--cw'));
+    const gap = parseFloat(window.getComputedStyle(window.document.documentElement).getPropertyValue('--gap'));
+    return Math.abs(x - COLUMNA.stock * (cw + gap)) < 1 && y <= 4;
+  };
+  // Se mira muy de cerca: el destello dura lo que tarde el siguiente fotograma
+  // del reparto en devolverle la tapa, un par de centésimas.
+  for (let i = 0; i < 90; i++) {
+    await new Promise((r) => setTimeout(r, 8));
+    const destapada = [...window.document.querySelectorAll('.card')]
+      .find((el) => enElMontonDelMazo(el) && !el.classList.contains('down'));
+    assert.equal(destapada, undefined,
+      `el reloj del robo viejo destapó ${destapada?.dataset.id} sobre el mazo del reparto nuevo`);
+  }
+  board.cancel();
+});
+
+test('en la última tanda corta, la primera carta sale ya, sin esperar turno de nadie', async () => {
+  // Robando de tres, el escalón se cuenta sobre las que salen, no sobre el
+  // tamaño del robo: si al mazo le quedaban dos, la primera arrancaba con el
+  // retraso de la tercera y el mazo se quedaba un rato quieto con el contador ya a cero.
+  const c = (id, rank, suit, faceUp = true) => ({ id, rank, suit, faceUp });
+  game.setPrefs({ drawCount: 3 });
+  escenario({
+    tableau: [[c('10H', 10, 'H')], [], [], [], [], [], []],
+    waste: [c('3C', 3, 'C'), c('4C', 4, 'C'), c('5C', 5, 'C')],
+    stock: [c('KD', 13, 'D', false), c('9S', 9, 'S', false)],
+  });
+  assert.equal(game.draw(), true);
+  assert.equal(game.state.stock.length, 0, 'salen las dos que quedaban');
+
+  // El descarte queda [3C 4C 5C KD 9S]: la ventana de tres son 5C, KD y 9S, pero
+  // del mazo solo han salido KD y 9S.
+  assert.equal(cartaEl('9S').style.transitionDelay, '', 'la primera que sale no espera a nadie');
+  assert.match(cartaEl('KD').style.transitionDelay, /^55ms/, 'y la segunda va un escalón detrás');
+  assert.equal(cartaEl('5C').style.transitionDelay, '', 'la que ya estaba en el descarte ni se mueve');
+  await new Promise((r) => setTimeout(r, board.flightMs + 250));
+  game.setPrefs({ drawCount: 1 });
+  board.cancel();
 });
 
 test('la carta que se mueve se levanta de la mesa mientras vuela', async () => {
@@ -1014,7 +1169,10 @@ test('la carta que se mueve se levanta de la mesa mientras vuela', async () => {
       [], [], [], [], [],
       [{ id: '9H', rank: 9, suit: 'H', faceUp: true }],
     ],
-    stock: [{ id: '2H', rank: 2, suit: 'H', faceUp: false }],   // si no, la posición queda muerta
+    // Un rey en el mazo: hay hueco donde ponerlo, así que la posición sigue viva.
+    // Con una carta que no cupiera en ningún sitio, el motor la daría por cerrada
+    // por muchas cartas que tuviera el mazo, y el cartel taparía el tablero.
+    stock: [{ id: 'KD', rank: 13, suit: 'D', faceUp: false }],
   });
   assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 6 }, to: { pile: 'tableau', index: 0 }, count: 1 }), true);
   assert.equal(game.status, 'playing', 'la partida sigue viva: nada de carteles de por medio');

@@ -10,6 +10,7 @@ import { applyEvents, initialScore, timePenalty, winBonus } from './scoring.js';
 
 const MAX_HISTORY = 400;      // tope de deshacer en memoria
 const SAVED_HISTORY = 25;     // cuántos pasos se guardan en localStorage
+const RECUERDO = 60;          // cuántas posiciones recuerda la pista para no dar vueltas
 
 export function formatTime(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -35,6 +36,7 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
   let lastResult = null;
   let selectionEpoch = 0;      // sube con cada cambio de estado: sirve para invalidar cachés de la interfaz
   let dealId = 0;              // sube solo al repartir de nuevo: la interfaz lo usa para animar el reparto
+  let dia = null;              // 'AAAA-MM-DD' si esta mano es la del reto diario
 
   const emit = () => { for (const fn of listeners) fn(api); };
 
@@ -49,13 +51,17 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
 
   /**
    * Huellas de por dónde se ha pasado hace poco. El recomendador las usa para no
-   * proponer deshacer a mano lo que se acaba de hacer: doce pasos bastan para
-   * cazar los bucles cortos, que son los que marean, y no cuesta nada calcularlas
-   * en el momento (la pista la pide una persona, no un bucle).
+   * proponer deshacer a mano lo que se acaba de hacer.
+   *
+   * Son sesenta y no doce porque hay dos bucles que cazar, y el largo no cabía
+   * en doce: dar la vuelta entera al mazo son veinticinco jugadas robando de una
+   * (veinticuatro robos y el reciclado), y al llegar otra vez al mismo sitio la
+   * pista volvía a mandar robar, indefinidamente. Calcularlas no cuesta nada: la
+   * pista la pide una persona, no un bucle.
    */
   function historialReciente() {
     const huellas = new Set([advisor.huella(state)]);
-    for (const paso of history.slice(-12)) huellas.add(advisor.huella(paso.state));
+    for (const paso of history.slice(-RECUERDO)) huellas.add(advisor.huella(paso.state));
     return huellas;
   }
 
@@ -122,6 +128,7 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       moves,
       undos,
       seed: state.seed,
+      dia,
       player: prefs.playerName || null,
       at: new Date().toISOString(),
     };
@@ -158,6 +165,7 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       baseScore,
       moves,
       undos,
+      dia,
       elapsedMs: elapsed(),
       prefs: { drawCount: state.drawCount, scoring: state.scoring, timed: state.timed },
       history: history.slice(-SAVED_HISTORY),
@@ -199,6 +207,8 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
     get foundationCount() { return state ? state.foundations.reduce((n, p) => n + p.length, 0) : 0; },
     get lastResult() { return lastResult; },
     get seed() { return state?.seed ?? null; },
+    /** El día del reto si esta mano es la de un reto diario; null si es una normal. */
+    get dia() { return dia; },
     get epoch() { return selectionEpoch; },
     /** Cambia cada vez que se reparte de cero (no al retomar una partida guardada). */
     get dealId() { return dealId; },
@@ -209,14 +219,24 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       const changesDeal = ('drawCount' in patch && patch.drawCount !== prefs.drawCount)
         || ('scoring' in patch && patch.scoring !== prefs.scoring);
       prefs = store.setPrefs(patch);
-      if (changesDeal) api.newGame();
+      // Cambiar de modalidad reparte de nuevo, pero si lo que se está jugando es
+      // el reto del día se reparte OTRA VEZ EL DEL DÍA: son las mismas cartas
+      // con otras reglas, no un reparto cualquiera. Sortear una mano al azar aquí
+      // sacaba del reto sin decir nada.
+      if (changesDeal) api.newGame(dia ? state?.seed : null, { dia });
       else emit();
       return api.prefs;
     },
 
-    newGame(seed) {
+    /**
+     * Reparte. `opts.dia` marca la mano como la del reto diario de esa fecha: se
+     * guarda con el resultado para que el calendario sepa qué se jugó y cuándo.
+     * Sin él, la partida es una normal y corriente.
+     */
+    newGame(seed, { dia: diaReto = null } = {}) {
       if (seed == null) seed = prefs.solvableOnly ? randomSolvableSeed(state?.seed) : randomSeed();
       abandonIfInProgress();
+      dia = diaReto;
       state = engine.newGame({ seed, drawCount: prefs.drawCount, scoring: prefs.scoring });
       dealId += 1;
       state.timed = prefs.timed;         // la modalidad se fija al repartir, no al puntuar
@@ -236,10 +256,10 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       return api;
     },
 
-    /** Vuelve a repartir exactamente las mismas cartas. */
+    /** Vuelve a repartir exactamente las mismas cartas; el reto sigue siendo el mismo. */
     restart() {
       const seed = state?.seed ?? randomSeed();
-      api.newGame(seed);
+      api.newGame(seed, { dia });
       return api;
     },
 
@@ -255,6 +275,7 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       baseScore = Number.isFinite(saved.baseScore) ? saved.baseScore : 0;
       moves = saved.moves ?? 0;
       undos = saved.undos ?? 0;
+      dia = typeof saved.dia === 'string' ? saved.dia : null;
       history = (Array.isArray(saved.history) ? saved.history : [])
         .filter((h) => h && h.state)
         .map((h) => ({ ...h, state: rehidratar(h.state) }));

@@ -19,6 +19,14 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
 - **Klondike completo**: robar de una o de tres, deshacer (hasta 400 jugadas),
   pistas, subida automática de las cartas que ya no estorban y autocompletado
   cuando la partida está resuelta.
+- **Reto diario**: cada día tiene su reparto, y sale de la fecha y de nada más
+  (`src/reto.js`, FNV-1a sobre `AAAA-MM-DD`). Sin servidor, sin cuentas y sin
+  ponerse de acuerdo: dos personas que abran el juego el mismo día reparten las
+  mismas 52 cartas y pueden comparar la puntuación. El calendario del panel
+  enseña el mes entero con un punto en cada día jugado —verde si se ganó—, deja
+  volver a cualquiera del último año y guarda tu mejor intento de cada uno. Del
+  futuro no reparte. Se abre con **D** o desde el menú, y se puede compartir con
+  `?reto=hoy` o `?reto=AAAA-MM-DD`.
 - **Cinco idiomas**: español, inglés, francés, portugués y coreano, con la misma
   cobertura los cinco. Al entrar por primera vez se mira el idioma del navegador;
   desde Ajustes se cambia en caliente, sin recargar y sin perder la partida.
@@ -43,9 +51,10 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   semillas resueltas por el buscador de `test/engine.test.js`.
 - **Picar una carta la mueve sola** a su mejor destino: primero la pila de arriba
   —si sube sin riesgo— y, si no, la columna que mejor le venga (los huecos
-  vacíos se dejan para el final, que hacen falta para los reyes). Subir
-  arriesgando y elegir el sitio a mano —dos huecos libres, dos columnas donde
-  encaja— se hace arrastrando.
+  vacíos se dejan para el final, que hacen falta para los reyes). Si lo único que
+  se puede hacer con esa carta es subirla arriesgando, sube: negarse y explicar
+  por qué dejaba el toque sin hacer nada. Elegir el sitio a mano —dos huecos
+  libres, dos columnas donde encaja— se sigue haciendo arrastrando.
 - **Reparto animado**: las 28 cartas del tableau salen del mazo de una en una y
   se destapan al llegar con un volteo, como en la mesa. Dura un segundo y un toque
   se lo salta.
@@ -57,9 +66,11 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   se acaba de pasar. El consejo se explica con palabras («Lleva el 7♥ de la
   columna 2 al 8♠: así destapas la carta que tiene debajo») y señala el sitio: la
   carta que hay que tocar late fuerte, el destino flojito, y si toca robar late
-  el propio mazo. Pulsando Pista otra vez sin jugar se enseña la siguiente
-  alternativa. **Picar una carta usa exactamente el mismo criterio**, así que la
-  pista y el toque nunca llevan la carta a sitios distintos.
+  la carta de encima del mazo. **Una pista es una**: pulsar otra vez enseña la
+  misma, que si era la mejor lo sigue siendo. Antes iba pasando por las
+  alternativas y el jugador acababa sin saber cuál de las cuatro le convenía.
+  **Picar una carta usa exactamente el mismo criterio**, así que la pista y el
+  toque nunca llevan la carta a sitios distintos.
 - **Sonidos**: los clics de las cartas y los avisos están sintetizados con Web
   Audio, sin un solo fichero de audio ni una petición a la red. Se apagan desde
   Ajustes. El navegador no deja sonar nada hasta que tocas la página, así que el
@@ -70,53 +81,81 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   emojis, que cada sistema dibuja a su manera) y 82 x 51 px de objetivo, muy por
   encima del mínimo que pide Apple. Rehacer se ha quitado: en un solitario se
   deshace mucho y se rehace casi nunca, y el hueco lo aprovecha mejor deshacer.
-- **La cabecera cuenta la partida**: un chip con la modalidad del reparto
-  («Estándar · 1 carta · crono») que lleva a Ajustes, cuántas cartas llevas
-  arriba de las 52 con su barra de progreso, y un aviso cuando el reloj está
-  parado. Pulsar el número de reparto copia su enlace, con `?seed=` puesto, para
-  retar a alguien a la misma mano.
+- **La cabecera cuenta la partida sin crecer**: un chip con la modalidad del
+  reparto («Estándar · 1 carta · crono», o «Reto 29 ago · Estándar · 1 carta»)
+  que lleva a Ajustes, y la barra de progreso hacia las 52. Nada de lo que
+  aparece y desaparece le cambia el alto: el aviso de reloj parado es una marca
+  en la esquina de su caja —y el número se apaga— en vez de una pastilla que
+  añadía una fila, y el aviso de versión nueva es una píldora baja que cabe en la
+  fila del chip. Con la caja de «Fundaciones» fuera (decía lo mismo que la barra,
+  que ahora lleva el número en su `aria-valuetext`), en un móvil de 390 px la
+  cabecera pasó de 195 a 114 px, y de 269 a 114 con el aviso de pausa y el de
+  actualizar puestos: son 155 px más de tapete. Pulsar el número de reparto copia
+  su enlace, con `?seed=` puesto, para retar a alguien a la misma mano.
 - **Baraja de cuatro colores** para quien no distinga bien el rojo del negro:
   cada palo con su color, separados también en luminosidad para que se lean en
   escala de grises. Y un pequeño golpe de vibración al colocar y al fallar, en
   los móviles que lo permiten.
-- **Un solo panel**: ajustes, récords y ayuda están en el mismo sitio, en tres
-  secciones. Antes eran tres diálogos y tres botones distintos. Lo que pasa
+- **Un solo panel**: reto, ajustes, récords y ayuda están en el mismo sitio, en
+  cuatro secciones. Antes eran tres diálogos y tres botones distintos. Lo que pasa
   dentro se cuenta dentro: la validación del reparto, exportar, importar o borrar
   escriben en el propio diálogo, no en un cartel que queda tapado detrás. Los
   récords enseñan además la evolución de tus últimas veinte partidas.
-- **Sin salida, dicho con precisión**: cuando ya no queda ninguna jugada se dice
-  en el tablero —el aviso se queda fijo— y se abre un cartel que lo explica y
-  ofrece la salida. Y se distinguen dos cosas distintas: que no queden jugadas
-  directas pero aún puedas bajar una carta de las pilas de arriba, o que la
-  partida esté de verdad muerta. Cuando algo no se puede hacer se explica por
-  qué: por qué esa carta no entra ahí, por qué el mazo no da más de sí, cuántas
-  pasadas te quedan en Vegas.
+- **Partida cerrada, dicho con precisión**: un mazo con cartas ya no basta para
+  dar una partida por viva. Si ninguna de las que pueden salir cabe en ningún
+  sitio —ni ahora ni tras pasear cartas entre columnas—, dar vueltas al montón es
+  dar vueltas, y el juego lo dice en vez de dejarte diez minutos robando. Y
+  robando de tres se cuenta lo que de verdad llega a lo alto del descarte: sale
+  una de cada tres, y reciclar no lo arregla porque la vuelta conserva el orden,
+  así que un as enterrado en una posición que nunca sale no salva la partida. El
+  aviso se queda fijo en el tablero y se abre un cartel con la salida: deshacer,
+  repetir o repartir. Se distinguen además dos cosas: que aún puedas bajar una
+  carta de las pilas de arriba, o que no quede nada. Por eso la pista nunca dice
+  «no veo ninguna jugada»: si no hay nada sobre la mesa, la pista es robar; y si
+  tampoco hay nada que robar, lo que pasa es que la partida está cerrada.
+  Cuando algo no se puede hacer se explica por qué: por qué esa carta no entra
+  ahí, por qué el mazo no da más de sí, cuántas pasadas te quedan en Vegas.
 - **Botón de rematar**: en cuanto la partida ya no tiene decisiones (todo boca
   arriba y sin mazo) aparece un botón que sube el resto en cascada, una carta
   cada 81 ms. Se puede detener a media cascada.
 - **Movimiento a la medida**: cada vuelo dura según lo lejos que va (entre 180 y
-  324 ms) y entra y sale con una curva, no a golpe seco. La capa de composición
-  se reserva solo mientras una carta vuela o se arrastra, no en las 52 a la vez.
+  324 ms) y entra y sale con una curva, no a golpe seco. Y una carta que va de un
+  sitio a otro no se desliza por la mesa: alguien la coge, la lleva por el aire y
+  la posa. Se levanta al salir, crece un pelo por el camino —lo que está más
+  cerca del ojo se ve más grande—, deja su sombra en la mesa (que es lo que dice
+  a qué altura va) y da un golpecito de un píxel al posarse. Las cuatro cosas
+  duran exactamente lo que el vuelo, ni más ni menos: antes el levantamiento iba
+  por su cuenta y la carta seguía subiendo con la jugada ya hecha. Al destaparse
+  también se levanta, como cuando el pulgar despega la carta de la mesa. Y del
+  mazo las cartas salen **de una en una y boca abajo**, y se voltean al aterrizar
+  en el descarte: robando de tres son tres cartas, no un bloque. Al repartir,
+  cada una se destapa cuando llega, no cuando llegaría la que más lejos va. La
+  capa de composición se reserva solo mientras una carta vuela o se arrastra, no
+  en las 52 a la vez.
   Y hay un único interruptor de movimiento —la preferencia de Ajustes y la del
   sistema (`prefers-reduced-motion`)— que gobierna todo: vuelos, volteos,
   reparto, pistas, pulsos y confeti. Con el movimiento apagado la pista sigue
   entendiéndose, con anillos fijos distintos para el origen y el destino.
 - Atajos de teclado, tema claro/oscuro, y funciona con el dedo en el móvil: sin
-  zoom por accidente (ni pellizco ni doble toque), dejándole su hueco a la muesca
-  del iPhone, con las cartas nunca por debajo de los 44 px que pide un objetivo
-  táctil y sin que el tablero llegue a hacer scroll.
+  zoom por accidente (ni pellizco ni doble toque), con las cartas nunca por
+  debajo de los 44 px que pide un objetivo táctil y sin que el tablero llegue a
+  hacer scroll. Las cuatro zonas seguras del sistema van por variable
+  (`--safe-top` y compañía) y arriba y abajo se apartan con **margen**, no con
+  relleno: así esas dos franjas las pinta el tapete y no el velo de las barras,
+  que abajo dejaba una banda negra pegada al borde. El `theme-color` se mueve con
+  el tema para que el navegador pinte alrededor del mismo verde.
 
 ## Aplicación instalable (PWA)
 
 Se instala en el móvil o en el escritorio y funciona **sin conexión**: el service
-worker precarga los 29 ficheros que necesita la aplicación, así que después del
+worker precarga los 30 ficheros que necesita la aplicación, así que después del
 primer arranque no hace falta internet para nada. Tampoco lo hacía antes: el
 juego nunca ha hablado con ningún servidor.
 
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.5.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.6.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -140,7 +179,12 @@ si alguien toca código sin subir la versión la huella cambia igual, así que l
 que ya la tienen instalada no se quedan atrapados en lo viejo.
 
 Los iconos se generan con `npm run icons` (`scripts/iconos.py`, PNG escritos a
-mano con zlib: no hacen falta ni ImageMagick ni Pillow).
+mano con zlib: no hacen falta ni ImageMagick ni Pillow). El icono es una mano en
+abanico sobre el tapete —dos cartas boca abajo con el azul del reverso del juego
+y una boca arriba con su pica—: una pica suelta la tiene media baraja de
+aplicaciones, y tres cartas en abanico se leen como «esto es un solitario» ya de
+lejos. `icons/icon.svg` dibuja lo mismo a mano, con la misma geometría; si se
+cambia una, hay que cambiar la otra.
 
 ## Dónde se guarda todo
 
@@ -153,6 +197,7 @@ En `localStorage`, bajo el prefijo `solitario.v1.`:
 | `solitario.v1.scores` | las 25 mejores partidas |
 | `solitario.v1.save` | la partida en curso |
 | `solitario.v1.vegasBank` | saldo acumulado de Vegas |
+| `solitario.v1.retos` | el mejor intento de cada reto diario |
 
 No sale nada del navegador. Si `localStorage` está bloqueado (modo privado,
 cuota llena), el juego sigue funcionando en memoria y solo se pierde el historial
@@ -164,11 +209,12 @@ al cerrar.
 src/cards.js           baraja, aleatoriedad reproducible (mulberry32)
 src/engine.js          reglas del Klondike, funciones puras
 src/advisor.js         qué jugada conviene y por qué (pista y toque, un solo criterio)
+src/reto.js            el reto diario: fecha → semilla, y las cuentas del calendario
 src/scoring.js         los dos sistemas de puntuación
 src/storage.js         localStorage con reserva en memoria
 src/game.js            partida: motor + puntos + reloj + guardado + deshacer
 src/ui.js              tablero: dibujo y gestos
-src/panels.js          diálogos (récords, ajustes, ayuda, victoria)
+src/panels.js          diálogos (reto y calendario, récords, ajustes, ayuda, victoria)
 src/main.js            arranque, cabecera y teclado
 src/i18n.js            traducción: detección, plural, interpolación y DOM
 src/locales/*.js       los cinco diccionarios (es, en, fr, pt, ko)
@@ -184,13 +230,15 @@ icons/                 iconos generados por scripts/iconos.py
 El motor no sabe nada del DOM y la interfaz no sabe nada de las reglas: por eso
 todo lo de `src/` menos `ui.js` se puede probar en Node sin navegador.
 
+Lo que está decidido y aún no está hecho vive en [`docs/TODO.md`](docs/TODO.md).
+
 ## Pruebas
 
 ```bash
 npm test
 ```
 
-342 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+379 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, el recomendador (que ninguna partida entre en
 bucle siguiendo sus consejos, que no mire cartas tapadas y que pista y toque no se

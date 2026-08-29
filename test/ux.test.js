@@ -71,7 +71,31 @@ window.localStorage.setItem('solitario.v1.stats', JSON.stringify({ 'standard-1':
 
 await import('../src/main.js');
 const { game, board, panels, refresh, store, i18n } = globalThis.solitario;
+const { claveDia, semillaDelDia } = await import('../src/reto.js');
 const { t } = i18n;
+
+/** Lleva el calendario a un día concreto, como haría el jugador pasando meses. */
+function irAlDia(clave) {
+  for (let i = 0; i < 14; i++) {
+    const boton = $$('#cal .cal-dia').find((b) => b.dataset.dia === clave);
+    if (boton) { boton.click(); return; }
+    $('#cal-prev').click();
+  }
+  throw new Error(`no se llegó al día ${clave}`);
+}
+
+/** El texto que le toca a una recomendación, montado como lo monta main.js. */
+function textoPista(rec) {
+  const st = game.state;
+  const pila = rec.move.from?.pile === 'waste' ? st.waste
+    : rec.move.from?.pile === 'foundation' ? st.foundations[rec.move.from.index]
+      : rec.move.from ? st.tableau[rec.move.from.index] : null;
+  return t(`pista.${rec.reason}`, {
+    carta: i18n.nombreCarta(pila?.[pila.length - (rec.move.count ?? 1)]),
+    origen: i18n.nombrePila(rec.move.from, st),
+    destino: i18n.nombrePila(rec.move.to, st),
+  });
+}
 game.newGame(1);          // reparto fijo: las pruebas de interacción deben ser repetibles
 board.cancel();           // sin la animación de reparto por medio
 
@@ -210,17 +234,25 @@ test('pulsar el chip de modalidad lleva a los Ajustes, que es donde se cambia', 
   $('#dlg-settings').close();
 });
 
-test('subir una carta mueve el contador de fundaciones y estira la barra de progreso', () => {
+test('subir una carta estira la barra de progreso, que es donde vive el contador', () => {
+  // La caja de «Fundaciones» se fue de la cabecera: ocupaba una fila entera para
+  // decir lo mismo que la barra. El número no se ha perdido, se ha mudado al
+  // aria-valuetext de la barra, que ahora es una progressbar de verdad.
+  assert.equal(window.document.querySelector('#foundations'), null, 'ya no hay caja de fundaciones');
+
   escenario({ tableau: [[carta(1, 'S')]], stock: [carta(5, 'H', false)] });
   assert.equal(game.foundationCount, 0);
-  assert.equal($('#foundations').textContent, '0/52');
   assert.equal(parseFloat($('#progress i').style.width) || 0, 0);
+  assert.equal($('#progress').getAttribute('role'), 'progressbar');
+  assert.equal($('#progress').getAttribute('aria-valuenow'), '0');
 
   assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 0 }, to: { pile: 'foundation', index: 0 }, count: 1 }), true);
   assert.equal(game.foundationCount, 1);
-  assert.equal($('#foundations').textContent, '1/52');
   assert.equal(parseFloat($('#progress i').style.width), 1.9, 'una de 52 es el 1,9 % del camino');
-  assert.equal($('#progress').getAttribute('aria-hidden'), 'true', 'es un vistazo, no un dato que leer');
+  assert.equal($('#progress').getAttribute('aria-valuenow'), '1');
+  assert.equal($('#progress').getAttribute('aria-valuetext'), t('hud.fundaciones.valor', { n: 1 }),
+    'y quien no la ve se entera igual: el valor va escrito');
+  assert.equal($('#progress').getAttribute('aria-valuemax'), '52');
 });
 
 test('un crono parado con la partida en marcha se avisa, y al reanudar se calla', () => {
@@ -371,76 +403,244 @@ test('jugar o repartir se lleva las marcas de la pista, que ya no señalan nada'
     'y repartir no deja cartas del reparto anterior latiendo sobre el nuevo');
 });
 
-// El aviso de «te enseño otra» lleva ahora la descripción detrás, así que se
-// reconoce por su principio, no por la cadena entera.
-const marcaAlternativa = () => t('pista.mas', { detalle: '\u00a7' }).split('\u00a7')[0];
-
-test('pedir pista dos veces sin jugar propone otra jugada, y al agotarlas vuelve a la primera', () => {
+test('la pista enseña la mejor jugada, y pulsarla otra vez enseña esa misma', () => {
+  // Antes iba pasando por las alternativas y el jugador acababa sin saber cuál
+  // de las cuatro le convenía. Una pista es una: la mejor.
   tableroConAlternativas();
   const rec = game.hint();
   assert.ok(rec, 'hay jugada que recomendar');
   assert.ok(rec.alternatives.length >= 2, `el montaje necesita alternativas; hay ${rec.alternatives.length}`);
 
-  const total = 1 + rec.alternatives.length;
   const marcas = [];
   const avisos = [];
-  for (let i = 0; i <= total; i++) {         // una vuelta entera más el regreso a la primera
+  for (let i = 0; i < 4; i++) {
     $('#btn-hint').click();
     marcas.push(pistaMarcada());
     avisos.push($('#banner').textContent);
   }
 
-  assert.ok(!avisos[0].startsWith(marcaAlternativa()), 'la primera describe la jugada entera');
-  assert.notEqual(marcas[1], marcas[0], 'la segunda pulsación señala otra cosa');
-  assert.ok(avisos[1].startsWith(marcaAlternativa()), 'y avisa de que la buena era la anterior');
-  assert.ok(avisos[1].length > marcaAlternativa().length + 10,
-    'y además dice cuál es: la alternativa también se describe');
-  assert.equal(marcas[total], marcas[0], 'agotadas las alternativas, se vuelve a la mejor');
-  assert.equal(avisos[total], avisos[0], 'y se vuelve a describir entera, no como «te enseño otra»');
+  assert.equal(avisos[0], textoPista(rec), 'describe la jugada entera');
+  for (let i = 1; i < 4; i++) {
+    assert.equal(marcas[i], marcas[0], 'pulsar otra vez señala lo mismo');
+    assert.equal(avisos[i], avisos[0], 'y dice lo mismo');
+  }
 
   // Una sola pista a la vez: nunca quedan dos cartas latiendo.
   assert.equal($$('.hint').length, 1, 'solo late la carta que hay que tocar');
 });
 
-test('cualquier jugada reinicia el ciclo: la pista siguiente vuelve a ser la mejor', () => {
+test('tras jugar, la pista vuelve a calcular la mejor del tablero nuevo', () => {
   tableroConAlternativas();
   $('#btn-hint').click();
   const primera = pistaMarcada();
-  $('#btn-hint').click();
-  assert.notEqual(pistaMarcada(), primera, 'vamos por la segunda del ciclo');
-  assert.ok($('#banner').textContent.startsWith(marcaAlternativa()));
 
   assert.equal(game.draw(), true, 'se juega: el tablero ya no es el mismo');
+  assert.equal(pistaMarcada(), ' → ', 'la marca vieja se retira, que ya no señala nada');
   $('#btn-hint').click();
-  assert.ok(!$('#banner').textContent.startsWith(marcaAlternativa()),
-    'tras jugar, «pista» vuelve a significar la mejor jugada y no «la siguiente»');
-  $('#btn-hint').click();
-  assert.ok($('#banner').textContent.startsWith(marcaAlternativa()), 'y el ciclo empieza otra vez desde arriba');
+  const despues = game.hint();
+  assert.equal($('#banner').textContent, textoPista(despues),
+    'la pista de después es la mejor de la posición de después');
+  assert.ok(primera, 'y la de antes existía');
 });
 
-test('deshacer también reinicia el ciclo de pistas', () => {
-  tableroConAlternativas();
-  $('#btn-hint').click();
-  $('#btn-hint').click();
-  assert.ok($('#banner').textContent.startsWith(marcaAlternativa()));
-
-  assert.equal(game.draw(), true);
-  assert.equal(game.undo(), true);
-  $('#btn-hint').click();
-  assert.ok(!$('#banner').textContent.startsWith(marcaAlternativa()));
-});
-
-test('sin ninguna jugada que ofrecer, la pista lo dice y no señala nada', () => {
+test('sin ninguna jugada que ofrecer, la partida está cerrada y se dice así', () => {
+  // «No veo ninguna jugada» ya no existe: si no hay nada sobre la mesa, la pista
+  // es robar; y si tampoco queda nada que robar, lo que pasa es que la partida
+  // está cerrada, que es otra cosa y se cuenta como tal.
   escenario({
     tableau: [[carta(9, 'S')], [carta(9, 'H')], [carta(9, 'D')], [carta(9, 'C')], [carta(5, 'H')], [carta(5, 'S')], [carta(5, 'D')]],
   });
   assert.equal(game.hint(), null);
+  assert.equal(engine.isStuck(game.state), true, 'el motor la da por cerrada');
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
   $('#btn-hint').click();
-  assert.equal($('#banner').textContent, t('pista.ninguna'));
+  assert.equal($('#banner').textContent, t('msg.bloqueo.sinsalida'));
   assert.equal($('#banner').classList.contains('warn'), true);
   assert.equal(pistaMarcada(), ' → ', 'no queda ninguna marca de la pista anterior');
 });
 
+
+// ---------- reto diario ----------
+
+test('el calendario del reto se abre por hoy, marca lo jugado y no deja tocar el futuro', () => {
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
+  const hoy = claveDia();
+  const ayer = claveDia(new Date(Date.now() - 86400000));
+  store.recordReto(ayer, { won: true, score: 700, timeMs: 123000, moves: 90, scoring: 'standard', drawCount: 1 });
+
+  panels.openReto();
+  assert.equal(panels.section, 'reto');
+  assert.equal($('#panel-reto').hidden, false);
+
+  const dias = [...$$('#cal .cal-dia')];
+  assert.ok(dias.length >= 28, 'el mes entero, día a día');
+  assert.equal($$('#cal .cal-cab').length, 7, 'y sus siete cabeceras de la semana');
+
+  const deHoy = dias.find((b) => b.dataset.dia === hoy);
+  assert.ok(deHoy, 'el día de hoy está en el calendario');
+  assert.equal(deHoy.classList.contains('hoy'), true);
+  assert.equal(deHoy.classList.contains('elegido'), true, 'y viene elegido de entrada');
+  assert.equal(deHoy.disabled, false);
+
+  const deAyer = dias.find((b) => b.dataset.dia === ayer);
+  if (deAyer) assert.equal(deAyer.classList.contains('ganado'), true, 'el que se ganó lleva su marca');
+
+  for (const b of dias) {
+    if (b.dataset.dia > hoy) assert.equal(b.disabled, true, `${b.dataset.dia} aún no ha llegado`);
+  }
+  assert.match($('#reto-detalle').textContent, new RegExp(t('reto.sin.jugar')), 'y se cuenta cómo fue el día elegido');
+  $('#dlg-settings').close();
+});
+
+test('elegir un día cuenta cómo fue, y jugarlo reparte la mano de esa fecha', () => {
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
+  const anteayer = claveDia(new Date(Date.now() - 2 * 86400000));
+  store.recordReto(anteayer, { won: false, score: 120, timeMs: 60000, moves: 40, scoring: 'standard', drawCount: 1 });
+
+  panels.openReto();
+  const boton = [...$$('#cal .cal-dia')].find((b) => b.dataset.dia === anteayer);
+  assert.ok(boton, 'el calendario llega hasta anteayer');
+  boton.click();
+  // El calendario se vuelve a pintar entero, así que hay que preguntar de nuevo.
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, anteayer);
+  assert.match($('#reto-detalle').textContent, /120/, 'la puntuación de aquel día');
+
+  $('#btn-reto-jugar').click();
+  assert.equal($('#dlg-settings').open, false, 'se reparte y se cierra el panel');
+  assert.equal(game.seed, semillaDelDia(anteayer), 'las cartas salen de la fecha');
+  assert.equal(game.dia, anteayer);
+  // Y la cabecera lo dice: esta mano no es una cualquiera.
+  assert.match($('#mode-chip').textContent, new RegExp(t('dlg.tab.reto'), 'i'));
+
+  // Dos personas, el mismo día, el mismo reparto: es toda la gracia del asunto.
+  const otra = engine.newGame({ seed: semillaDelDia(anteayer), drawCount: 1 });
+  assert.deepEqual(otra.tableau.map((p) => p.map((c) => c.id)),
+    game.state.tableau.map((p) => p.map((c) => c.id)));
+});
+
+test('por el calendario se anda con flechas, y el tabulador entra una sola vez', () => {
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
+  game.newGame(1);           // una partida normal: el calendario se abre por hoy
+  board.cancel();
+  panels.openReto();
+  const hoy = claveDia();
+  const tabulables = [...$$('#cal .cal-dia')].filter((b) => b.tabIndex === 0);
+  assert.equal(tabulables.length, 1, 'un solo día en el recorrido del tabulador');
+  assert.equal(tabulables[0].dataset.dia, hoy);
+
+  const flecha = (key) => $('#cal .cal-dia.elegido')
+    .dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }));
+
+  flecha('ArrowLeft');
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, claveDia(new Date(Date.now() - 86400000)),
+    'la flecha izquierda se va al día de antes');
+  flecha('ArrowUp');
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, claveDia(new Date(Date.now() - 8 * 86400000)),
+    'y la de arriba, una semana entera');
+  flecha('ArrowRight');
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, claveDia(new Date(Date.now() - 7 * 86400000)));
+
+  // Del futuro no hay nada que ver: desde hoy, la flecha derecha no se mueve.
+  $('#btn-reto-hoy').click();
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, hoy);
+  flecha('ArrowRight');
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, hoy, 'mañana no se puede jugar todavía');
+  flecha('ArrowDown');
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, hoy);
+
+  // Y con av/re pág se cambia de mes.
+  flecha('PageUp');
+  const mesAtras = new Date();
+  mesAtras.setMonth(mesAtras.getMonth() - 1);
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, claveDia(mesAtras));
+  $('#dlg-settings').close();
+});
+
+test('el segundo toque sobre el día ya elegido reparte, sin depender del doble clic', () => {
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
+  game.newGame(1);
+  board.cancel();
+  panels.openReto();
+  const ayer = claveDia(new Date(Date.now() - 86400000));
+  // Elegir el día repinta el calendario entero, así que el navegador nunca llega
+  // a emparejar dos clics: el `dblclick` no se dispara jamás.
+  $$('#cal .cal-dia').find((b) => b.dataset.dia === ayer).click();
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, ayer);
+  assert.equal(game.dia, null, 'el primero solo elige');
+
+  $$('#cal .cal-dia').find((b) => b.dataset.dia === ayer).click();
+  assert.equal(game.dia, ayer, 'el segundo reparte');
+  assert.equal(game.seed, semillaDelDia(ayer));
+  assert.equal($('#dlg-settings').open, false);
+});
+
+test('av/re pág no se salta meses aunque el día elegido sea el 31', () => {
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
+  game.newGame(1);
+  board.cancel();
+  panels.openReto();
+  const flecha = (key) => $('#cal .cal-dia.elegido')
+    .dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }));
+
+  // Se busca un mes con 31 días y su día 31 dentro de la ventana jugable.
+  const hoy = new Date();
+  const finDeMesLargo = new Date(hoy.getFullYear(), hoy.getMonth(), 0);   // último del mes pasado
+  if (finDeMesLargo.getDate() === 31) {
+    irAlDia(claveDia(finDeMesLargo));
+    assert.equal($('#cal .cal-dia.elegido').dataset.dia, claveDia(finDeMesLargo));
+    const antes = $('#cal-titulo').textContent;
+    flecha('PageUp');
+    const destino = $('#cal .cal-dia.elegido').dataset.dia;
+    // `setMonth` a pelo desbordaba: del 31 de un mes al 3 del siguiente, saltándose
+    // uno entero. Lo que tiene que pasar es caer en el mes de justo antes.
+    const esperado = new Date(finDeMesLargo.getFullYear(), finDeMesLargo.getMonth() - 1, 1);
+    assert.equal(destino.slice(0, 7), claveDia(esperado).slice(0, 7),
+      `de ${claveDia(finDeMesLargo)} con RePág se va a ${destino}`);
+    assert.notEqual($('#cal-titulo').textContent, antes, 'y el calendario cambia de mes');
+  }
+  $('#dlg-settings').close();
+});
+
+test('cambiar de modalidad durante el reto reparte el mismo día, no una mano al azar', () => {
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
+  const hoy = claveDia();
+  game.newGame(semillaDelDia(hoy), { dia: hoy });
+  board.cancel();
+  assert.equal(game.dia, hoy);
+
+  game.setPrefs({ drawCount: 3 });
+  assert.equal(game.dia, hoy, 'sigue siendo el reto del día');
+  assert.equal(game.seed, semillaDelDia(hoy), 'y las mismas cartas, con las reglas nuevas');
+  assert.equal(game.mode.drawCount, 3);
+  game.setPrefs({ drawCount: 1 });
+  game.newGame(1);
+  board.cancel();
+});
+
+test('el enlace del reparto lleva el reto cuando se está jugando uno', async () => {
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
+  const hoy = claveDia();
+  let copiado = '';
+  const antes = window.navigator.clipboard;
+  Object.defineProperty(window.navigator, 'clipboard', {
+    value: { writeText: async (txt) => { copiado = txt; } }, configurable: true,
+  });
+  globalThis.navigator = window.navigator;
+
+  game.newGame(semillaDelDia(hoy), { dia: hoy });
+  board.cancel();
+  $('#seed').click();
+  await espera(0);
+  assert.match(copiado, new RegExp(`reto=${hoy}`), `el enlace tiene que llevar el día: ${copiado}`);
+  assert.match(copiado, /seed=/, 'y el número del reparto, que es el que se enseña');
+
+  game.newGame(1);
+  board.cancel();
+  $('#seed').click();
+  await espera(0);
+  assert.equal(/reto=/.test(copiado), false, 'una mano normal no lleva reto');
+  if (antes) Object.defineProperty(window.navigator, 'clipboard', { value: antes, configurable: true });
+});
 
 // ---------- diálogos ----------
 
@@ -512,10 +712,10 @@ test('el cartel de bloqueo distingue quedarse sin jugadas de quedarse sin salida
   assert.equal(game.hasAnyMove, false);
   await espera(600);
   assert.equal($('#dlg-stuck').open, true);
-  assert.match($('#stuck-note').textContent, /no tiene salida/);
+  assert.match($('#stuck-note').textContent, /está cerrada/);
   assert.equal(/pilas de arriba/.test($('#stuck-note').textContent), false,
     'prometer un rescate que no existe es peor que no decir nada');
-  assert.match($('#banner').textContent, /no tiene salida/, 'y lo mismo, fijo, en el tablero');
+  assert.match($('#banner').textContent, /está cerrada/, 'y lo mismo, fijo, en el tablero');
   $('#dlg-stuck').close();
 });
 
@@ -706,7 +906,10 @@ test('la quietud se enciende con una sola variable y nada la esquiva', () => {
   assert.match(vuelo, /^var\(--quieto,/, `el vuelo se mueve pase lo que pase: ${vuelo}`);
   assert.match(vuelo, /var\(--card-speed\) var\(--vuelo\)/, 'y por dentro sigue siendo el vuelo de siempre');
   assert.match(regla('.anim .card .face, .anim .card .back').style.getPropertyValue('transition'), /^var\(--quieto,/);
-  assert.match(regla('.anim .card.volando, .anim .card.dragging').style.getPropertyValue('translate'), /^var\(--quieto,/);
+  // La carta que se lleva en la mano se queda levantada mientras se lleve, así
+  // que eso es una declaración y no una animación: también pasa por la variable.
+  assert.match(regla('.anim .card.dragging').style.getPropertyValue('translate'), /^var\(--quieto,/);
+  assert.match(regla('.card.dragging .face, .card.dragging .back').style.getPropertyValue('scale'), /^var\(--quieto,/);
 
   // Las demás familias van por nombre de @keyframes. Cada declaración que use una
   // tiene que llevar su valor de siempre como respaldo de var(--quieto, …).
@@ -714,6 +917,9 @@ test('la quietud se enciende con una sola variable y nada la esquiva', () => {
     .test(r.style?.getPropertyValue('animation') ?? ''));
   for (const [familia, nombres] of Object.entries({
     pista: ['pista', 'pista-cara', 'pista-destino'],
+    // La carta que vuela se levanta, crece un pelo y deja la sombra en la mesa.
+    vuelo: ['alzar-carta', 'alzar-cara', 'alzar-sombra'],
+    volteo: ['voltear-cara', 'voltear-sombra'],
     nope: ['nope'],
     bump: ['bump'],
     latido: ['latido'],

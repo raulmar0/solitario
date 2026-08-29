@@ -17,6 +17,7 @@ import {
   isLegal,
   isSafeToFoundation,
   isWon,
+  quedaJuegoEnElMazo,
   top,
   usefulMoves,
 } from './engine.js';
@@ -128,6 +129,29 @@ function esPaseoEsteril(ctx, m) {
   return !vaciaColumna(ctx.state, m);
 }
 
+/**
+ * ¿Este paseo pone a tiro una carta que antes no podía jugarse?
+ *
+ * `buscarSalida` contesta en cuanto encuentra UNA jugada directa y ahí se para,
+ * sin mirar los paseos; y entonces `esPaseoEsteril` los descarta todos. Eso está
+ * bien mientras la jugada directa valga la pena, pero cuando la única que hay es
+ * subir una carta arriesgando, el paseo que deja a tiro un 6 que sube a su
+ * fundación es muchísimo mejor y se estaba tirando a la basura.
+ *
+ * Se comparan CARTAS y no jugadas: mover la misma carta de una columna a otra
+ * cambia la jugada (cambia el origen) pero no pone nada nuevo a tiro, y contarlo
+ * como que abre juego es el bucle de ir y venir con la misma carta.
+ */
+function abreJugada(ctx, visible) {
+  const jugables = (estado, lista) => new Set(lista
+    .filter((m) => !esLateral(estado, m))
+    .map((m) => cabeza(estado, m)?.id));
+  const antes = jugables(ctx.state, ctx.utiles);
+  const despues = jugables(visible, usefulMoves(visible));
+  for (const id of despues) if (!antes.has(id)) return true;
+  return false;
+}
+
 function razonDe(ctx, m) {
   if (m.type === 'draw') return RAZON.ROBAR;
   if (m.type === 'recycle') return RAZON.RECICLAR;
@@ -158,8 +182,9 @@ function contexto(state) {
     movilidad: utiles.length,
     huecos: columnasVacias(state),
     // Es isStuck, pero repetirlo aquí evita lanzar la búsqueda por segunda vez.
-    atascado: !isWon(state) && !salida.hay && !state.stock.length
-      && !isLegal(state, { type: 'recycle' }),
+    // Un mazo con cartas ya no basta para darla por viva: si ninguna de las que
+    // pueden salir cabe en ningún sitio, robar es dar vueltas.
+    atascado: !isWon(state) && !salida.hay && !quedaJuegoEnElMazo(state),
   };
 }
 
@@ -185,20 +210,26 @@ function abreJuego(state, m) {
   // movido de columna antes de que se plantee devolverla.
   const devolverla = (s, x) => x.to.pile === PILE.FOUNDATION
     && top(pilaDe(s, x.from))?.id === bajada.id;
-  return buscarSalida(r.state, { ignorar: devolverla }).hay;
+  // Y también cuenta que la carta bajada le dé sitio a alguna de las que quedan
+  // por robar: con el mazo cerrado, eso es exactamente lo que reabre la partida.
+  return buscarSalida(r.state, { ignorar: devolverla }).hay || quedaJuegoEnElMazo(r.state);
 }
 
 function candidatos(ctx) {
   const lista = ctx.utiles.slice();
-  if (isLegal(ctx.state, { type: 'draw' })) lista.push({ type: 'draw' });
-  // Reciclar un descarte que cabe en un solo robo no cambia nada: la vuelta lo
-  // devuelve en el mismo orden. Es legal, y el jugador puede hacerlo, pero
-  // recomendarlo es mandar al jugador a dar vueltas sobre sí mismo.
-  if (isLegal(ctx.state, { type: 'recycle' })
-    && ctx.state.waste.length > (ctx.state.drawCount ?? 1)) lista.push({ type: 'recycle' });
-  // Bajar de una fundación es legal siempre, pero como sugerencia solo tiene
-  // sentido cuando ya no queda nada más y encima sirve para algo.
-  if (ctx.atascado) {
+  // Con la partida cerrada, robar y reciclar no son candidatos: el mazo puede
+  // seguir lleno, pero si ninguna de sus cartas cabe en ningún sitio, mandar a
+  // robar es mandar a dar vueltas. Ahí lo único que queda es el rescate.
+  if (!ctx.atascado) {
+    if (isLegal(ctx.state, { type: 'draw' })) lista.push({ type: 'draw' });
+    // Reciclar un descarte que cabe en un solo robo no cambia nada: la vuelta lo
+    // devuelve en el mismo orden. Es legal, y el jugador puede hacerlo, pero
+    // recomendarlo es mandar al jugador a dar vueltas sobre sí mismo.
+    if (isLegal(ctx.state, { type: 'recycle' })
+      && ctx.state.waste.length > (ctx.state.drawCount ?? 1)) lista.push({ type: 'recycle' });
+  } else {
+    // Bajar de una fundación es legal siempre, pero como sugerencia solo tiene
+    // sentido cuando ya no queda nada más y encima sirve para algo.
     for (const m of cardMoves(ctx.state, { includeFoundationToTableau: true })) {
       if (m.from.pile === PILE.FOUNDATION && abreJuego(ctx.state, m)) lista.push(m);
     }
@@ -215,11 +246,12 @@ function valorar(ctx, m) {
   // esa comparación no delata nada —si la posición coincide con una reciente es
   // porque la carta ya pasó por el descarte y se vio—. Sin eso, reciclar y robar
   // se turnan hasta el fin de los tiempos en cuanto el mazo se queda corto.
-  if (m.type === 'draw') return { move: m, reason, score: VALOR[reason], despues: r.state };
+  if (m.type === 'draw') return { move: m, reason, score: VALOR[reason], esteril: false, despues: r.state };
 
   const visible = estadoVisible(r);
   const levanta = destapa(ctx.state, m);
   const utiles = usefulMoves(visible);
+  let esteril = false;
   let score = VALOR[reason]
     + acotar(MOD.movilidad * (utiles.length - ctx.movilidad), MOD.movilidadTope);
 
@@ -227,7 +259,8 @@ function valorar(ctx, m) {
     if (levanta && reason !== RAZON.DESTAPAR) score += MOD.destapaAdemas;
     if (m.to.pile === PILE.TABLEAU && !ctx.state.tableau[m.to.index].length) score += MOD.ocupaHueco;
     if (ctx.salida.paso && mismaJugada(m, ctx.salida.paso)) score += MOD.abreCamino;
-    if (esPaseoEsteril(ctx, m)) score += MOD.paseoEsteril;
+    esteril = esPaseoEsteril(ctx, m) && !abreJugada(ctx, visible);
+    if (esteril) score += MOD.paseoEsteril;
   }
   // Quedarse sin mazo y sin una sola jugada directa es quedarse a oscuras. A la
   // jugada que levanta una carta no se la juzga así: lo que hay debajo no se ve
@@ -236,7 +269,7 @@ function valorar(ctx, m) {
     && !isLegal(r.state, { type: 'recycle' })
     && !utiles.some((x) => !esLateral(visible, x))) score += MOD.callejon;
 
-  return { move: m, reason, score, despues: r.state };
+  return { move: m, reason, score, esteril, despues: r.state };
 }
 
 /**
@@ -261,35 +294,62 @@ function ordenar(ctx, lista, vistos) {
 const publica = ({ move, reason, score }) => ({ move, reason, score });
 
 /**
- * La jugada recomendada, o null si de verdad no hay ninguna que merezca la pena.
- * `opts.historial` es un Set de huellas recientes: lo que ya se ha visto pesa en
- * contra.
+ * La jugada recomendada, o null si de verdad no queda ninguna: y eso no es «no
+ * veo nada», es que la partida está cerrada. `opts.historial` es un Set de
+ * huellas recientes: lo que ya se ha visto pesa en contra.
+ *
+ * El umbral aparta el ruido, pero no puede dejar al jugador sin respuesta: si
+ * todo lo que hay son paseos estériles se ofrece el mejor de ellos igualmente.
+ * Callarse teniendo una jugada legal que enseñar es lo que hacía que la pista
+ * dijera «no veo ninguna jugada» en partidas que aún se podían mover.
  */
 export function recomendar(state, opts = {}) {
   if (!state || isWon(state)) return null;
   const vistos = opts.historial instanceof Set
     ? opts.historial : new Set(opts.historial ?? []);
   const ctx = contexto(state);
-  const ordenadas = ordenar(ctx, candidatos(ctx), vistos).filter((e) => e.score > UMBRAL);
-  if (!ordenadas.length) return null;
-  const [mejor, ...resto] = ordenadas.map(publica);
+  const ordenadas = ordenar(ctx, candidatos(ctx), vistos);
+  // El umbral aparta el ruido, pero no puede dejar al jugador sin respuesta: si
+  // todo lo que queda ha caído por debajo —por dar vueltas al mazo hasta volver
+  // a la misma posición, casi siempre— se ofrece lo mejor que quede. Es el caso
+  // de «he dado la vuelta entera al mazo y no ha salido nada»: ahí lo que toca es
+  // tragarse la subida arriesgada, no seguir robando.
+  //
+  // Lo único que no entra ni así es el paseo estéril, que es el bucle que se ve.
+  // Volver a una posición reciente sí entra, y a propósito: devolver null
+  // significa «la partida está cerrada», y decírselo a alguien que aún tiene
+  // jugadas es mucho peor que repetirle una pista. El castigo del historial son
+  // mil puntos, más que cualquier distancia entre razones, así que si queda
+  // alguna jugada que NO repite posición, el orden ya la pone la primera.
+  let dignas = ordenadas.filter((e) => e.score > UMBRAL);
+  if (!dignas.length) dignas = ordenadas.filter((e) => !e.esteril);
+  if (!dignas.length) return null;
+  const [mejor, ...resto] = dignas.map(publica);
   return { ...mejor, alternatives: resto };
 }
 
 /**
  * El mismo ranking filtrado a un origen concreto: es lo que usa el toque, para
- * que pista y toque no se contradigan nunca. La subida arriesgada no sale de
- * aquí —esa la decide el jugador arrastrando—, y aquí no se descarta nada por
- * poco que valga: si el jugador toca una carta que solo puede pasear, se pasea.
+ * que pista y toque no se contradigan nunca. Aquí no se descarta nada por poco
+ * que valga: si el jugador toca una carta que solo puede pasear, se pasea, y si
+ * lo único que le queda es subirla arriesgando, sube —prohibirlo dejaba el toque
+ * sin hacer nada y había que explicarle al jugador por qué—.
+ *
+ * La subida arriesgada va aparte y siempre la última, no por puntuación sino por
+ * regla: el toque solo la elige cuando esa carta no tiene ningún otro sitio. Por
+ * puntos no basta, porque un sitio en el tableau puede ser un paseo estéril
+ * (−1000) y perder contra la subida arriesgada (−250); y ahí el jugador que toca
+ * una carta espera que se apoye donde cabe, no que se vaya arriba para siempre.
  */
 export function mejorDestinoPara(state, from, count = 1) {
   if (!state || !from) return null;
   const ctx = contexto(state);
   const n = count ?? 1;
   const propios = ctx.utiles.filter((m) => m.from.pile === from.pile
-    && (m.from.index ?? null) === (from.index ?? null) && (m.count ?? 1) === n
-    && (m.to.pile !== PILE.FOUNDATION || isSafeToFoundation(state, cabeza(state, m))));
-  const mejor = ordenar(ctx, propios)[0];
+    && (m.from.index ?? null) === (from.index ?? null) && (m.count ?? 1) === n);
+  const ordenados = ordenar(ctx, propios);
+  const conSitio = ordenados.filter((e) => e.reason !== RAZON.FUNDACION_RIESGO);
+  const mejor = (conSitio.length ? conSitio : ordenados)[0];
   return mejor ? { move: mejor.move, reason: mejor.reason } : null;
 }
 

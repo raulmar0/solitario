@@ -57,6 +57,14 @@
   --topbar-veil: rgba(0, 0, 0, .22);  /* el velo de la barra: en claro hace falta más cuerpo */
   --shadow: 0 2px 5px rgba(0, 0, 0, .3);
   --shadow-lift: 0 14px 28px rgba(0, 0, 0, .42);
+
+  /* Las zonas seguras, con nombre. Van por variable y no por `env()` suelto en
+     cada regla por dos motivos: se pueden simular para probarlas, y sobre todo
+     se ven de un vistazo los cuatro sitios donde el sistema nos come pantalla. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
 
 /* En claro solo cambian el fieltro y los paneles: sobre el tapete la tinta sigue
@@ -129,8 +137,11 @@ body {
   gap: 10px 16px;
   flex-wrap: wrap;
   /* Instalada en iPhone la barra de estado se superpone (black-translucent +
-     viewport-fit=cover), así que hay que dejarle su hueco. */
-  padding: max(10px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 10px max(12px, env(safe-area-inset-left, 0px));
+     viewport-fit=cover), así que hay que dejarle su hueco. Va de margen y no de
+     relleno para que ese hueco lo pinte el tapete y no el velo de la barra:
+     arriba y abajo, las dos franjas del sistema son del color del fondo. */
+  margin-top: var(--safe-top);
+  padding: 10px max(12px, var(--safe-right)) 10px max(12px, var(--safe-left));
   background: var(--topbar-veil);
   border-bottom: 1px solid var(--line);
 }
@@ -148,15 +159,21 @@ body {
    y se salían del ancho: antes dos líneas que barra horizontal. */
 .scoreboard { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; flex: 1 1 auto; }
 
-/* Aviso de versión nueva: solo aparece cuando hay un worker esperando. */
+/* Aviso de versión nueva: solo aparece cuando hay un worker esperando.
+   Va del alto del chip de modalidad y con el rótulo corto porque tiene que
+   caber en la fila que ya existe: con sus 44 px y su frase entera se llevaba una
+   fila para ella sola, y en un móvil eso son 52 px menos de tapete que aparecen
+   de repente, con la partida a medias. El objetivo de dedo lo repone la capa
+   invisible de abajo, igual que en el chip. */
 .update-pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 14px;
-  min-height: 44px;              /* objetivo de dedo, no de ratón */
+  gap: 5px;
+  padding: 4px 11px;
+  min-height: 30px;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--accent-ink);
   background: var(--accent);
@@ -167,9 +184,42 @@ body {
      toda la partida y acaba cansando (y gastando batería). */
   animation: var(--quieto, latido 2.4s linear 6);
 }
+/* La píldora mide 30 px y en el móvil se queda en el ancho de la flecha: el
+   objetivo de dedo lo repone esta capa, que la rodea hasta los 44 x 44. */
+.update-pill::after { content: ''; position: absolute; inset: -7px; }
+.update-flecha { font-size: 14px; line-height: 1; }
 .update-pill:hover { filter: brightness(1.08); }
 .update-pill:disabled { opacity: .6; cursor: progress; animation: none; }
+
+/* Sin sitio de sobra para el rótulo, la flecha y el nombre accesible bastan: así
+   la píldora ocupa 30 px, cabe en la fila que ya hay y la cabecera no gana una
+   línea entera. El corte está donde deja de caber con rótulo, medido: a 744 px
+   —un iPad de pie— la cabecera crecía 44 px al aparecer el aviso. */
+@media (max-width: 899px) {
+  .update-texto { display: none; }
+  .update-pill { padding: 4px 9px; }
+}
+
+/* Y cuando el aviso está puesto, el marcador se aprieta un punto para hacerle
+   sitio en la fila que ya hay. Son treinta píxeles repartidos entre cuatro
+   cajas; lo que se evita es que la cabecera gane una fila entera de golpe, con
+   la partida a medias, y el tapete pierda cuarenta píxeles. */
+.topbar:has(#btn-update-pill:not([hidden])) .stat { min-width: 48px; padding-left: 7px; padding-right: 7px; }
+
+/* Lo que solo tiene que oírse. El texto sigue en el árbol —un lector de
+   pantalla lo canta— pero no ocupa ni un píxel. */
+.solo-lectores {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .stat {
+  position: relative;
   min-width: 62px;
   padding: 3px 10px;
   border-radius: 8px;
@@ -187,22 +237,33 @@ body {
    llamar la atención. */
 @keyframes bump { 40% { transform: scale(1.22); color: var(--felt-accent); } }
 
-/* El reloj parado: una pastilla ámbar dentro de su propia caja, para que se vea
-   que el tiempo no corre sin tener que mirar si los segundos avanzan. */
+/* El reloj parado. Antes era una pastilla con su rótulo debajo del número, y
+   cada vez que el jugador cambiaba de pestaña la cabecera crecía 22 px y el
+   tablero daba un salto. Ahora es una marca en la esquina de la caja del reloj:
+   se sale del flujo, así que no mueve nada, y el número se apaga un poco, que es
+   lo que de verdad dice «esto está parado». El rótulo sigue ahí para quien
+   escucha. */
 .paused-flag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 3px;
-  padding: 0 7px;
-  border: 1px solid var(--felt-accent);
-  border-radius: 999px;
-  color: var(--felt-accent);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .3px;
-  text-transform: uppercase;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  /* El ámbar claro no cambia con el tema (vive sobre la barra, que es oscura en
+     los dos), así que la tinta de encima tampoco: siempre oscura sobre él. */
+  background: var(--felt-accent);
+  color: #2a2000;
+  font-size: 8px;
+  line-height: 1;
 }
+.paused-mark { display: block; transform: translateY(.5px); }
+/* El número apagado sigue siendo texto de 16 px: por debajo de esto se cae del
+   4,5:1 que pide la AA y el crono se vuelve ilegible justo cuando hay que leerlo
+   para entender que está parado. */
+#stat-clock:has(.paused-flag:not([hidden])) dd { opacity: .78; }
 
 /* La modalidad, de un vistazo y sin abrir nada; pulsarla lleva a los ajustes. */
 .mode-chip {
@@ -266,6 +327,22 @@ body {
   transition: var(--quieto, width var(--speed) linear);
 }
 
+/* En el tema claro, la franja de la zona segura de arriba la pinta el tapete
+   claro, y encima iOS dibuja el reloj y la batería en blanco (el estilo de la
+   barra es `black-translucent`): blanco sobre verde claro se queda en 3,3:1. Un
+   velo del propio verde oscuro del tapete, que se desvanece antes de llegar a la
+   barra, lo sube por encima del 4,5:1 sin meter un color nuevo ni una costura.
+   Con `--safe-top` a cero —o sea, en cualquier sitio que no sea un móvil con
+   muesca— esto mide cero y no se ve. */
+html[data-theme="light"] body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--safe-top);
+  background: linear-gradient(rgba(9, 58, 36, .42), rgba(9, 58, 36, 0));
+  pointer-events: none;
+}
+
 /* ---------- barra de acciones ---------- */
 /* Va al fondo de la pantalla a propósito: arriba, en un móvil grande, hay que
    cambiar la mano para llegar. Aquí cae el pulgar solo. */
@@ -276,7 +353,11 @@ body {
   display: flex;
   justify-content: center;
   gap: 3px;
-  padding: 5px max(6px, env(safe-area-inset-right, 0px)) max(5px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
+  /* El hueco del indicador de inicio va de margen, como el de arriba: así lo
+     pinta el tapete. Con relleno, esa franja se quedaba con el velo encima y en
+     una pantalla oscura parecía una banda negra pegada al borde. */
+  margin-bottom: var(--safe-bottom);
+  padding: 5px max(6px, var(--safe-right)) 5px max(6px, var(--safe-left));
   background: var(--topbar-veil);
   border-top: 1px solid var(--line);
 }
@@ -334,7 +415,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 14px max(8px, env(safe-area-inset-right, 0px)) 10px max(8px, env(safe-area-inset-left, 0px));
+  padding: 14px max(8px, var(--safe-right)) 10px max(8px, var(--safe-left));
   overflow-y: auto;
   /* Red de seguridad: el tablero se mide para que quepa con margen, pero si
      alguna animación creciera, antes se recorta que sacar barra horizontal.
@@ -413,25 +494,75 @@ body {
   z-index: -1;
 }
 /* La posición vuela a la medida de la distancia (el JS ajusta la duración) y
-   entra y sale suave; el relieve entra y sale rápido, que es lo que hace que
-   parezca que la carta se coge y se posa, no que se desliza. */
+   entra y sale suave. El levantamiento ya no va por transición: ver más abajo. */
 .anim .card { transition: var(--quieto, transform var(--card-speed) var(--vuelo), translate 140ms linear); }
 .anim .card::after { transition: var(--quieto, opacity var(--speed) linear); }
 .anim .card .face, .anim .card .back { transition: var(--quieto, transform var(--flip-speed) ease-in-out); }
 
 .card.playable { cursor: grab; }
 .card.dragging { cursor: grabbing; transition: none; }
-/* Levantada: mientras vuela sola o mientras la llevas en la mano.
-   Sube unos píxeles en lugar de agrandarse, y por un motivo de peso: `scale` se
-   aplica ANTES que el `transform`, así que agrandar la carta le multiplicaba
-   también la posición que lleva el transform y las columnas de la derecha
-   pegaban un salto de hasta 22 px al despegar. `translate` va por delante de
-   todo y solo desplaza.
-   La capa propia también va al vuelo: en reposo las 52 cartas no gastan
-   composición, la reserva quien la necesita. */
-.anim .card.volando::after, .card.dragging::after { opacity: 1; }
-.anim .card.volando, .anim .card.dragging { translate: var(--quieto, 0 -4px); }
+
+/* Una carta que va de un sitio a otro no se desliza por la mesa: alguien la
+   coge, la lleva por el aire y la posa. Eso son cuatro cosas a la vez, y las
+   cuatro duran exactamente lo que el vuelo —el JS escribe `--vuelo-ms` en la
+   propia carta—, que es lo que faltaba: antes el levantamiento iba por su cuenta
+   con una transición de 140 ms, así que la carta seguía subiendo cuando ya había
+   llegado y bajaba después de posarse, como si se hundiera en la mesa.
+
+   1. La carta sube y baja (`translate`, que no toca la posición del transform).
+   2. Las caras crecen un pelo: lo que está más cerca del ojo se ve más grande.
+      Va en las caras y no en la carta porque `scale` se aplica ANTES que
+      `transform` y le multiplicaría la posición, con saltos de 22 px.
+   3. La sombra se queda en la mesa —se desplaza al revés que la carta— y se
+      abre. Es el truco de toda la vida: lo que dice a qué altura está algo no es
+      el objeto, es su sombra.
+   4. Al llegar, un golpecito de 1 px. Una carta que se posa hace ruido. */
+.anim .card.volando {
+  animation: var(--quieto, alzar-carta var(--vuelo-ms, 240ms) linear var(--vuelo-espera, 0ms) both);
+}
+.anim .card.volando .face, .anim .card.volando .back {
+  animation: var(--quieto, alzar-cara var(--vuelo-ms, 240ms) linear var(--vuelo-espera, 0ms) both);
+}
+.anim .card.volando::after {
+  animation: var(--quieto, alzar-sombra var(--vuelo-ms, 240ms) linear var(--vuelo-espera, 0ms) both);
+}
+@keyframes alzar-carta {
+  0% { translate: 0 0; }
+  16%, 84% { translate: 0 -9px; }
+  95% { translate: 0 1px; }        /* el golpecito contra la mesa */
+  100% { translate: 0 0; }
+}
+@keyframes alzar-cara {
+  0%, 100% { scale: 1; }
+  16%, 84% { scale: 1.035; }
+}
+@keyframes alzar-sombra {
+  0%, 100% { translate: 0 0; opacity: 0; }
+  16%, 84% { translate: 0 11px; opacity: 1; }
+}
+
+/* La que llevas en la mano se queda levantada mientras la lleves: ahí no hay
+   trayecto que acompañar, hay una carta en el aire hasta que la sueltes. */
+.card.dragging::after { opacity: 1; translate: var(--quieto, 0 12px); }
+.anim .card.dragging { translate: var(--quieto, 0 -10px); }
+.card.dragging .face, .card.dragging .back { scale: var(--quieto, 1.04); }
 .card.volando, .card.dragging { will-change: transform, translate; }
+
+/* El volteo tampoco es plano: la carta se levanta un poco al darse la vuelta,
+   como cuando el pulgar la despega de la mesa. Va después de las reglas del
+   vuelo a propósito: si una carta aterriza y se destapa a la vez, manda esta. */
+.anim .card.volteando .face, .anim .card.volteando .back {
+  animation: var(--quieto, voltear-cara var(--flip-speed) ease-in-out);
+}
+.anim .card.volteando::after { animation: var(--quieto, voltear-sombra var(--flip-speed) ease-in-out); }
+@keyframes voltear-cara {
+  0%, 100% { scale: 1; }
+  50% { scale: 1.05; }
+}
+@keyframes voltear-sombra {
+  0%, 100% { translate: 0 0; opacity: 0; }
+  50% { translate: 0 6px; opacity: .85; }
+}
 
 /* La pista: la carta que hay que tocar late fuerte; el sitio donde va, flojito.
    El crecer va en las dos caras y no en la carta, por lo mismo de antes: sobre
@@ -669,9 +800,12 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   cursor: pointer;
   transition: background var(--speed) linear;
 }
-.btn:hover { background: var(--fill-strong); }
+.btn:hover:not(:disabled) { background: var(--fill-strong); }
+/* Un botón apagado tiene que verse apagado: sin esto, «Ir a hoy» con hoy ya
+   elegido parecía pulsable y no hacía nada. */
+.btn:disabled { opacity: .4; cursor: default; filter: none; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-.btn.primary:hover { filter: brightness(1.08); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
 .btn.danger { color: var(--danger); border-color: rgba(224, 106, 92, .5); }
 .btn.ghost { background: transparent; }
 .btn.small { padding: 6px 11px; font-size: 13px; }
@@ -833,6 +967,87 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .scores .me { box-shadow: inset 3px 0 0 var(--accent); }
 .empty { color: var(--panel-ink-soft); font-size: 13.5px; text-align: center; padding: 14px; }
 
+/* ---------- reto diario ---------- */
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+/* El navegador escribe «agosto de 2026» en minúscula en español y «August» en
+   inglés: la mayúscula la pone el CSS y así los cinco idiomas van igual. Va en
+   la primera letra y no en `capitalize`, que pondría «Agosto De 2026». */
+.cal-titulo { font-size: 15px; }
+.cal-titulo::first-letter { text-transform: uppercase; }
+
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+/* Las filas existen para el lector de pantalla, no para la vista: `contents` las
+   saca del dibujo y deja los días como hijos directos de la cuadrícula. */
+.cal-fila { display: contents; }
+.cal-cab {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--panel-ink-soft);
+  padding-bottom: 2px;
+}
+.cal-hueco { visibility: hidden; }
+
+/* Cada día es un botón: se elige, se ve cómo fue y se juega. Un calendario es
+   denso por definición, así que aquí el objetivo no llega a los 44 px de la
+   barra; a cambio, la casilla entera es pulsable y hay dos botones grandes
+   debajo para lo que se hace de verdad. */
+.cal-dia {
+  position: relative;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 6px 0 10px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-ink);
+  background: var(--fill);
+  border: 1.5px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background var(--speed) linear, color var(--speed) linear;
+}
+.cal-dia:hover:not(:disabled) { background: var(--fill-strong); }
+.cal-dia:disabled { opacity: .32; cursor: default; background: none; }
+.cal-dia.hoy { border-color: var(--accent); }
+.cal-dia.elegido { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+/* Cómo fue ese día: un punto bajo el número. Apagado si se jugó y se perdió,
+   verde si se ganó. Un punto no es un idioma, se entiende en los cinco. */
+.cal-dia.jugado::after, .cal-dia.ganado::after {
+  content: '';
+  position: absolute;
+  bottom: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .45;
+}
+.cal-dia.ganado::after { background: var(--ok); opacity: 1; }
+.cal-dia.elegido.ganado::after { background: var(--accent-ink); }
+
+.reto-detalle {
+  margin: 12px 0;
+  padding: 9px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  font-size: 13.5px;
+}
+/* «sábado, 29 de agosto» empieza en minúscula en español y en mayúscula en
+   inglés: se iguala por la primera letra, no por palabra. */
+.reto-detalle::first-letter { text-transform: uppercase; }
+
 .dlg-win { text-align: center; width: min(94vw, 400px); }
 .win-art { font-size: 34px; letter-spacing: 8px; margin-bottom: 6px; }
 .win-stats { display: flex; justify-content: center; gap: 10px; margin: 16px 0 0; }
@@ -873,14 +1088,15 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    desplaza a propósito). Aquí la cabecera se aprieta y la barra de progreso deja
    de gastar una línea entera: se ancla al borde de abajo. */
 @media (max-height: 520px) {
-  .topbar { gap: 6px 12px; padding-top: max(6px, env(safe-area-inset-top, 0px)); padding-bottom: 6px; }
+  .topbar { gap: 6px 12px; padding-top: 6px; padding-bottom: 6px; }
   .brand h1 { display: none; }
   .brand { order: -2; }
   .mode-chip { order: -1; min-height: 28px; padding: 4px 10px; }
+  .update-pill { order: -1; min-height: 26px; padding: 3px 9px; }
+  .update-texto { display: none; }
   .stat { min-width: 52px; padding: 1px 7px; }
   .stat dd { font-size: 14px; }
   .progress { position: absolute; left: 0; right: 0; bottom: 0; flex-basis: auto; border-radius: 0; }
-  .paused-flag { margin-top: 1px; }
   .table { padding-top: 6px; padding-bottom: 4px; }
   .banner { margin-top: 6px; }
   .tool { min-height: 40px; padding: 3px 2px; }
@@ -892,7 +1108,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
      iPhone y la barra se metía debajo del reloj y la muesca. */
   .topbar {
     gap: 8px;
-    padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) 8px max(8px, env(safe-area-inset-left, 0px));
+    padding: 8px max(8px, var(--safe-right)) 8px max(8px, var(--safe-left));
   }
   /* En iOS un fondo fijo obliga a repintar el degradado entero cada vez que algo
      se desplaza, y en una pantalla de móvil no se gana nada: no hay recorrido
@@ -911,8 +1127,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .brand { order: -2; }
   .mode-chip { order: -1; }
   .stat { min-width: 54px; padding: 2px 7px; }
-  .table { padding: 8px max(4px, env(safe-area-inset-right, 0px)) 6px max(4px, env(safe-area-inset-left, 0px)); }
-  .tools { gap: 3px; padding-left: max(4px, env(safe-area-inset-left, 0px)); padding-right: max(4px, env(safe-area-inset-right, 0px)); }
+  .update-pill { order: -1; }
+  .table { padding: 8px max(4px, var(--safe-right)) 6px max(4px, var(--safe-left)); }
+  .tools { gap: 3px; padding-left: max(4px, var(--safe-left)); padding-right: max(4px, var(--safe-right)); }
   .tool { min-height: 48px; padding: 5px 2px; }
   .rotulo { font-size: 10px; }
 }

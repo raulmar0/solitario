@@ -302,21 +302,15 @@ export function huellaEstado(s) {
 const SALIDA_LIMITE = 800;
 
 /**
- * ¿Alguno de los paseos entre columnas lleva a una jugada de verdad (destapar,
- * subir a fundación o jugar el descarte)? Recorre en anchura los paseos y
- * devuelve el primero del camino más corto hacia esa jugada. Si el paseo se
- * enrevesa más de la cuenta se da la salida por buena: dar por muerta una
- * partida viva sería peor que al revés.
- *
- * `ignorar(estado, jugada)` permite descartar jugadas que no cuentan como
- * salida. Lo usa el recomendador al valorar un rescate: volver a subir la carta
- * que se acaba de bajar es legal, pero no desatasca nada, es deshacer el rescate.
+ * Recorre en anchura las posiciones a las que se llega paseando cartas entre
+ * columnas —lo único que se puede hacer sin destapar, sin subir y sin tocar el
+ * mazo— y se para en la primera que cumple `cumple`. Devuelve el primer paso del
+ * camino más corto hasta ella, o `paso: null` si la posición de partida ya
+ * cumple. Si el paseo se enrevesa más de la cuenta se da por cumplida: dar por
+ * muerta una partida viva sería peor que al revés.
  */
-export function buscarSalida(state, { ignorar = null } = {}) {
-  const vale = (s, m) => !esLateral(s, m) && !(ignorar && ignorar(s, m));
-  const raiz = usefulMoves(state);
-  if (raiz.some((m) => vale(state, m))) return { hay: true, paso: null };
-  if (!raiz.length) return { hay: false, paso: null };
+function recorrerPaseos(state, cumple) {
+  if (cumple(state)) return { hay: true, paso: null };
 
   const visto = new Set([huellaEstado(state)]);
   let frontera = [{ s: state, paso: null }];
@@ -332,7 +326,7 @@ export function buscarSalida(state, { ignorar = null } = {}) {
         visto.add(h);
         if (visto.size > SALIDA_LIMITE) return { hay: true, paso: null };
         const p = paso ?? m;
-        if (usefulMoves(r.state).some((x) => vale(r.state, x))) return { hay: true, paso: p };
+        if (cumple(r.state)) return { hay: true, paso: p };
         siguiente.push({ s: r.state, paso: p });
       }
     }
@@ -342,13 +336,78 @@ export function buscarSalida(state, { ignorar = null } = {}) {
 }
 
 /**
- * Sin jugadas que sirvan y sin poder robar. Los paseos entre columnas aquí no
- * cuentan como jugadas: solo si alguno desencadena destapar, subir o jugar el
- * descarte. Es un aviso, no un final: bajar una carta
- * de las fundaciones sigue siendo legal y el controlador deja seguir jugando.
+ * ¿Alguno de los paseos entre columnas lleva a una jugada de verdad (destapar,
+ * subir a fundación o jugar el descarte)? Devuelve el primer paso del camino más
+ * corto hacia esa jugada.
+ *
+ * `ignorar(estado, jugada)` permite descartar jugadas que no cuentan como
+ * salida. Lo usa el recomendador al valorar un rescate: volver a subir la carta
+ * que se acaba de bajar es legal, pero no desatasca nada, es deshacer el rescate.
+ */
+export function buscarSalida(state, { ignorar = null } = {}) {
+  const vale = (s, m) => !esLateral(s, m) && !(ignorar && ignorar(s, m));
+  return recorrerPaseos(state, (s) => usefulMoves(s).some((m) => vale(s, m)));
+}
+
+/**
+ * Las cartas del mazo que de verdad pueden llegar a lo alto del descarte, que no
+ * son todas. Robando de tres solo se pone a tiro una de cada tres, y reciclar no
+ * lo arregla: la vuelta al mazo conserva el orden, así que la pasada siguiente
+ * pone a tiro exactamente las mismas. Es la diferencia entre «al mazo le quedan
+ * dieciséis cartas» y «al mazo le quedan seis cartas que puedas tocar».
+ *
+ * Se calcula sin jugar nada, que es la hipótesis pesimista: en cuanto una de las
+ * alcanzables se pueda colocar, el descarte se descuadra y a partir de ahí todo
+ * vuelve a estar en juego. Por eso basta con mirar estas: si ninguna cabe en
+ * ningún sitio, no se juega ninguna, el orden no se mueve y la lista es la misma
+ * hasta el fin de los tiempos.
+ */
+function alcanzablesDelMazo(state) {
+  const k = state.drawCount === 3 ? 3 : 1;
+  const cartas = [];
+  // La de arriba del descarte ya está a tiro.
+  if (state.waste.length) cartas.push(state.waste[state.waste.length - 1]);
+
+  // El orden en que van saliendo: el último del array es el de arriba del mazo.
+  const porSalir = state.stock.slice().reverse();
+  // Cada robo deja arriba la última de la tanda; la última tanda puede ser corta.
+  const tandas = (orden) => {
+    for (let i = k - 1; i < orden.length; i += k) cartas.push(orden[i]);
+    if (orden.length % k) cartas.push(orden[orden.length - 1]);
+  };
+  tandas(porSalir);
+
+  const quedanPasadas = (state.recycles ?? 0) < (state.maxRecycles ?? Infinity);
+  // Sin más pasadas, lo que no salga en esta se queda dentro para siempre.
+  // Con pasadas, la siguiente reparte el mazo entero: primero el descarte de
+  // ahora (por abajo, que es como vuelve) y detrás lo que quede por robar.
+  if (quedanPasadas) tandas([...state.waste, ...porSalir]);
+  return cartas;
+}
+
+/**
+ * ¿Le queda algo al mazo? No basta con que tenga cartas: si ninguna de las que
+ * pueden salir cabe en ningún sitio —ni ahora ni en las posiciones a las que
+ * lleva pasear cartas entre columnas—, dar vueltas al mazo es dar vueltas y ya.
+ * Esa es la diferencia entre una partida en la que aún hay que buscar y otra que
+ * ya está cerrada aunque el montón siga alto.
+ */
+export function quedaJuegoEnElMazo(state) {
+  const cartas = alcanzablesDelMazo(state);
+  if (!cartas.length) return false;
+  const cabe = (s) => cartas.some((c) => canStackFoundation(c, s.foundations[foundationIndex(c.suit)])
+    || s.tableau.some((p) => canStackTableau(c, top(p))));
+  return recorrerPaseos(state, cabe).hay;
+}
+
+/**
+ * Partida cerrada: ninguna jugada que sirva sobre la mesa —ni directa ni tras
+ * pasear cartas entre columnas— y nada que esperar del mazo. Es un aviso, no un
+ * final: bajar una carta de las fundaciones sigue siendo legal y el controlador
+ * deja seguir jugando.
  */
 export function isStuck(state) {
   if (isWon(state)) return false;
-  if (state.stock.length || isLegal(state, { type: 'recycle' })) return false;
-  return !buscarSalida(state).hay;
+  if (buscarSalida(state).hay) return false;
+  return !quedaJuegoEnElMazo(state);
 }

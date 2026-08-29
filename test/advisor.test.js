@@ -161,9 +161,12 @@ test('gastar un hueco vacío se penaliza frente a destapar apoyándose en una ca
 test('con mazo por robar, robar gana a pasear cartas entre columnas sin provecho', () => {
   // Mover el 9S sobre el 10H es legal, reversible y no lleva a ningún sitio: es
   // el bucle clásico de las pistas tontas. Con mazo, robar enseña algo nuevo.
+  // El 8H del mazo cabe sobre el 9S: mientras el mazo tenga algo que colocar, la
+  // partida está viva y robar es la jugada. (Si no cupiera ninguna, el mazo sería
+  // decorado y la partida estaría cerrada; eso lo prueba `isStuck`.)
   const s = escenario({
     tableau: [[C(10, 'H')], [C(9, 'S')]],
-    stock: [X(2, 'D'), X(7, 'C')],
+    stock: [X(2, 'D'), X(8, 'H')],
   });
 
   const r = recomendar(s);
@@ -173,9 +176,11 @@ test('con mazo por robar, robar gana a pasear cartas entre columnas sin provecho
 });
 
 test('sin mazo pero con descarte de sobra, reciclar gana al paseo estéril', () => {
+  // Igual que arriba: el 8H del fondo del descarte cabe sobre el 9S, así que dar
+  // otra vuelta al mazo lleva a algo y no es marear al jugador.
   const s = escenario({
     tableau: [[C(10, 'H')], [C(9, 'S')]],
-    waste: [C(4, 'D'), C(7, 'C'), C(2, 'S')],
+    waste: [C(4, 'D'), C(8, 'H'), C(2, 'S')],
   });
 
   const r = recomendar(s);
@@ -258,7 +263,7 @@ test('el rescate no se propone mientras quede algo que hacer', () => {
   const s = escenario({
     foundations: [[], [], [], [C(1, 'C'), C(2, 'C'), C(3, 'C'), C(4, 'C')]],
     tableau: [[C(5, 'H')], [X(9, 'C'), C(3, 'D')]],
-    stock: [X(7, 'S')],
+    stock: [X(4, 'S')],      // el 4S cabe sobre el 5H: el mazo todavía sirve
   });
 
   assert.equal(engine.isStuck(s), false);
@@ -325,11 +330,17 @@ test('una partida ganada no tiene nada que recomendar', () => {
 
 // --- mejorDestinoPara: lo que usa el toque ---
 
-test('mejorDestinoPara nunca manda subir arriesgando: esa la decide el jugador arrastrando', () => {
+test('mejorDestinoPara sube arriesgando solo cuando no queda otra cosa que hacer con esa carta', () => {
+  // Antes el toque se negaba a subir una carta que abajo podía hacer falta y
+  // había que arrastrarla. Se quitó: la carta no tenía otro sitio adonde ir, así
+  // que negarse era dejar el toque sin hacer nada y encima explicarlo.
   const sola = escenario({ foundations: [picasHasta(8)], tableau: [[C(9, 'S')]] });
-  assert.equal(recomendar(sola).reason, RAZON.FUNDACION_RIESGO, 'la pista sí la ofrece');
-  assert.equal(mejorDestinoPara(sola, T(0), 1), null, 'el toque no');
+  assert.equal(recomendar(sola).reason, RAZON.FUNDACION_RIESGO, 'la pista la ofrece');
+  const arriesgada = mejorDestinoPara(sola, T(0), 1);
+  assert.equal(arriesgada.reason, RAZON.FUNDACION_RIESGO, 'y el toque también');
+  assert.deepEqual(arriesgada.move.to, F(0));
 
+  // Pero sigue siendo la última de la lista: cualquier otra jugada le gana.
   const conColumna = escenario({ foundations: [picasHasta(8)], tableau: [[C(9, 'S')], [C(10, 'H')]] });
   const destino = mejorDestinoPara(conColumna, T(0), 1);
   assert.deepEqual(destino.move.to, T(1), 'con una columna donde apoyarse, ahí va');
@@ -364,7 +375,7 @@ test('para un mismo origen, la pista y el toque eligen el mismo destino', () => 
   assert.ok(comprobadas > 50, `la comparación tiene que darse muchas veces, y solo se dio ${comprobadas}`);
 });
 
-test('mejorDestinoPara solo devuelve destinos legales, y ninguno insegura a fundación', () => {
+test('mejorDestinoPara solo devuelve destinos legales, y la subida arriesgada siempre la última', () => {
   for (const seed of SOLVABLE_SEEDS.slice(0, 6)) {
     let s = engine.newGame({ seed, drawCount: 3 });
     const anteriores = [];
@@ -376,11 +387,14 @@ test('mejorDestinoPara solo devuelve destinos legales, y ninguno insegura a fund
           const d = mejorDestinoPara(s, from, count);
           if (!d) continue;
           assert.equal(engine.isLegal(s, d.move), true);
-          assert.notEqual(d.reason, RAZON.FUNDACION_RIESGO);
-          if (d.move.to.pile === PILE.FOUNDATION) {
-            const origen = from.pile === PILE.WASTE ? s.waste : s.tableau[from.index];
-            assert.equal(engine.isSafeToFoundation(s, origen[origen.length - count]), true,
-              `el toque mandó arriba una carta que abajo hace falta (reparto ${seed})`);
+          // Subir arriesgando es legal para el toque, pero solo cuando esa carta
+          // no tiene ninguna otra jugada: si la tuviera, ganaría por 250 puntos.
+          if (d.reason === RAZON.FUNDACION_RIESGO) {
+            const otras = engine.usefulMoves(s).filter((m) => m.from.pile === from.pile
+              && (m.from.index ?? null) === (from.index ?? null) && (m.count ?? 1) === count
+              && m.to.pile !== PILE.FOUNDATION);
+            assert.deepEqual(otras, [],
+              `el toque subió arriesgando teniendo dónde apoyar la carta (reparto ${seed})`);
           }
         }
       }
@@ -413,28 +427,37 @@ test('una posición por la que ya se ha pasado deja de recomendarse si hay otra 
     'repetir una posición reciente no es "peor": es que no se ofrece');
 });
 
-test('siguiendo la pista 300 veces la partida avanza o termina, nunca da vueltas sobre la misma posición', () => {
+test('siguiendo la pista 300 veces la partida avanza o termina, sin dar vueltas sobre la mesa', () => {
   // El historial es lo que rompe el bucle: sin memoria, una política de un solo
   // movimiento acaba oscilando siempre. Se le pasa el mismo Set que le pasa
-  // game.js —el estado actual más los doce anteriores— y se exige que ninguna
-  // posición se repita en toda la partida.
+  // game.js —el estado actual más los doce anteriores—.
+  //
+  // Lo que se exige es que no se repita ninguna posición SIN haber pasado el
+  // mazo por medio. Dar la vuelta entera al mazo y volver a la misma posición no
+  // es que la pista dé vueltas: es que el mazo da vueltas, y de ahí se sale
+  // tragándose una jugada peor —normalmente una subida arriesgada—, que es justo
+  // lo que la pista acaba proponiendo. Lo que no puede pasar es marear cartas
+  // entre columnas sin tocar el mazo, que es el bucle que se ve.
   for (const seed of SOLVABLE_SEEDS.slice(0, 12)) {
     for (const drawCount of [1, 3]) {
       let s = engine.newGame({ seed, drawCount });
       const anteriores = [];
-      const vistas = new Set();
+      let vistas = new Set();
       let final = 'sigue';
 
       for (let paso = 0; paso < 300; paso++) {
         const h = huella(s);
         assert.equal(vistas.has(h), false,
-          `el reparto ${seed} (robo de ${drawCount}) vuelve a la misma posición en el paso ${paso}`);
+          `el reparto ${seed} (robo de ${drawCount}) vuelve a la misma posición en el paso ${paso} sin haber pasado el mazo`);
         vistas.add(h);
         if (engine.isWon(s)) { final = 'ganada'; break; }
 
         const r = recomendar(s, { historial: memoria(s, anteriores) });
         if (!r) { final = 'sin jugadas'; break; }
         anteriores.push(h);
+        // Una pasada completa al mazo devuelve la mesa a donde estaba: no cuenta
+        // como volver sobre los propios pasos.
+        if (r.move.type === 'recycle') vistas = new Set();
         s = engine.applyMove(s, r.move).state;
       }
 
@@ -442,6 +465,98 @@ test('siguiendo la pista 300 veces la partida avanza o termina, nunca da vueltas
         `el reparto ${seed} (robo de ${drawCount}) no acabó en 300 jugadas: la pista se ha quedado dando vueltas`);
     }
   }
+});
+
+test('la pista solo se calla cuando la partida está cerrada, y entonces solo ofrece el rescate', () => {
+  // Es el contrato del que vive la interfaz: si `recomendar` devuelve null, el
+  // tablero anuncia que la partida está cerrada. Si pudiera callarse con la
+  // partida viva, estaría dando por muerta una mano que aún se juega.
+  const memoria = (s, prev) => new Set([huella(s), ...prev.slice(-12)]);
+  let posiciones = 0;
+  let incoherentes = 0;
+  let cerradas = 0;
+
+  for (const [i, seed] of SOLVABLE_SEEDS.slice(0, 24).entries()) {
+    const drawCount = i % 2 ? 3 : 1;
+    const scoring = i % 5 === 0 ? 'vegas' : 'standard';
+    let s = engine.newGame({ seed, drawCount, scoring });
+    const anteriores = [];
+    for (let paso = 0; paso < 200 && !engine.isWon(s); paso++) {
+      posiciones++;
+      const cerrada = engine.isStuck(s);
+      const r = recomendar(s, { historial: memoria(s, anteriores) });
+      if (!r) {
+        if (!cerrada) incoherentes++;
+        else cerradas++;
+        break;
+      }
+      // Con la partida cerrada lo único que cabe sugerir es desandar una
+      // fundación: robar sería mandar a dar vueltas a un mazo que no sirve.
+      if (cerrada && r.move.from?.pile !== PILE.FOUNDATION) incoherentes++;
+      anteriores.push(huella(s));
+      // Se alterna seguir la pista con jugar al azar: así se pisan muchas más
+      // posiciones que siguiendo siempre el mismo camino.
+      const legales = engine.legalMoves(s);
+      const jugada = paso % 3 === 0 && legales.length
+        ? legales[(paso * 7 + seed) % legales.length]
+        : r.move;
+      const res = engine.applyMove(s, jugada);
+      if (!res) break;
+      s = res.state;
+    }
+  }
+
+  assert.ok(posiciones > 2000, `hacen falta muchas posiciones; hubo ${posiciones}`);
+  assert.equal(incoherentes, 0, 'la pista y el motor tienen que decir lo mismo sobre si queda partida');
+  assert.ok(cerradas > 0, 'y alguna partida tiene que llegar a cerrarse, si no esto no prueba nada');
+});
+
+test('el paseo que pone una carta nueva a tiro no es un paseo estéril', () => {
+  // `buscarSalida` contesta en cuanto ve UNA jugada directa y ahí se para, así
+  // que con una subida arriesgada a la vista daba todos los paseos por estériles
+  // —incluido el que destapa un 6 que sube a su fundación—. La pista se quedaba
+  // subiendo y bajando la misma carta.
+  const s = escenario({
+    foundations: [picasHasta(5), [], [], [C(1, 'C'), C(2, 'C'), C(3, 'C'), C(4, 'C'), C(5, 'C')]],
+    tableau: [[C(7, 'H'), C(6, 'S')], [C(6, 'C'), C(5, 'H')], [C(6, 'D')]],
+  });
+
+  // Lo único directo es subir el 6S arriesgando (♥ y ♦ están a cero).
+  assert.equal(engine.isSafeToFoundation(s, C(6, 'S')), false);
+  const paseo = { type: 'move', from: T(1), to: T(0), count: 1 };   // el 5H sobre el 6S
+  assert.equal(engine.isLegal(s, paseo), true);
+
+  const r = recomendar(s);
+  assert.ok(mismoMovimiento(r.move, paseo),
+    `la pista debería mover el 5H para dejar el 6C a tiro, y dice ${r.reason} ${JSON.stringify(r.move)}`);
+  // Y después de ese paseo, el 6C ya puede subir.
+  const despues = engine.applyMove(s, paseo).state;
+  assert.ok(engine.usefulMoves(despues).some((m) => m.from.pile === PILE.TABLEAU
+    && m.from.index === 1 && m.to.pile === PILE.FOUNDATION));
+});
+
+test('el toque prefiere apoyar la carta antes que subirla arriesgando', () => {
+  // Un sitio en el tableau puede ser un paseo estéril (−1000) y perder por
+  // puntos contra la subida arriesgada (−250). Quien toca una carta espera que
+  // se apoye donde cabe, no que se vaya arriba para siempre.
+  const s = escenario({
+    foundations: [picasHasta(5), [C(1, 'H'), C(2, 'H'), C(3, 'H'), C(4, 'H')], [],
+      [C(1, 'C'), C(2, 'C'), C(3, 'C'), C(4, 'C')]],
+    tableau: [[C(6, 'H')], [C(5, 'C')]],
+  });
+  assert.equal(engine.isSafeToFoundation(s, C(5, 'C')), false, 'el 5C aún hace falta abajo');
+
+  const destino = mejorDestinoPara(s, T(1), 1);
+  assert.deepEqual(destino.move.to, T(0), 'se apoya en el 6H');
+  assert.notEqual(destino.reason, RAZON.FUNDACION_RIESGO);
+
+  // Sin el 6H donde apoyarse, entonces sí sube: es lo único que se puede hacer.
+  const sola = escenario({
+    foundations: [picasHasta(5), [C(1, 'H'), C(2, 'H'), C(3, 'H'), C(4, 'H')], [],
+      [C(1, 'C'), C(2, 'C'), C(3, 'C'), C(4, 'C')]],
+    tableau: [[], [C(5, 'C')]],
+  });
+  assert.equal(mejorDestinoPara(sola, T(1), 1).reason, RAZON.FUNDACION_RIESGO);
 });
 
 // --- huella ---

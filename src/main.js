@@ -8,6 +8,7 @@ import { createBoard } from './ui.js';
 import { createPanels } from './panels.js';
 import { formatScore } from './scoring.js';
 import { isKnownSolvable } from './solvable-seeds.js';
+import { claveDia, esJugable, fechaDeClave, semillaDelDia } from './reto.js';
 import { PILE } from './engine.js';
 import { VERSION } from './version.js';
 import { registrarServiceWorker, crearInstalador, esStandalone, esIos } from './pwa.js';
@@ -15,7 +16,9 @@ import { crearSonidos } from './sonidos.js';
 import * as i18n from './i18n.js';
 import * as motion from './motion.js';
 
-const { alCambiarIdioma, fijarIdioma, nombreCarta, nombrePila, resolverIdioma, t, traducirDom } = i18n;
+const {
+  alCambiarIdioma, fechaCorta, fijarIdioma, nombreCarta, nombrePila, resolverIdioma, t, traducirDom,
+} = i18n;
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -144,7 +147,6 @@ let winShownFor = null;
 let ultimaPuntuacion = null;
 let atascadoAvisado = false;
 let ultimoReparto = null;      // se fija al arrancar: el primer reparto no suena
-let pista = null;              // { rec, indice, epoch } del ciclo de pistas en marcha
 let mazoTocado = null;         // el toque que iba al mazo, a la espera de saber si hizo algo
 
 // Lo que se dice cuando la partida se queda sin jugadas. Se queda fijo en el
@@ -189,26 +191,36 @@ function avisar(clave, params = {}, tipo = '') {
   else message(clave, params, { aviso: tipo === 'err' });
 }
 
+// Arriba del degradado del tapete, que es lo que se ve en las zonas seguras.
+// Tiene que ir con --felt-1 de cada tema: hay una prueba que lo vigila.
+const COLOR_TAPETE = { dark: '#14663f', light: '#35a066' };
+
 function applyPrefs() {
   const prefs = game.prefs;
   const tema = prefs.theme === 'auto'
     ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
     : prefs.theme;
   document.documentElement.dataset.theme = tema;
+  // El sistema pinta con esto la barra de estado y el hueco del navegador: si no
+  // se mueve con el tema, en claro queda una franja oscura sobre el tapete.
+  $('meta[name="theme-color"]')?.setAttribute('content', COLOR_TAPETE[tema] ?? COLOR_TAPETE.dark);
   document.documentElement.dataset.deck = prefs.fourColor ? '4' : '2';
   // El movimiento efectivo lo decide `motion`: la preferencia manda, pero quien
   // pide menos animación en el sistema la pide también aquí.
   $('#board').classList.toggle('anim', motion.aplicarMovimiento(prefs));
 }
 
-/** «Estándar · 1 carta · crono»: la modalidad con la que se repartió, no la preferencia. */
+/**
+ * «Estándar · 1 carta · crono»: la modalidad con la que se repartió, no la
+ * preferencia. Con el reto diario manda la fecha —es lo que distingue esta mano
+ * de cualquier otra— y el reloj se cae del chip para que quepa.
+ */
 function textoModo() {
   const { scoring, drawCount, timed } = game.mode;
-  return t('modo.chip', {
-    puntuacion: t(`modo.${scoring}`),
-    robo: t(`modo.robo.${drawCount}`),
-    reloj: t(timed ? 'modo.crono' : 'modo.sincrono'),
-  });
+  const puntuacion = t(`modo.${scoring}`);
+  const robo = t(`modo.robo.${drawCount}`);
+  if (game.dia) return t('modo.chip.reto', { fecha: fechaCorta(fechaDeClave(game.dia)), puntuacion, robo });
+  return t('modo.chip', { puntuacion, robo, reloj: t(timed ? 'modo.crono' : 'modo.sincrono') });
 }
 
 function refreshHeader() {
@@ -220,9 +232,14 @@ function refreshHeader() {
   // Un crono parado con la partida empezada parece un crono roto: se dice que está en pausa.
   $('#clock-paused').hidden = !(game.status === 'playing' && game.moves > 0 && !game.clockRunning);
 
+  // La caja de «Fundaciones» se quitó de la cabecera: el mismo dato lo cuenta la
+  // barra de progreso, que ocupa 3 px y no una fila entera. Para quien no la ve,
+  // el dato va en la propia barra, que ahora es una `progressbar` con su valor.
   const arriba = game.foundationCount;
-  $('#foundations').textContent = t('hud.fundaciones.valor', { n: arriba });
-  $('#progress i').style.width = `${((arriba / 52) * 100).toFixed(1)}%`;
+  const progreso = $('#progress');
+  progreso.firstElementChild.style.width = `${((arriba / 52) * 100).toFixed(1)}%`;
+  progreso.setAttribute('aria-valuenow', String(arriba));
+  progreso.setAttribute('aria-valuetext', t('hud.fundaciones.valor', { n: arriba }));
 
   const semilla = game.seed;
   const comprobado = semilla != null && isKnownSolvable(semilla);
@@ -419,34 +436,24 @@ function deshacer() {
 $('#btn-undo').addEventListener('click', deshacer);
 
 /**
- * La pista, con ciclo: la primera pulsación enseña la mejor jugada y las
- * siguientes van pasando por las alternativas, mientras el tablero no cambie.
- * Al agotarlas se vuelve a la primera; cualquier jugada reinicia el ciclo, que es
- * lo que se espera de un botón que dice «pista» y no «siguiente».
+ * La pista: la mejor jugada y solo esa. Pulsar otra vez sin jugar repite la
+ * misma —si es la mejor, sigue siéndolo—; antes iba pasando por las
+ * alternativas y el jugador acababa sin saber cuál de las cuatro le convenía.
+ *
+ * Y no existe el «no veo ninguna jugada»: si no hay nada sobre la mesa la pista
+ * es robar, y si tampoco queda nada que robar es que la partida está cerrada,
+ * que es otra cosa muy distinta y se dice como tal.
  */
 function pedirPista() {
-  const epoch = game.epoch;
-  const repetida = pista !== null && pista.epoch === epoch;
-  if (repetida) {
-    pista.indice = (pista.indice + 1) % (1 + pista.rec.alternatives.length);
-  } else {
-    const rec = game.hint();
-    if (!rec) {
-      pista = null;
-      board.flashHint(null);
-      message('pista.ninguna', {}, { aviso: true });
-      return;
-    }
-    pista = { rec, indice: 0, epoch };
+  const rec = game.hint();
+  if (!rec) {
+    board.flashHint(null);
+    message(sinSalida(), {}, { aviso: true, fijo: true });
+    panels.showStuck();
+    return;
   }
-  const jugada = pista.indice === 0 ? pista.rec : pista.rec.alternatives[pista.indice - 1];
-  // La alternativa se avisa como tal, pero también se describe: quien juega de
-  // oído (el cartel es `role="status"`) o no encuentra la marca en el tablero se
-  // quedaba sin saber qué se le estaba proponiendo.
-  const descripcion = t(`pista.${jugada.reason}`, partesDe(jugada.move));
-  if (pista.indice > 0) message('pista.mas', { detalle: descripcion });
-  else message(`pista.${jugada.reason}`, partesDe(jugada.move));
-  board.flashHint(jugada.move);
+  message(`pista.${rec.reason}`, partesDe(rec.move));
+  board.flashHint(rec.move);
 }
 
 $('#btn-hint').addEventListener('click', pedirPista);
@@ -454,12 +461,18 @@ $('#btn-finish').addEventListener('click', autoCompletar);
 $('#btn-settings').addEventListener('click', () => panels.openSettings());
 $('#mode-chip').addEventListener('click', () => panels.openSettings());
 
-/** Compartir una mano es dar su número, y el enlace ya lo lleva puesto. */
+/**
+ * Compartir una mano es dar su número, y el enlace ya lo lleva puesto. Si lo que
+ * se está jugando es el reto del día, el enlace lleva además la fecha: quien lo
+ * abra juega el reto —y el resultado le cuenta en su calendario— en vez de una
+ * mano suelta con las mismas cartas.
+ */
 async function compartirReparto() {
   const semilla = game.seed;
   if (semilla == null) return;
   const loc = globalThis.location;
-  const url = `${loc?.origin ?? ''}${loc?.pathname ?? ''}?seed=${semilla}`;
+  const reto = game.dia ? `&reto=${game.dia}` : '';
+  const url = `${loc?.origin ?? ''}${loc?.pathname ?? ''}?seed=${semilla}${reto}`;
   if (!globalThis.navigator?.clipboard?.writeText) { message('msg.reparto.url', { url }); return; }
   try {
     await navigator.clipboard.writeText(url);
@@ -527,6 +540,7 @@ addEventListener('keydown', (event) => {
     case 'a': autoCompletar(); break;
     case 'n': $('#btn-new').click(); break;
     case 'r': $('#btn-restart').click(); break;
+    case 'd': panels.openReto(); break;
     case 'p': panels.openStats(); break;
     case ',': panels.openSettings(); break;
     case '?': panels.openHelp(); break;
@@ -603,6 +617,14 @@ function semillaDeLaUrl() {
   return n >= 1 && n <= 999999 ? n : null;
 }
 
+/** ?reto=hoy o ?reto=AAAA-MM-DD para abrir directamente el reparto de ese día. */
+function retoDeLaUrl() {
+  const crudo = new URLSearchParams(globalThis.location?.search ?? '').get('reto');
+  if (crudo == null) return null;
+  const clave = crudo.trim() === 'hoy' ? claveDia() : crudo.trim();
+  return esJugable(clave) ? clave : null;
+}
+
 /** La primera vez se explica el juego, salvo que ya haya algo abierto por delante. */
 function quizasAyuda() {
   if (store.getStats('standard', 1).played || store.getStats('standard', 3).played) return;
@@ -610,9 +632,14 @@ function quizasAyuda() {
 }
 
 const semillaCompartida = semillaDeLaUrl();
+const retoCompartido = retoDeLaUrl();
 if (game.resume()) {
   // La partida a medias manda sobre el enlace: nadie quiere perderla por abrirlo.
   message('msg.retomada');
+} else if (retoCompartido !== null) {
+  game.newGame(semillaDelDia(retoCompartido), { dia: retoCompartido });
+  message('msg.reto.nuevo', { fecha: fechaCorta(fechaDeClave(retoCompartido)) });
+  quizasAyuda();
 } else if (semillaCompartida !== null) {
   game.newGame(semillaCompartida);
   message(isKnownSolvable(semillaCompartida) ? 'msg.reparto.nuevo.comprobado' : 'msg.reparto.nuevo', { n: semillaCompartida });

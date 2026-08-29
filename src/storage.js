@@ -1,6 +1,8 @@
 // Persistencia local (localStorage). Todo bajo el prefijo `solitario.v1.`.
 // El backend se inyecta para poder probarlo sin navegador.
 
+import { esClaveValida, mejorResultado } from './reto.js';
+
 const PREFIX = 'solitario.v1.';
 export const KEYS = {
   prefs: `${PREFIX}prefs`,
@@ -8,6 +10,7 @@ export const KEYS = {
   scores: `${PREFIX}scores`,
   save: `${PREFIX}save`,
   bank: `${PREFIX}vegasBank`,
+  retos: `${PREFIX}retos`,
 };
 
 export const MAX_SCORES = 25;   // por modalidad
@@ -182,7 +185,36 @@ export function createStore(backend) {
       write(KEYS.scores, recortado);
 
       if (scoring === 'vegas') api.addToBank(drawCount, score);
+      // El reto diario lleva su propia libreta: una entrada por día, con el mejor
+      // intento. Así el calendario se pinta sin rebuscar en la tabla de récords.
+      if (result.dia) api.recordReto(result.dia, result);
       return s;
+    },
+
+    /** Lo jugado en cada reto diario: { 'AAAA-MM-DD': resultado }. */
+    getRetos() {
+      const todos = read(KEYS.retos, {});
+      return todos && typeof todos === 'object' && !Array.isArray(todos) ? todos : {};
+    },
+    getReto(dia) {
+      return api.getRetos()[dia] ?? null;
+    },
+    /** Guarda el intento si mejora al que hubiera. Devuelve el que queda. */
+    recordReto(dia, result) {
+      if (!esClaveValida(dia)) return null;
+      const todos = api.getRetos();
+      const guardado = mejorResultado(todos[dia], {
+        won: !!result.won,
+        score: result.score ?? 0,
+        timeMs: result.timeMs ?? 0,
+        moves: result.moves ?? 0,
+        scoring: result.scoring,
+        drawCount: result.drawCount,
+        at: result.at ?? new Date().toISOString(),
+      });
+      todos[dia] = guardado;
+      write(KEYS.retos, todos);
+      return guardado;
     },
 
     getBank(drawCount) {
@@ -216,6 +248,7 @@ export function createStore(backend) {
         stats: api.getAllStats(),
         scores: read(KEYS.scores, []),
         bank: read(KEYS.bank, {}),
+        retos: api.getRetos(),
       };
     },
     importAll(data) {
@@ -224,6 +257,7 @@ export function createStore(backend) {
       if (data.stats) write(KEYS.stats, data.stats);
       if (Array.isArray(data.scores)) write(KEYS.scores, data.scores.slice(0, MAX_SCORES * 4));
       if (data.bank) write(KEYS.bank, data.bank);
+      if (data.retos && typeof data.retos === 'object') write(KEYS.retos, data.retos);
       return true;
     },
     resetAll() {

@@ -158,6 +158,55 @@ export function fecha(iso) {
   return d.toLocaleDateString(activo, { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
+/** Un valor cualquiera llevado a Date, o null si no hay fecha que valga. */
+function comoFecha(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const d = valor instanceof Date ? valor : new Date(valor);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** «29 ago»: para el chip de la cabecera, donde no cabe más. */
+export function fechaCorta(valor) {
+  const d = comoFecha(valor);
+  return d ? d.toLocaleDateString(activo, { day: 'numeric', month: 'short' }) : VACIO;
+}
+
+/** «sábado, 29 de agosto de 2026»: la del calendario, que se lee entera. */
+export function fechaLarga(valor) {
+  const d = comoFecha(valor);
+  return d ? d.toLocaleDateString(activo, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : VACIO;
+}
+
+/** «agosto de 2026»: el título del mes en el calendario. */
+export function nombreMes(valor) {
+  const d = comoFecha(valor);
+  return d ? d.toLocaleDateString(activo, { month: 'long', year: 'numeric' }) : VACIO;
+}
+
+/**
+ * Con qué día empieza la semana en este idioma. En español, francés y portugués
+ * es el lunes; en inglés y coreano, el domingo. Un calendario que empieza el día
+ * que no toca se lee mal aunque los números estén bien.
+ */
+export function primerDiaSemana() {
+  return activo === 'en' || activo === 'ko' ? 0 : 1;
+}
+
+/**
+ * Las siete cabeceras del calendario, empezando por `primerDiaSemana()`. Se
+ * sacan de una semana cualquiera —la del 4 de enero de 2021, que fue lunes— y
+ * las nombra el propio navegador en el idioma activo.
+ */
+export function diasDeLaSemana(estilo = 'short') {
+  const lunes = new Date(2021, 0, 4);
+  const primero = primerDiaSemana();
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(lunes);
+    d.setDate(lunes.getDate() + ((i + primero - 1 + 7) % 7));
+    return d.toLocaleDateString(activo, { weekday: estilo });
+  });
+}
+
 /** «9 de picas» / «스페이드 9»: el orden lo decide la plantilla `carta.nombre`. */
 export function nombreCarta(card) {
   if (!card || card.rank == null || !card.suit) return VACIO;

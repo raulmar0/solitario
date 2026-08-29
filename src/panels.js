@@ -5,7 +5,13 @@
 import { formatTime } from './game.js';
 import { formatScore } from './scoring.js';
 import { isKnownSolvable } from './solvable-seeds.js';
-import { t, fecha, fijarIdioma, resolverIdioma } from './i18n.js';
+import {
+  t, fecha, fechaCorta, fechaLarga, nombreMes, diasDeLaSemana, primerDiaSemana,
+  fijarIdioma, resolverIdioma,
+} from './i18n.js';
+import {
+  claveDia, esFuturo, esJugable, fechaDeClave, rejillaDelMes, semillaDelDia,
+} from './reto.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const MODES = [
@@ -83,7 +89,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
 
   // ---------- las tres secciones ----------
 
-  const SECCIONES = ['ajustes', 'records', 'ayuda'];
+  const SECCIONES = ['reto', 'ajustes', 'records', 'ayuda'];
   let seccion = 'ajustes';
 
   function mostrarSeccion(cual, { foco = false } = {}) {
@@ -99,6 +105,10 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     }
     if (seccion === 'records') renderStats();
     if (seccion === 'ajustes') renderSettings();
+    // Entrar al reto centra el calendario, se llegue por donde se llegue: por la
+    // pestaña también. Volver a la sección y encontrarse en el mes de la última
+    // vez, con un día de hace tres semanas elegido, no lo espera nadie.
+    if (seccion === 'reto') { centrarReto(); renderReto(); }
     if (foco) $(`#tab-${seccion}`).focus();
   }
 
@@ -413,6 +423,200 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (event.key === 'Enter') { event.preventDefault(); $('#btn-seed-go').click(); }
   });
 
+  // ---------- reto diario ----------
+
+  // Qué mes se está viendo y qué día está elegido. El día elegido manda: el mes
+  // solo dice por dónde va el calendario cuando el jugador pasa páginas.
+  let mesVisto = null;            // { anio, mes }
+  let diaElegido = null;          // 'AAAA-MM-DD'
+
+  const mismoMes = (clave) => mesVisto
+    && Number(clave.slice(0, 4)) === mesVisto.anio && Number(clave.slice(5, 7)) - 1 === mesVisto.mes;
+
+  /** Elige un día y lleva el calendario a su mes. */
+  function irADia(clave) {
+    diaElegido = clave;
+    mesVisto = { anio: Number(clave.slice(0, 4)), mes: Number(clave.slice(5, 7)) - 1 };
+  }
+
+  /** El calendario se abre por el día que se está jugando y, si no, por hoy. */
+  function centrarReto() {
+    irADia(game.dia && esJugable(game.dia) ? game.dia : claveDia());
+  }
+
+  /** El último día jugable de ese mes, o null si el mes entero está fuera. */
+  function ultimoJugableDe(anio, mes) {
+    return rejillaDelMes(anio, mes, primerDiaSemana())
+      .flat().filter((c) => c && esJugable(c)).at(-1) ?? null;
+  }
+
+  function pasarMes(paso, boton) {
+    const d = new Date(mesVisto.anio, mesVisto.mes + paso, 1);
+    mesVisto = { anio: d.getFullYear(), mes: d.getMonth() };
+    // Si el día elegido se queda en otro mes, se elige el último jugable del que
+    // se está viendo: así el botón de jugar nunca apunta a un mes invisible.
+    if (!mismoMes(diaElegido)) diaElegido = ultimoJugableDe(mesVisto.anio, mesVisto.mes) ?? diaElegido;
+    renderReto();
+    // El botón que se acaba de pulsar puede haberse quedado desactivado al
+    // llegar al tope, y entonces el navegador tira el foco al body: se recoge y
+    // se le da al día elegido, que es donde el jugador estaba mirando.
+    if (boton?.disabled) $('#cal .cal-dia.elegido')?.focus();
+  }
+
+  /**
+   * Cómo quedó ese día: lo que se enseña bajo el calendario y en cada casilla.
+   * La libreta entera se pasa por parámetro: pintar un mes son treinta y una
+   * casillas, y leerla del almacén en cada una son treinta y un JSON.parse.
+   */
+  function resumenDeDia(clave, retos = store.getRetos()) {
+    const r = retos[clave];
+    // Ojo: `esJugable` también es falso para los días de hace más de un año, y
+    // esos no están por llegar: están sin jugar y ya fuera de la ventana.
+    if (!r) return t(esFuturo(clave) ? 'reto.futuro' : 'reto.sin.jugar');
+    return t(r.won ? 'reto.hecho.ganada' : 'reto.hecho.perdida', {
+      puntos: formatScore(r.scoring ?? 'standard', r.score ?? 0),
+      tiempo: formatTime(r.timeMs ?? 0),
+      jugadas: r.moves ?? 0,
+    });
+  }
+
+  function renderReto() {
+    if (!mesVisto) irADia(claveDia());
+    const hoy = claveDia();
+    const retos = store.getRetos();
+    $('#cal-titulo').textContent = nombreMes(new Date(mesVisto.anio, mesVisto.mes, 1));
+
+    const cal = $('#cal');
+    const enCalendario = cal.contains(document.activeElement);
+    // Una rejilla de fechas de verdad: `role="grid"` con sus filas y sus
+    // casillas. Las filas van con `display: contents` para no romper la rejilla
+    // de CSS —los días siguen siendo hijos de la cuadrícula— y sin ellas el
+    // lector de pantalla canta treinta y un botones sueltos sin saber en qué
+    // columna cae cada uno.
+    const fila = (celdas) => {
+      const div = document.createElement('div');
+      div.className = 'cal-fila';
+      div.setAttribute('role', 'row');
+      div.append(...celdas);
+      return div;
+    };
+    const filas = [fila(diasDeLaSemana('narrow').map((nombre) => {
+      const th = document.createElement('span');
+      th.className = 'cal-cab';
+      th.setAttribute('role', 'columnheader');
+      th.textContent = nombre;
+      return th;
+    }))];
+
+    for (const semana of rejillaDelMes(mesVisto.anio, mesVisto.mes, primerDiaSemana())) {
+      filas.push(fila(semana.map((clave) => {
+        if (!clave) {
+          const hueco = document.createElement('span');
+          hueco.className = 'cal-hueco';
+          hueco.setAttribute('role', 'gridcell');
+          return hueco;
+        }
+        const r = retos[clave];
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cal-dia';
+        b.dataset.dia = clave;
+        b.textContent = String(Number(clave.slice(8)));
+        b.disabled = !esJugable(clave, hoy);
+        if (clave === hoy) { b.classList.add('hoy'); b.setAttribute('aria-current', 'date'); }
+        if (clave === diaElegido) b.classList.add('elegido');
+        if (r) b.classList.add(r.won ? 'ganado' : 'jugado');
+        b.setAttribute('role', 'gridcell');
+        b.setAttribute('aria-selected', String(clave === diaElegido));
+        // El tabulador entra una vez, al día elegido; dentro se anda con flechas.
+        // Treinta y un tabuladores para cruzar un mes no los da nadie.
+        b.tabIndex = clave === diaElegido ? 0 : -1;
+        b.setAttribute('aria-label', `${fechaLarga(fechaDeClave(clave))} · ${resumenDeDia(clave, retos)}`);
+        return b;
+      })));
+    }
+    cal.replaceChildren(...filas);
+    if (enCalendario) cal.querySelector('.cal-dia.elegido')?.focus();
+
+    // Del futuro no hay nada que ver, y hacia atrás la ventana se acaba al año:
+    // pasar páginas en blanco solo hace perder el sitio.
+    const primeroDelMes = (paso) => claveDia(new Date(mesVisto.anio, mesVisto.mes + paso, 1));
+    const ultimoDelMes = (paso) => claveDia(new Date(mesVisto.anio, mesVisto.mes + paso + 1, 0));
+    $('#cal-next').disabled = esFuturo(primeroDelMes(1), hoy);
+    $('#cal-prev').disabled = !esJugable(ultimoDelMes(-1), hoy);
+
+    const jugable = esJugable(diaElegido, hoy);
+    $('#reto-detalle').textContent = `${fechaLarga(fechaDeClave(diaElegido))} · ${resumenDeDia(diaElegido, retos)}`;
+    const jugar = $('#btn-reto-jugar');
+    jugar.disabled = !jugable;
+    jugar.textContent = t(diaElegido === hoy ? 'reto.jugar.hoy' : 'reto.jugar');
+    $('#btn-reto-hoy').disabled = diaElegido === hoy && mismoMes(hoy);
+  }
+
+  /** Reparte el reto de ese día. La semilla sale de la fecha y de nada más. */
+  function jugarReto(clave) {
+    if (!esJugable(clave)) return;
+    if (game.status === 'playing' && game.moves > 0 && !confirm(t('confirm.reparto'))) return;
+    game.newGame(semillaDelDia(clave), { dia: clave });
+    dlgSettings.close();
+    onMessage('msg.reto.nuevo', { fecha: fechaCorta(fechaDeClave(clave)) });
+  }
+
+  $('#cal').addEventListener('click', (event) => {
+    const dia = event.target.closest('.cal-dia')?.dataset.dia;
+    if (!dia) return;
+    // El primer toque elige el día y cuenta cómo fue; el segundo, sobre el que ya
+    // está elegido, reparte. Con una partida a medias por delante, repartir al
+    // primer toque sería un disgusto.
+    //
+    // Va así y no por `dblclick` porque ese evento no llegaba nunca: elegir el
+    // día repinta el calendario entero y el navegador se queda sin el botón del
+    // primer clic, así que no llega a emparejarlos. Con Enter tampoco existe el
+    // doble clic, y de esta forma el teclado juega igual que el dedo.
+    if (dia === diaElegido) { jugarReto(dia); return; }
+    diaElegido = dia;
+    renderReto();
+  });
+
+  // Flechas por el calendario, como en cualquier rejilla de fechas: de día en
+  // día, de semana en semana con las verticales y de mes en mes con av/re pág.
+  $('#cal').addEventListener('keydown', (event) => {
+    if (!event.target.closest('.cal-dia')) return;
+    const dias = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[event.key];
+    const meses = { PageUp: -1, PageDown: 1 }[event.key];
+    if (dias === undefined && meses === undefined) return;
+    event.preventDefault();
+    const desde = fechaDeClave(diaElegido);
+    if (!desde) return;
+    let destino;
+    if (meses !== undefined) {
+      // `setMonth` arrastra el día, y del 31 de enero a febrero se desborda al 3
+      // de marzo: se pone el día 1 antes de cambiar de mes y luego se recorta al
+      // día que toque, o al último si el mes de destino es más corto.
+      const dia = desde.getDate();
+      desde.setDate(1);
+      desde.setMonth(desde.getMonth() + meses);
+      const ultimo = new Date(desde.getFullYear(), desde.getMonth() + 1, 0).getDate();
+      desde.setDate(Math.min(dia, ultimo));
+      destino = claveDia(desde);
+      // Si ese día del mes aún no ha llegado, se cae al último jugable del mes.
+      if (!esJugable(destino)) destino = ultimoJugableDe(desde.getFullYear(), desde.getMonth());
+    } else {
+      desde.setDate(desde.getDate() + dias);
+      destino = claveDia(desde);
+    }
+    // Del futuro y de más allá del año no hay nada que ver: la flecha no sale.
+    if (!esJugable(destino)) return;
+    irADia(destino);
+    renderReto();
+    $(`#cal .cal-dia[data-dia="${destino}"]`)?.focus();
+  });
+
+  $('#cal-prev').addEventListener('click', (event) => pasarMes(-1, event.currentTarget));
+  $('#cal-next').addEventListener('click', (event) => pasarMes(1, event.currentTarget));
+  $('#btn-reto-jugar').addEventListener('click', () => jugarReto(diaElegido));
+  $('#btn-reto-hoy').addEventListener('click', () => { irADia(claveDia()); renderReto(); });
+
   // ---------- final de partida ----------
 
   function confeti() {
@@ -446,6 +650,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (stats.bestScore === r.score) notas.push(t('dlg.victoria.nota.puntuacion'));
     if (stats.bestTimeMs === r.timeMs) notas.push(t('dlg.victoria.nota.tiempo'));
     if (stats.currentStreak > 1) notas.push(t('dlg.victoria.nota.racha', { count: stats.currentStreak }));
+    if (r.dia) notas.push(t('dlg.victoria.nota.reto', { fecha: fechaCorta(fechaDeClave(r.dia)) }));
     if (r.scoring === 'vegas') {
       notas.push(t('dlg.victoria.nota.banca', { valor: formatScore('vegas', store.getBank(r.drawCount)) }));
     }
@@ -507,6 +712,9 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     $('#panel-titulo').textContent = t(`dlg.titulo.${seccion}`);
     renderSettings();
     if (statsMode) renderStats();       // si aún no se han visto, no hay nada pintado
+    // El calendario se escribe entero desde JS —nombres de mes, de día y de
+    // fecha—, así que hay que rehacerlo: `traducirDom` no lo alcanza.
+    if (mesVisto) renderReto();
     if (dlgWin.open) pintarNotasVictoria();
     if (dlgStuck.open) pintarNotaBloqueo();
     pintarAviso();
@@ -517,6 +725,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     openStats() { abrir('records'); },
     openSettings() { abrir('ajustes'); },
     openHelp() { abrir('ayuda'); },
+    openReto() { abrir('reto'); },
     showWin,
     showStuck,
     renderSettings,

@@ -179,6 +179,60 @@ test('si localStorage no está disponible se sigue jugando sin persistir', () =>
   assert.equal(store.getStats('standard', 1).played, 1);
 });
 
+test('el reto diario lleva su propia libreta, con el mejor intento de cada día', () => {
+  const store = createStore(memoryBackend());
+  assert.deepEqual(store.getRetos(), {});
+  assert.equal(store.getReto('2026-08-29'), null);
+
+  // Una partida normal no toca la libreta; la del reto sí, por su fecha.
+  store.recordGame({ ...partida(), score: 500 });
+  assert.deepEqual(store.getRetos(), {});
+  store.recordGame({ ...partida(), score: 500, won: false, dia: '2026-08-29' });
+  assert.equal(store.getReto('2026-08-29').score, 500);
+  assert.equal(store.getReto('2026-08-29').won, false);
+
+  // Se repite el día: manda ganar, aunque puntúe menos.
+  store.recordGame({ ...partida(), score: 200, won: true, dia: '2026-08-29' });
+  assert.equal(store.getReto('2026-08-29').won, true);
+  assert.equal(store.getReto('2026-08-29').score, 200);
+  // Y entre dos ganadas, la de más puntos.
+  store.recordGame({ ...partida(), score: 100, won: true, dia: '2026-08-29' });
+  assert.equal(store.getReto('2026-08-29').score, 200, 'el peor intento no pisa al mejor');
+  store.recordGame({ ...partida(), score: 900, won: true, dia: '2026-08-29' });
+  assert.equal(store.getReto('2026-08-29').score, 900);
+
+  // Cada día va por su cuenta, y las partidas del reto cuentan en los récords
+  // como cualquier otra: es la misma partida, solo que con reparto de fecha.
+  store.recordGame({ ...partida(), score: 40, won: false, dia: '2026-08-28' });
+  assert.equal(Object.keys(store.getRetos()).length, 2);
+  assert.equal(store.getStats('standard', 1).played, 6);
+
+  // Una fecha inventada no entra en la libreta.
+  assert.equal(store.recordReto('mañana', { won: true, score: 1 }), null);
+  assert.equal(Object.keys(store.getRetos()).length, 2);
+});
+
+test('los retos se exportan y se importan con el resto de los datos', () => {
+  const store = createStore(memoryBackend());
+  store.recordGame({ ...partida(), score: 700, won: true, dia: '2026-08-29' });
+  const copia = store.exportAll();
+  assert.equal(copia.retos['2026-08-29'].score, 700);
+
+  const otro = createStore(memoryBackend());
+  otro.importAll(copia);
+  assert.equal(otro.getReto('2026-08-29').score, 700);
+
+  // Y borrarlo todo se los lleva por delante, como a los récords.
+  store.resetAll();
+  assert.deepEqual(store.getRetos(), {});
+});
+
+test('una libreta de retos con forma rara no rompe nada', () => {
+  const store = createStore(memoryBackend({ [KEYS.retos]: JSON.stringify(['no', 'es', 'un', 'objeto']) }));
+  assert.deepEqual(store.getRetos(), {});
+  assert.equal(store.getReto('2026-08-29'), null);
+});
+
 test('sin backend se usa memoria', () => {
   const store = createStore(undefined);
   store.setPrefs({ timed: false });

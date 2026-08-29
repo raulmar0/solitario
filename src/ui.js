@@ -11,6 +11,16 @@ import { PILE } from './engine.js';
 const DRAG_THRESHOLD = 5;     // px antes de considerar que se está arrastrando
 const DOUBLE_TAP_MS = 320;
 const REPARTO_PASO = 25;      // ms entre carta y carta al repartir
+// Y al robar. Aquí son tres cartas, no veintiocho, así que el hueco entre una y
+// otra tiene que verse: por debajo de esto parece que salen las tres a la vez.
+// Por arriba tampoco puede pasarse, que robando de tres se roba mucho.
+const ROBO_PASO = 55;
+const VOLTEO_POR_DEFECTO = 240;   // reserva si el navegador no resuelve --flip-speed
+// El montón del mazo se dibuja escalonado: cada carta asoma un pelo sobre la de
+// abajo, hasta seis, para que se vea que hay mazo y no una carta suelta.
+const MAZO_ESCALON = 0.6;
+const MAZO_ESCALONES = 6;
+const ALTO_MAZO = MAZO_ESCALON * MAZO_ESCALONES;
 const BUMP_MS = 320;          // lo que dura el salto del contador del mazo
 /**
  * Radio de rescate del toque. En las pantallas estrechas las columnas quedan a
@@ -84,6 +94,10 @@ export function createBoard({
   let relojes = [];            // temporizadores del reparto
   let volando = new Map();     // id -> temporizador; mientras vuela, la carta va arriba del todo
   let posiciones = new Map();  // id -> {x, y} del último pintado, para saber qué se ha movido
+  let caras = new Map();       // id -> ¿estaba boca abajo?, para saber cuál se acaba de voltear
+  let volteos = new Map();     // id -> temporizador del volteo en marcha
+  let robadas = new Set();     // ids que salen del mazo y siguen boca abajo hasta llegar al descarte
+  let relojesRobo = [];        // temporizadores del robo escalonado
   let resaltada = null;        // carta que el ratón señala sin llegar a pulsarla
   let bumpTimer = null;
   let ultimoMazo = null;       // cuántas cartas tenía el mazo la última vez que se pintó
@@ -228,7 +242,7 @@ export function createBoard({
     const stockX = colX(COLUMNA.stock, m);
     state.stock.forEach((card, i) => {
       positions.set(card.id, {
-        x: stockX, y: Math.min(i, 6) * 0.6, z: z++, faceUp: false, playable: false,
+        x: stockX, y: Math.min(i, MAZO_ESCALONES) * MAZO_ESCALON, z: z++, faceUp: false, playable: false,
       });
     });
 
@@ -284,16 +298,116 @@ export function createBoard({
    * z-index natural es el del sitio al que va, y por el camino cruza columnas
    * que están más arriba en la pila. Se le sube mientras dura la transición.
    */
-  function alzar(id, duracion = vueloMs()) {
+  function alzar(id, duracion = vueloMs(), espera = 0) {
     clearTimeout(volando.get(id));
-    els.get(id)?.classList.add('volando');
+    const el = els.get(id);
+    if (el) {
+      // La animación del levantamiento dura exactamente lo que el vuelo: así la
+      // carta despega al salir y se posa justo al llegar, en vez de seguir
+      // subiendo con la jugada ya hecha.
+      el.style.setProperty('--vuelo-ms', `${duracion}ms`);
+      el.style.setProperty('--vuelo-espera', `${espera}ms`);
+      // Volver a poner una clase que ya estaba no reinicia su animación, y en
+      // una cascada la segunda carta se quedaba sin levantarse.
+      if (el.classList.contains('volando')) {
+        el.classList.remove('volando');
+        void el.offsetWidth;
+      }
+      el.classList.add('volando');
+    }
     volando.set(id, setTimeout(() => {
       volando.delete(id);
-      const el = els.get(id);
       if (!el) return;
       el.classList.remove('volando');
+      el.style.removeProperty('--vuelo-ms');
+      el.style.removeProperty('--vuelo-espera');
+      // Si para cuando aterriza el jugador la tiene cogida, el z lo manda el
+      // arrastre: devolverle el suyo la hundía por debajo del tablero.
+      if (drag?.ids.includes(id)) return;
       if (el.dataset.z != null) el.style.zIndex = el.dataset.z;
-    }, duracion + 30));
+    }, duracion + espera + 30));
+  }
+
+  /**
+   * Una carta que el jugador coge deja de estar volando: la animación del vuelo
+   * fija `translate`, `scale` y la sombra mientras dura, y una animación gana a
+   * las declaraciones, así que la carta se quedaba pegada a la mesa en la mano
+   * hasta que vencía el temporizador y entonces pegaba un salto.
+   */
+  function aterrizar(id) {
+    clearTimeout(volando.get(id));
+    volando.delete(id);
+    const el = els.get(id);
+    if (!el) return;
+    el.classList.remove('volando');
+    el.style.removeProperty('--vuelo-ms');
+    el.style.removeProperty('--vuelo-espera');
+  }
+
+  /** Marca el volteo para que la carta se levante mientras se da la vuelta. */
+  function marcarVolteo(id) {
+    const el = els.get(id);
+    if (!el) return;
+    clearTimeout(volteos.get(id));
+    // Reiniciar la animación cuesta un reflujo, así que solo se paga cuando de
+    // verdad hace falta: si la clase no estaba, ponerla ya la arranca.
+    if (el.classList.contains('volteando')) {
+      el.classList.remove('volteando');
+      void el.offsetWidth;
+    }
+    el.classList.add('volteando');
+    volteos.set(id, setTimeout(() => {
+      volteos.delete(id);
+      el.classList.remove('volteando');
+    }, volteoMs() + 30));
+  }
+
+  /**
+   * Deja de tapar a las que venían del mazo. La cara se la da su sitio de ahora,
+   * no el que tenían al salir: si por el camino la jugada se deshizo, la carta
+   * ha vuelto al mazo y ahí sigue boca abajo.
+   */
+  function destaparRobada(id) {
+    if (!robadas.delete(id)) return;
+    if (!layout?.positions.get(id)?.faceUp) return;
+    caras.set(id, false);
+    els.get(id)?.classList.remove('down');
+  }
+
+  /** Corta el robo escalonado que hubiera a medias. */
+  function cortarRobo() {
+    relojesRobo.forEach(clearTimeout);
+    relojesRobo = [];
+    for (const id of [...robadas]) destaparRobada(id);
+    robadas.clear();
+  }
+
+  /**
+   * Las cartas que acaban de salir del mazo, con lo que tiene que esperar cada
+   * una. Robando de tres no salen las tres a la vez: en la mesa se reparten de
+   * una en una, y mientras vuelan siguen boca abajo —se destapan al llegar al
+   * descarte, que es cuando el jugador ve lo que le ha tocado—.
+   */
+  function retrasosDelRobo(state, mazoX) {
+    const n = Math.min(state.drawCount ?? 1, state.waste.length);
+    if (!n) return null;
+    // De las de arriba del descarte, las que estaban en el montón del mazo. Hay
+    // que mirar también la Y: `COLUMNA.stock` es 6, o sea que el mazo y la
+    // séptima columna caen en la misma X, y sin la Y una carta que vuelve del
+    // tableau al descarte (deshacer) se tomaba por una carta recién robada y
+    // salía tapada y con retraso.
+    const delMazo = (card) => {
+      const antes = posiciones.get(card.id);
+      return antes && Math.abs(antes.x - mazoX) < 0.5 && antes.y <= ALTO_MAZO + 0.5;
+    };
+    // El escalón se cuenta sobre las que de verdad salen, no sobre el tamaño del
+    // robo: en la última tanda pueden salir menos de tres, y numerarlas por la
+    // ventana las hacía esperar el turno de unas cartas que no existen.
+    const salidas = state.waste.slice(-n).filter(delMazo);
+    if (!salidas.length) return null;
+    const mapa = new Map();
+    salidas.forEach((card, i) => mapa.set(card.id, i * ROBO_PASO));
+    return mapa;
   }
 
   /**
@@ -346,6 +460,11 @@ export function createBoard({
       contador.style.transform = `translate3d(${mazoX}px, 0, 0)`;
       acusarMazo(state.stock.length);
     }
+    // El robo escalonado se decide antes del bucle: hay que mirar el descarte
+    // entero para saber cuál sale primero, y dentro del bucle solo se aplica.
+    const retrasos = vuelo && animando() ? retrasosDelRobo(state, mazoX) : null;
+    if (retrasos) { cortarRobo(); for (const id of retrasos.keys()) robadas.add(id); }
+
     for (const [id, el] of els) {
       const p = positions.get(id);
       if (!p) { el.style.visibility = 'hidden'; continue; }
@@ -363,15 +482,18 @@ export function createBoard({
         const seMueve = antes && (Math.abs(antes.x - x) > 0.5 || Math.abs(antes.y - y) > 0.5);
         if (vuelo && seMueve && animando()) {
           const dur = motion.duracionVuelo(Math.hypot(antes.x - x, antes.y - y), vueloMs());
+          const espera = retrasos?.get(id) ?? 0;
           // Vuelo a la medida de la distancia. Son DOS duraciones porque en la
           // hoja de estilos `.anim .card` transiciona dos propiedades, transform
-          // y translate: la sombra se mudó a `.card::after`. Si se manda una de
-          // más, el navegador la descarta —se emparejan por índice— y el 140 fijo
-          // del levantamiento se perdía dejándolo al ritmo del vuelo.
+          // y translate. Si se manda una de más, el navegador la descarta —se
+          // emparejan por índice—, así que el segundo valor tiene que estar.
           el.style.transitionDuration = `${dur}ms, 140ms`;
-          alzar(id, dur);
-        } else if (el.style.transitionDuration) {
-          el.style.transitionDuration = '';
+          el.style.transitionDelay = espera ? `${espera}ms, ${espera}ms` : '';
+          alzar(id, dur, espera);
+          if (espera || robadas.has(id)) programarRobo(id, dur + espera);
+        } else {
+          if (el.style.transitionDuration) el.style.transitionDuration = '';
+          if (el.style.transitionDelay) el.style.transitionDelay = '';
         }
         posiciones.set(id, { x, y });
         el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
@@ -379,7 +501,13 @@ export function createBoard({
         // (una secuencia arrastrada llega en el mismo orden en que iba).
         el.style.zIndex = String(volando.has(id) ? Z_VUELO + p.z : p.z);
       }
-      el.classList.toggle('down', !p.faceUp || !!tapadas?.has(id));
+      // Boca abajo si la carta lo está, si aún no ha llegado a su sitio en el
+      // reparto o si viene volando del mazo y todavía no ha aterrizado.
+      const abajo = !p.faceUp || !!tapadas?.has(id) || robadas.has(id);
+      const antesAbajo = caras.get(id);
+      if (antesAbajo !== undefined && antesAbajo !== abajo && animando()) marcarVolteo(id);
+      caras.set(id, abajo);
+      el.classList.toggle('down', abajo);
       el.classList.toggle('playable', !!p.playable);
       if (!drag || !drag.ids.includes(id)) el.classList.remove('dragging');
     }
@@ -397,12 +525,27 @@ export function createBoard({
     && root.classList.contains('anim')
     && !matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /** Cuánto tarda una carta en volar, según la hoja de estilos. */
-  function vueloMs() {
-    const valor = window.getComputedStyle(document.documentElement).getPropertyValue('--card-speed').trim();
+  /** Un tiempo de la hoja de estilos, en milisegundos. */
+  function tiempoCss(variable, reserva) {
+    const valor = window.getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
     const numero = parseFloat(valor);
-    if (!Number.isFinite(numero)) return VUELO_POR_DEFECTO;
+    if (!Number.isFinite(numero)) return reserva;
     return valor.endsWith('s') && !valor.endsWith('ms') ? numero * 1000 : numero;
+  }
+
+  /** Cuánto tarda una carta en volar, según la hoja de estilos. */
+  const vueloMs = () => tiempoCss('--card-speed', VUELO_POR_DEFECTO);
+  /** Y cuánto tarda en darse la vuelta. */
+  const volteoMs = () => tiempoCss('--flip-speed', VOLTEO_POR_DEFECTO);
+
+  /** La carta robada se destapa al aterrizar en el descarte, no al despegar. */
+  function programarRobo(id, cuando) {
+    relojesRobo.push(setTimeout(() => {
+      if (!robadas.has(id)) return;
+      const enElDescarte = layout?.positions.get(id)?.faceUp;
+      destaparRobada(id);
+      if (enElDescarte) marcarVolteo(id);
+    }, cuando));
   }
 
   /** El orden en que se reparte de verdad: por filas, no columna a columna. */
@@ -430,10 +573,16 @@ export function createBoard({
   function repintarSinVuelo() {
     for (const [id, reloj] of volando) {
       clearTimeout(reloj);
-      els.get(id)?.classList.remove('volando');
+      const el = els.get(id);
+      el?.classList.remove('volando');
+      el?.style.removeProperty('--vuelo-ms');
+      el?.style.removeProperty('--vuelo-espera');
     }
     volando = new Map();
     posiciones = new Map();
+    // Un robo a medias se planta: sus temporizadores contaban con las posiciones
+    // de antes de recolocar, y sin esto la carta se quedaría boca abajo.
+    cortarRobo();
     paint({ vuelo: false });
   }
 
@@ -444,6 +593,9 @@ export function createBoard({
   function repartir() {
     ultimoMazo = null;      // un reparto nuevo no es una carta robada: el contador no salta
     cortarReparto({ pintar: false });
+    // Y el robo del reparto anterior, también: sus temporizadores llegaban con
+    // las cartas ya barajadas y destapaban una que estaba sobre el mazo nuevo.
+    cortarRobo();
     if (!animando()) { paint(); return; }
 
     const orden = ordenDeReparto(game.state);
@@ -466,9 +618,20 @@ export function createBoard({
       paint();
     }, ms));
 
+    // Cada carta se destapa cuando aterriza, no cuando aterrizaría la que más
+    // lejos va: la primera columna está al otro lado de la mesa y la última cae
+    // pegada al mazo. Con un tiempo único, media docena de cartas se quedaban
+    // boca abajo un cuarto de segundo después de haber llegado.
+    const donde = computeLayout(game.state);
+    const salida = colX(COLUMNA.stock, donde.m);
+    const vueloDe = (id) => {
+      const p = donde.positions.get(id);
+      return p ? motion.duracionVuelo(Math.hypot(p.x - salida, p.y), vuelo) : vuelo;
+    };
+
     orden.forEach((id, i) => {
       programar(i * REPARTO_PASO, () => enMazo?.delete(id));
-      programar(i * REPARTO_PASO + vuelo, () => {
+      programar(i * REPARTO_PASO + vueloDe(id), () => {
         tapadas?.delete(id);
         if (tapadas && !tapadas.size) { enMazo = null; tapadas = null; }
       });
@@ -613,6 +776,7 @@ export function createBoard({
       moved: false, id,
     };
     ids.forEach((cid, i) => {
+      aterrizar(cid);                 // en la mano ya no vuela: manda el arrastre
       const el = els.get(cid);
       el.classList.add('dragging');
       el.style.zIndex = String(Z_ARRASTRE + i);
@@ -685,21 +849,11 @@ export function createBoard({
   /**
    * A dónde va la carta que se pica. Lo decide el consejero, el mismo que da las
    * pistas: así el toque nunca lleva la carta a un sitio distinto del que acaba
-   * de señalar la pista. Subir arriesgando queda fuera —eso lo decide el jugador
-   * arrastrando—, y cuando no sale nada hay que distinguir «lo único que cabía
-   * era una subida arriesgada» de «esa carta no tiene jugada», que al jugador le
-   * dicen cosas muy distintas.
+   * de señalar la pista. Devuelve null solo cuando esa carta no tiene ninguna
+   * jugada, ni buena ni mala.
    */
   function mejorDestino(ref) {
-    const elegido = advisor.mejorDestinoPara(game.state, ref.from, ref.count);
-    if (elegido) return { move: elegido.move, arriesgada: false };
-    // Si desde este mismo origen queda alguna jugada útil a una fundación, es por
-    // fuerza insegura: el consejero ya se ha quedado con todas las seguras.
-    const arriesgada = engine.usefulMoves(game.state).some((m) => m.to.pile === PILE.FOUNDATION
-      && m.from.pile === ref.from.pile
-      && (m.from.index ?? null) === (ref.from.index ?? null)
-      && (m.count ?? 1) === ref.count);
-    return { move: null, arriesgada };
+    return advisor.mejorDestinoPara(game.state, ref.from, ref.count)?.move ?? null;
   }
 
   /** Un toque en la palma, si el jugador lo quiere y el aparato sabe darlo. */
@@ -754,11 +908,10 @@ export function createBoard({
     const ref = { ...grab, ids: grab.ids ?? idsOf(grab) };
     if (!sigueValida(ref)) return;      // el tablero cambió entre el toque y el dedo levantado
 
-    const { move, arriesgada } = mejorDestino(ref);
+    const move = mejorDestino(ref);
     if (!move) {
       negar(id);
-      onMessage(arriesgada ? 'msg.subida.riesgo'
-        : ref.count > 1 ? 'msg.sin.jugada.secuencia' : 'msg.sin.jugada');
+      onMessage(ref.count > 1 ? 'msg.sin.jugada.secuencia' : 'msg.sin.jugada');
       return;
     }
     if (game.play(move)) {
@@ -873,6 +1026,7 @@ export function createBoard({
     /** Corta cualquier gesto o reparto a medias (la tecla Escape, y las pruebas). */
     cancel() {
       cortarReparto({ pintar: false });
+      cortarRobo();
       cancelDrag();
       resaltada = null;
       clearHighlights();
@@ -900,7 +1054,13 @@ export function createBoard({
         el.classList.add(clase);
         pistaEls.push([el, clase]);
       };
-      if (move.type === 'draw' || move.type === 'recycle') { marcar(slotFor('stock')); }
+      // Robar señala la carta de arriba del montón, no el hueco que hay debajo:
+      // el hueco lo tapan las cartas y el anillo se quedaba enterrado. Solo
+      // cuando el mazo está vacío —reciclar— la marca es la del hueco.
+      if (move.type === 'draw' || move.type === 'recycle') {
+        const arriba = engine.top(game.state.stock);
+        marcar(arriba ? els.get(arriba.id) : slotFor('stock'));
+      }
       else {
         for (const id of idsOf({ from: move.from, count: move.count ?? 1 })) marcar(els.get(id));
         if (move.to.pile === PILE.FOUNDATION || move.to.pile === PILE.TABLEAU) {

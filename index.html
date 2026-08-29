@@ -8,7 +8,11 @@
 <!-- GitHub Pages no deja poner cabeceras: la misma política que sirve nginx, aquí en meta.
      El juego no pide nada a ningún servidor, así que puede ser así de cerrada. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' blob:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
-<meta name="theme-color" content="#0f5132">
+<!-- El color que el sistema pinta alrededor de la ventana. Es el del tapete, no
+     el de la barra: arriba y abajo las zonas seguras enseñan el fieltro, y si
+     aquí hubiera otro color se vería la costura. Lo reajusta `applyPrefs()` al
+     cambiar de tema. -->
+<meta name="theme-color" content="#14663f">
 <title data-i18n="app.titulo">Solitario</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -45,9 +49,8 @@
     <div class="stat"><dt data-i18n="hud.puntos">Puntos</dt><dd id="score">0</dd></div>
     <!-- El aviso de pausa vive dentro de la caja del reloj: si el crono se para,
          se entiende al mirar el número, no en otra esquina de la pantalla. -->
-    <div class="stat" id="stat-clock"><dt data-i18n="hud.tiempo">Tiempo</dt><dd id="clock">00:00</dd><span class="paused-flag" id="clock-paused" hidden><span aria-hidden="true">⏸</span> <span data-i18n="hud.pausada">En pausa</span></span></div>
+    <div class="stat" id="stat-clock"><dt data-i18n="hud.tiempo">Tiempo</dt><dd id="clock">00:00</dd><span class="paused-flag" id="clock-paused" hidden><span class="paused-mark" aria-hidden="true">⏸</span><span class="solo-lectores" data-i18n="hud.pausada">En pausa</span></span></div>
     <div class="stat"><dt data-i18n="hud.jugadas">Jugadas</dt><dd id="moves">0</dd></div>
-    <div class="stat"><dt data-i18n="hud.fundaciones">Fundaciones</dt><dd id="foundations" data-i18n="hud.fundaciones.valor" data-i18n-params='{"n":0}'>0/52</dd></div>
     <!-- El reparto es un botón porque copia su enlace: compartir una mano es
          escribir el número a mano si no. -->
     <div class="stat stat-wide"><dt data-i18n="hud.reparto">Reparto</dt><dd><button type="button" class="seed-chip" id="seed" data-i18n="hud.vacio">—</button></dd></div>
@@ -56,11 +59,16 @@
   <button type="button" class="mode-chip" id="mode-chip" title="Modalidad de juego: toca para cambiarla en Ajustes" data-i18n-title="hud.modo.titulo"></button>
 
   <!-- Cuánto queda para las 52. Ocupa la línea entera bajo el marcador: es un
-       vistazo, no un dato que haya que leer. -->
-  <div class="progress" id="progress" aria-hidden="true"><i></i></div>
+       vistazo, no un dato que haya que leer. Desde que la caja de «Fundaciones»
+       se fue de la cabecera, este es también el sitio donde vive el número: la
+       barra lo lleva en su aria-valuetext, así que quien no la ve no lo pierde. -->
+  <div class="progress" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="52" aria-valuenow="0" data-i18n-aria-label="hud.fundaciones"><i></i></div>
 
-  <button type="button" class="update-pill" id="btn-update-pill" hidden>
-    <span aria-hidden="true">↑</span> <span data-i18n="app.update.pill">Versión nueva · Actualizar</span>
+  <!-- La píldora es baja y corta a propósito: si creciera, la cabecera crecería
+       con ella y el tapete perdería una fila entera de cartas. La frase entera
+       va en el título y en el nombre accesible. -->
+  <button type="button" class="update-pill" id="btn-update-pill" data-i18n-title="app.update.pill" data-i18n-aria-label="app.update.pill" hidden>
+    <span class="update-flecha" aria-hidden="true">↑</span><span class="update-texto" aria-hidden="true" data-i18n="app.update.pill.corto">Actualizar</span>
   </button>
 </header>
 
@@ -135,9 +143,11 @@
     <button class="icon-btn" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar">✕</button>
   </header>
 
-  <!-- Tres secciones en un mismo sitio: lo que se toca, lo que se ha jugado y
-       cómo se juega. Antes eran tres diálogos y tres botones en la barra. -->
+  <!-- Cuatro secciones en un mismo sitio: el reparto del día, lo que se toca, lo
+       que se ha jugado y cómo se juega. Antes eran tres diálogos y tres botones
+       en la barra. -->
   <div class="tabs" id="panel-tabs" role="tablist" aria-label="Secciones" data-i18n-aria-label="dlg.secciones">
+    <button class="tab" type="button" role="tab" id="tab-reto" aria-controls="panel-reto" aria-selected="false" tabindex="-1" data-i18n="dlg.tab.reto">Reto</button>
     <button class="tab" type="button" role="tab" id="tab-ajustes" aria-controls="panel-ajustes" aria-selected="true" data-i18n="dlg.tab.ajustes">Ajustes</button>
     <button class="tab" type="button" role="tab" id="tab-records" aria-controls="panel-records" aria-selected="false" tabindex="-1" data-i18n="dlg.tab.records">Récords</button>
     <button class="tab" type="button" role="tab" id="tab-ayuda" aria-controls="panel-ayuda" aria-selected="false" tabindex="-1" data-i18n="dlg.tab.ayuda">Ayuda</button>
@@ -146,6 +156,27 @@
   <!-- Lo que pasa dentro del diálogo se cuenta dentro del diálogo: el banner del
        tablero queda tapado mientras está abierto. -->
   <p class="dlg-status" id="dlg-status" role="status" aria-live="polite"></p>
+
+  <!-- Reto diario: el calendario y el reparto del día. La semilla sale de la
+       fecha, así que dos personas que jueguen el mismo día reparten las mismas
+       cartas y pueden comparar la puntuación sin servidor de por medio. -->
+  <section class="panel" id="panel-reto" role="tabpanel" aria-labelledby="tab-reto" tabindex="0" hidden>
+    <p data-i18n="reto.intro">Cada día tiene su reparto, el mismo para todo el mundo. Juega el de hoy o vuelve a cualquier día del último año.</p>
+
+    <div class="cal-nav">
+      <button class="icon-btn" type="button" id="cal-prev" data-i18n-aria-label="reto.mes.anterior" aria-label="Mes anterior">‹</button>
+      <strong class="cal-titulo" id="cal-titulo" aria-live="polite"></strong>
+      <button class="icon-btn" type="button" id="cal-next" data-i18n-aria-label="reto.mes.siguiente" aria-label="Mes siguiente">›</button>
+    </div>
+    <div class="cal" id="cal" role="grid" aria-labelledby="cal-titulo"></div>
+
+    <p class="reto-detalle" id="reto-detalle" role="status" aria-live="polite"></p>
+    <div class="row wrap">
+      <button class="btn primary" type="button" id="btn-reto-jugar" data-i18n="reto.jugar">Jugar este reto</button>
+      <button class="btn" type="button" id="btn-reto-hoy" data-i18n="reto.hoy">Ir a hoy</button>
+    </div>
+    <p class="hint-text" data-i18n="reto.nota">Se guarda tu mejor intento de cada día. El reparto no cambia: puedes repetirlo hasta que te salga.</p>
+  </section>
 
   <section class="panel" id="panel-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" tabindex="0">
     <div class="field">
@@ -282,6 +313,7 @@
       <li data-i18n-html="help.regla.toque"><strong>Pica una carta</strong> y va sola a donde pueda: primero a su pila de arriba y, si no, a la columna que le venga.</li>
       <li data-i18n-html="help.regla.arrastre"><strong>Arrástrala</strong> cuando quieras elegir tú el sitio, por ejemplo entre dos huecos libres.</li>
       <li data-i18n="help.regla.voltear">Al destapar una carta se le da la vuelta sola.</li>
+      <li data-i18n-html="help.regla.reto">El <strong>reto diario</strong> reparte las mismas cartas para todo el mundo cada día: quien juegue hoy a tu lado tendrá tu misma mano.</li>
     </ul>
     <h3 data-i18n="help.atajos">Atajos</h3>
     <dl class="keys">
@@ -290,6 +322,7 @@
       <div><dt data-i18n="help.tecla.descarte">0</dt><dd data-i18n="help.atajo.descarte">subir la carta del descarte</dd></div>
       <div><dt data-i18n="help.tecla.deshacer">Ctrl+Z</dt><dd data-i18n="help.atajo.deshacer">deshacer</dd></div>
       <div><dt data-i18n="help.tecla.pista">H</dt><dd data-i18n="help.atajo.pista">pista</dd></div>
+      <div><dt data-i18n="help.tecla.reto">D</dt><dd data-i18n="help.atajo.reto">reto diario</dd></div>
       <div><dt data-i18n="help.tecla.auto">A</dt><dd data-i18n="help.atajo.auto">subir automáticamente</dd></div>
       <div><dt data-i18n="help.tecla.partida">N / R</dt><dd data-i18n="help.atajo.partida">partida nueva / repetir reparto</dd></div>
       <div><dt data-i18n="help.tecla.menu">, / P / ?</dt><dd data-i18n="help.atajo.menu">ajustes, récords y ayuda</dd></div>

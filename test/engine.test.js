@@ -305,6 +305,152 @@ test('los paseos entre columnas no mantienen viva una partida muerta', () => {
   assert.equal(engine.isStuck(vuelta), true, 'después del paseo sigue muerta');
 });
 
+test('un mazo lleno no basta: si ninguna de sus cartas cabe, la partida está cerrada', () => {
+  // Antes bastaba con que el mazo tuviera cartas para dar la partida por viva, y
+  // el jugador se pasaba diez minutos dando vueltas al montón. Lo que decide es
+  // si alguna de las que pueden salir cabe en algún sitio.
+  const st = engine.cloneState(engine.newGame({ seed: 41 }));
+  st.foundations = [[], [], [], []];
+  st.waste = [];
+  st.tableau = [[carta(10, 'H')], [carta(9, 'S')], [], [], [], [], []];
+  // Ni el 2D ni el 7C caben: no son ases, no van sobre el 10H ni sobre el 9S, y
+  // en un hueco solo entra un rey.
+  st.stock = [carta(2, 'D', false), carta(7, 'C', false)];
+  assert.equal(engine.quedaJuegoEnElMazo(st), false);
+  assert.equal(engine.isStuck(st), true, 'seis cartas por robar y ninguna sirve: está cerrada');
+
+  // Con un 8 rojo, el 9S tiene quien se le apoye y la partida sigue viva.
+  st.stock = [carta(2, 'D', false), carta(8, 'H', false)];
+  assert.equal(engine.quedaJuegoEnElMazo(st), true);
+  assert.equal(engine.isStuck(st), false);
+
+  // Y un rey también vale: el hueco de la columna 2 es su sitio.
+  st.stock = [carta(2, 'D', false), carta(13, 'D', false)];
+  assert.equal(engine.isStuck(st), false);
+});
+
+test('robando de tres, solo cuenta lo que de verdad llega a lo alto del descarte', () => {
+  // Robando de tres se pone a tiro una de cada tres, y reciclar no lo arregla:
+  // la vuelta conserva el orden, así que la pasada siguiente deja arriba las
+  // mismas. Un as enterrado en una posición que nunca sale no salva la partida.
+  const base = () => {
+    const st = engine.cloneState(engine.newGame({ seed: 41, drawCount: 3 }));
+    st.drawCount = 3;
+    st.foundations = [[], [], [], []];
+    st.waste = [];
+    st.tableau = [[carta(10, 'H')], [carta(9, 'S')], [], [], [], [], []];
+    return st;
+  };
+
+  // El último del array es el de arriba del mazo, así que salen en orden
+  // inverso. Robando de tres se queda arriba la 3.ª de cada tanda; aquí, el 7C y
+  // el 5C. El as de corazones sale el segundo y se queda siempre tapado.
+  const cerrada = base();
+  cerrada.stock = ['5C', '6C', '4C', '7C', '1H', '2D']
+    .map((id) => carta(Number(id.slice(0, -1)), id.slice(-1), false));
+  assert.equal(engine.quedaJuegoEnElMazo(cerrada), false, 'el as está, pero no se alcanza');
+  assert.equal(engine.isStuck(cerrada), true);
+
+  // Robando de una sí se alcanza: misma baraja, otra modalidad, otra partida.
+  const deUna = engine.cloneState(cerrada);
+  deUna.drawCount = 1;
+  assert.equal(engine.quedaJuegoEnElMazo(deUna), true);
+  assert.equal(engine.isStuck(deUna), false);
+
+  // Y si el as cae en una posición que sí sale —la tercera de la tanda—, la
+  // partida de tres sigue viva con la misma baraja.
+  const viva = base();
+  viva.stock = ['5C', '6C', '4C', '1H', '7C', '2D']
+    .map((id) => carta(Number(id.slice(0, -1)), id.slice(-1), false));
+  assert.equal(engine.quedaJuegoEnElMazo(viva), true, 'ahora el as sale el tercero');
+  assert.equal(engine.isStuck(viva), false);
+});
+
+test('lo que el motor da por alcanzable es exactamente lo que sale al pasar el mazo', () => {
+  // La cuenta de `alcanzablesDelMazo` es puro papel: se contrasta contra la
+  // realidad, robando y reciclando sin jugar nada y anotando qué cartas llegan a
+  // lo alto del descarte. El error que importa es el de dar por cerrada una
+  // partida viva, así que se cuentan las dos direcciones por separado.
+  const rojo = (suit) => suit === 'H' || suit === 'D';
+
+  /** Las que de verdad llegan arriba del descarte si no se juega nada. */
+  const asomanDeVerdad = (state) => {
+    const vistas = new Set();
+    let s = engine.cloneState(state);
+    for (let i = 0; i < 500; i++) {
+      if (s.waste.length) vistas.add(s.waste.at(-1).id);
+      if (engine.isLegal(s, { type: 'draw' })) s = engine.applyMove(s, { type: 'draw' }).state;
+      else if (engine.isLegal(s, { type: 'recycle' })) s = engine.applyMove(s, { type: 'recycle' }).state;
+      else break;
+      if (s.recycles > 4) break;      // a la tercera vuelta ya se repite el ciclo
+    }
+    if (s.waste.length) vistas.add(s.waste.at(-1).id);
+    return vistas;
+  };
+
+  let casos = 0;
+  let daPorMuertaUnaViva = 0;
+  let daPorVivaUnaMuerta = 0;
+
+  for (const seed of [1, 5, 17, 99]) {
+    for (const [drawCount, scoring] of [[1, 'standard'], [3, 'standard'], [3, 'vegas']]) {
+      for (const robos of [0, 2, 9, 23]) {
+        let s = engine.newGame({ seed, drawCount, scoring });
+        for (let i = 0; i < robos && s.stock.length; i++) s = engine.applyMove(s, { type: 'draw' }).state;
+        const pendientes = [...s.stock, ...s.waste];
+        const asoman = asomanDeVerdad(s);
+
+        for (const c of pendientes) {
+          if (c.rank >= 13) continue;         // un rey entra en cualquier hueco: otro caso
+          // Un tablero que solo acepta una carta: una columna con la de rango+1
+          // y color contrario, las otras seis tapadas (encima de una carta boca
+          // abajo no se pone nada) y las fundaciones bloqueadas con un rey.
+          const t = engine.cloneState(s);
+          const anfitrion = { id: 'ANF', rank: c.rank + 1, suit: rojo(c.suit) ? 'S' : 'H', faceUp: true };
+          t.tableau = [[anfitrion], ...Array.from({ length: 6 }, (_, i) => [{ id: `T${i}`, rank: 5, suit: 'C', faceUp: false }])];
+          t.foundations = ['S', 'H', 'D', 'C'].map((suit, i) => [{ id: `F${i}`, rank: 13, suit, faceUp: true }]);
+
+          casos++;
+          const viva = !engine.isStuck(t);
+          const vivaDeVerdad = [...asoman].some((id) => {
+            const x = pendientes.find((p) => p.id === id);
+            return x.rank === anfitrion.rank - 1 && rojo(x.suit) !== rojo(anfitrion.suit);
+          });
+          if (!viva && vivaDeVerdad) daPorMuertaUnaViva++;
+          if (viva && !vivaDeVerdad) daPorVivaUnaMuerta++;
+        }
+      }
+    }
+  }
+
+  assert.ok(casos > 1000, `hacen falta muchos casos para que esto diga algo; hubo ${casos}`);
+  assert.equal(daPorMuertaUnaViva, 0, 'dar por cerrada una partida viva se lleva la partida por delante');
+  assert.equal(daPorVivaUnaMuerta, 0, 'y darla por viva estando cerrada deja al jugador dando vueltas al mazo');
+});
+
+test('sin más pasadas al mazo, lo que quede en el descarte por debajo ya no cuenta', () => {
+  // En Vegas robando de una no se recicla: lo que pase de largo se queda dentro.
+  const st = engine.cloneState(engine.newGame({ seed: 41, scoring: 'vegas' }));
+  st.scoring = 'vegas';
+  st.maxRecycles = engine.maxRecyclesFor('vegas', 1);
+  st.recycles = 0;
+  st.stock = [];
+  st.foundations = [[], [], [], []];
+  st.tableau = [[carta(10, 'H')], [carta(9, 'S')], [], [], [], [], []];
+  // El as está en el descarte, pero enterrado, y ya no hay vuelta que darle.
+  st.waste = [carta(1, 'H'), carta(4, 'C')];
+  assert.equal(engine.isLegal(st, { type: 'recycle' }), false, 'no quedan pasadas');
+  assert.equal(engine.quedaJuegoEnElMazo(st), false);
+  assert.equal(engine.isStuck(st), true);
+
+  // En estándar sí se recicla, así que ese mismo as vuelve a estar en juego.
+  const estandar = engine.cloneState(st);
+  estandar.scoring = 'standard';
+  estandar.maxRecycles = Infinity;
+  assert.equal(engine.quedaJuegoEnElMazo(estandar), true);
+  assert.equal(engine.isStuck(estandar), false);
+});
+
 test('un paseo que abre una jugada sí cuenta, y buscarSalida dice por dónde se empieza', () => {
   // Pasear el 3H sobre el 4C parece un paseo… pero deja a la vista el 4S, que sube.
   const st = engine.cloneState(engine.newGame({ seed: 41 }));

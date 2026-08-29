@@ -451,18 +451,25 @@ test('la pista siempre es legal, trae motivo y alternativas, y no hay pista fuer
   assert.equal(game.hint(), null, 'con la partida ganada no se aconseja nada');
 });
 
-test('la pista no propone volver a la posición de la que se acaba de salir', () => {
+test('un mazo cuyas cartas no caben en ningún sitio no es una salida: ni pista ni vueltas', () => {
   const { game, store } = crear();
   assert.equal(retomar(store, game, tableroMuerto()), true);
+
+  // El mazo tiene dos cartas y ninguna cabe en ningún sitio. Que el montón no
+  // esté vacío no significa que quede partida: la posición ya está cerrada, y se
+  // da por cerrada desde el primer momento, sin hacerle robar las dos para
+  // enterarse.
+  assert.equal(game.state.stock.length, 2);
+  assert.equal(game.status, 'stuck');
+  assert.equal(game.hint(), null, 'no hay nada que recomendar, y robar no lo es');
+
   game.draw();
   game.draw();                       // el mazo se vacía: solo queda darle otra vuelta
   assert.equal(engine.isLegal(game.state, { type: 'recycle' }), true, 'reciclar sigue siendo legal');
-
-  // A pelo, el recomendador propone reciclar: es lo único que queda. Pero reciclar
-  // devuelve el tablero exactamente a la posición de hace dos jugadas, y game.hint()
-  // le pasa las huellas recientes justo para que no mande al jugador a esa noria.
-  assert.equal(advisor.recomendar(game.state).move.type, 'recycle');
-  assert.equal(game.hint(), null, 'no se aconseja deshacer a mano lo que se acaba de hacer');
+  // Legal, sí, pero no es una recomendación: la vuelta al mazo devuelve las
+  // mismas dos cartas que ya no cabían.
+  assert.equal(advisor.recomendar(game.state), null);
+  assert.equal(game.hint(), null);
 });
 
 test('siguiendo la pista jugada tras jugada no se dan vueltas en círculo', () => {
@@ -484,6 +491,78 @@ test('siguiendo la pista jugada tras jugada no se dan vueltas en círculo', () =
     recientes.push(huella);
   }
   assert.ok(jugadas > 50, 'con menos jugadas la prueba no llega a donde empezaban los bucles');
+});
+
+test('la pista recuerda una vuelta entera al mazo, no doce jugadas', () => {
+  // Robando de una, dar la vuelta al mazo son veinticinco jugadas. Con doce de
+  // memoria, al volver al mismo sitio la pista mandaba robar otra vez y así sin
+  // parar: con este reparto llegó a encadenar 342 robos seguidos.
+  const { game } = crear();
+  game.newGame(11046);
+  let robosSeguidos = 0;
+  let peorRacha = 0;
+  let jugadas = 0;
+  for (let i = 0; i < 260; i++) {
+    const h = game.hint();
+    if (!h) break;
+    if (h.move.type === 'draw' || h.move.type === 'recycle') {
+      robosSeguidos++;
+      peorRacha = Math.max(peorRacha, robosSeguidos);
+    } else robosSeguidos = 0;
+    if (!game.play(h.move)) break;
+    jugadas++;
+    if (game.status === 'won') break;
+  }
+  assert.ok(jugadas > 50, `la prueba necesita llegar lejos, y llegó a ${jugadas}`);
+  assert.ok(peorRacha < 40,
+    `la pista encadenó ${peorRacha} robos seguidos: está dando vueltas al mazo sin enterarse`);
+  assert.equal(game.status, 'won', 'siguiendo la pista, este reparto se gana');
+});
+
+// ---------- reto diario ----------
+
+test('la mano del reto va marcada con su día, y el día viaja con la partida', () => {
+  const { game, store } = crear();
+  game.newGame(4242, { dia: '2026-08-29' });
+  assert.equal(game.dia, '2026-08-29');
+  assert.equal(game.seed, 4242);
+
+  // Repetir el reparto sigue siendo el mismo reto: son las mismas cartas.
+  game.draw();
+  game.restart();
+  assert.equal(game.dia, '2026-08-29');
+  assert.equal(game.seed, 4242);
+
+  // Repartir de cero, no: eso ya es una partida cualquiera.
+  game.newGame(7);
+  assert.equal(game.dia, null);
+});
+
+test('el día del reto sobrevive a cerrar la pestaña', () => {
+  const { game, store } = crear();
+  game.newGame(4242, { dia: '2026-08-29' });
+  game.draw();
+  game.flush();
+
+  const otro = createGame({ store });
+  assert.equal(otro.resume(), true);
+  assert.equal(otro.dia, '2026-08-29', 'al volver, sigue siendo el reto de ese día');
+});
+
+test('al acabar, el resultado del reto se apunta en su día', () => {
+  const { game, store } = crear();
+  game.newGame(4242, { dia: '2026-08-29' });
+  game.draw();
+  game.newGame(7);              // abandonar cuenta como derrota, y como intento del reto
+
+  assert.equal(store.getReto('2026-08-29').won, false);
+  assert.equal(store.getReto('2026-08-29').drawCount, 1);
+  assert.ok(store.getReto('2026-08-29').at, 'con su fecha, para poder ordenarlos');
+
+  // Una partida sin día no ensucia la libreta.
+  game.draw();
+  game.newGame(8);
+  assert.equal(Object.keys(store.getRetos()).length, 1);
 });
 
 test('formatTime', () => {
