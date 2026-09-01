@@ -44,30 +44,3 @@ derrota—, así que curiosear no puede estropear nada.
 pasos (`SAVED_HISTORY`), así que un repaso recuperado de disco no llega tan atrás
 como uno en memoria. O se sube ese tope para las partidas cerradas, o se dice
 cuántas jugadas hay disponibles y ya.
-
-## La pista puede dar vueltas en una mano ya perdida
-
-**Qué.** Siguiendo la pista una y otra vez, aproximadamente una partida de cada
-ciento cincuenta acaba rotando entre tres jugadas sin salir nunca de ahí (medido
-sobre 600 partidas: 4 casos). Son manos donde el mazo ya está agotado, no queda
-nada que de verdad progrese y todo lo que se puede hacer devuelve el tablero a
-una posición por la que ya se ha pasado.
-
-**Por qué está así.** `recomendar` solo devuelve `null` —y entonces el tablero
-anuncia que la partida está cerrada— cuando no queda ninguna jugada que ofrecer.
-Se probó a descartar también las jugadas que repiten posición, y con eso el
-bucle desaparece; pero entonces la pista se calla en el 0,25 % de las posiciones
-de una partida normal, y callarse significa decirle a alguien que su partida
-está cerrada cuando todavía puede mover. Entre repetirle una pista y mentirle
-sobre el estado de su partida, se eligió lo primero. Además el repliegue actual
-convierte en victorias cuatro partidas que antes se quedaban sin pista.
-
-Hay una prueba que fija ese contrato (`la pista solo se calla cuando la partida
-está cerrada`, en `test/advisor.test.js`): si alguien invierte la decisión, se
-cae.
-
-**Cómo se arreglaría de verdad.** Distinguir en la interfaz los dos casos, que
-hoy comparten mensaje: «no queda jugada» y «todo lo que puedes hacer te devuelve
-donde estabas». El segundo es información útil —la mano está muerta aunque el
-motor aún vea movimientos legales— y merece su propio texto en los cinco
-idiomas. Con eso, `recomendar` podría callarse sin mentir.
