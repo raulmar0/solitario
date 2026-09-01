@@ -74,14 +74,29 @@ const { game, board, panels, refresh, store, i18n } = globalThis.solitario;
 const { claveDia, semillaDelDia } = await import('../src/reto.js');
 const { t } = i18n;
 
-/** Lleva el calendario a un día concreto, como haría el jugador pasando meses. */
-function irAlDia(clave) {
+/**
+ * Deja a la vista el día que se pida, pasando meses hacia atrás como haría el
+ * jugador, y devuelve su casilla SIN pulsarla. Hace falta porque un día de hace
+ * dos jornadas puede caer en el mes anterior —el día 1, sin ir más lejos—, y las
+ * pruebas que dan por hecho que está en el mes de hoy se caen una vez al mes.
+ */
+function mostrarDia(clave) {
   for (let i = 0; i < 14; i++) {
     const boton = $$('#cal .cal-dia').find((b) => b.dataset.dia === clave);
-    if (boton) { boton.click(); return; }
+    if (boton) return boton;
     $('#cal-prev').click();
   }
   throw new Error(`no se llegó al día ${clave}`);
+}
+
+/** Una casilla jugable que no sea la que ya está elegida, esté en el mes que esté. */
+function otroDiaJugable() {
+  for (let i = 0; i < 14; i++) {
+    const boton = $$('#cal .cal-dia').find((b) => !b.disabled && !b.classList.contains('elegido'));
+    if (boton) return boton;
+    $('#cal-prev').click();
+  }
+  throw new Error('el calendario no ofrece ningún día jugable sin elegir');
 }
 
 /** El texto que le toca a una recomendación, montado como lo monta main.js. */
@@ -482,6 +497,8 @@ test('el calendario del reto se abre por hoy, marca lo jugado y no deja tocar el
   assert.equal(deHoy.classList.contains('elegido'), true, 'y viene elegido de entrada');
   assert.equal(deHoy.disabled, false);
 
+  // Ayer puede caer en el mes anterior (hoy día 1): solo se comprueba la marca
+  // cuando de verdad está a la vista.
   const deAyer = dias.find((b) => b.dataset.dia === ayer);
   if (deAyer) assert.equal(deAyer.classList.contains('ganado'), true, 'el que se ganó lleva su marca');
 
@@ -498,9 +515,9 @@ test('elegir un día cuenta cómo fue, y jugarlo reparte la mano de esa fecha', 
   store.recordReto(anteayer, { won: false, score: 120, timeMs: 60000, moves: 40, scoring: 'standard', drawCount: 1 });
 
   panels.openReto();
-  const boton = [...$$('#cal .cal-dia')].find((b) => b.dataset.dia === anteayer);
-  assert.ok(boton, 'el calendario llega hasta anteayer');
-  boton.click();
+  // Anteayer puede caer en el mes anterior —el día 1, sin ir más lejos—, así que
+  // se llega pasando páginas, como haría el jugador.
+  mostrarDia(anteayer).click();
   // El calendario se vuelve a pintar entero, así que hay que preguntar de nuevo.
   assert.equal($('#cal .cal-dia.elegido').dataset.dia, anteayer);
   assert.match($('#reto-detalle').textContent, /120/, 'la puntuación de aquel día');
@@ -561,16 +578,19 @@ test('el segundo toque sobre el día ya elegido reparte, sin depender del doble 
   game.newGame(1);
   board.cancel();
   panels.openReto();
-  const ayer = claveDia(new Date(Date.now() - 86400000));
+  // Cualquier día jugable que no venga ya elegido: da igual cuál, y así la
+  // prueba no depende de en qué día del mes se ejecute.
+  const dia = otroDiaJugable().dataset.dia;
+
   // Elegir el día repinta el calendario entero, así que el navegador nunca llega
   // a emparejar dos clics: el `dblclick` no se dispara jamás.
-  $$('#cal .cal-dia').find((b) => b.dataset.dia === ayer).click();
-  assert.equal($('#cal .cal-dia.elegido').dataset.dia, ayer);
+  $$('#cal .cal-dia').find((b) => b.dataset.dia === dia).click();
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, dia);
   assert.equal(game.dia, null, 'el primero solo elige');
 
-  $$('#cal .cal-dia').find((b) => b.dataset.dia === ayer).click();
-  assert.equal(game.dia, ayer, 'el segundo reparte');
-  assert.equal(game.seed, semillaDelDia(ayer));
+  $$('#cal .cal-dia').find((b) => b.dataset.dia === dia).click();
+  assert.equal(game.dia, dia, 'el segundo reparte');
+  assert.equal(game.seed, semillaDelDia(dia));
   assert.equal($('#dlg-settings').open, false);
 });
 
@@ -582,22 +602,29 @@ test('av/re pág no se salta meses aunque el día elegido sea el 31', () => {
   const flecha = (key) => $('#cal .cal-dia.elegido')
     .dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }));
 
-  // Se busca un mes con 31 días y su día 31 dentro de la ventana jugable.
+  // Hace falta un día 31 ya pasado y que el mes ANTERIOR sea más corto: es ahí
+  // donde `setMonth` desbordaba. De agosto a julio no vale, que los dos tienen
+  // 31; de julio a junio, sí. Se busca hacia atrás, que alguno hay siempre.
   const hoy = new Date();
-  const finDeMesLargo = new Date(hoy.getFullYear(), hoy.getMonth(), 0);   // último del mes pasado
-  if (finDeMesLargo.getDate() === 31) {
-    irAlDia(claveDia(finDeMesLargo));
-    assert.equal($('#cal .cal-dia.elegido').dataset.dia, claveDia(finDeMesLargo));
-    const antes = $('#cal-titulo').textContent;
-    flecha('PageUp');
-    const destino = $('#cal .cal-dia.elegido').dataset.dia;
-    // `setMonth` a pelo desbordaba: del 31 de un mes al 3 del siguiente, saltándose
-    // uno entero. Lo que tiene que pasar es caer en el mes de justo antes.
-    const esperado = new Date(finDeMesLargo.getFullYear(), finDeMesLargo.getMonth() - 1, 1);
-    assert.equal(destino.slice(0, 7), claveDia(esperado).slice(0, 7),
-      `de ${claveDia(finDeMesLargo)} con RePág se va a ${destino}`);
-    assert.notEqual($('#cal-titulo').textContent, antes, 'y el calendario cambia de mes');
+  let mesLargo = null;
+  for (let atras = 1; atras <= 11 && !mesLargo; atras++) {
+    const fin = new Date(hoy.getFullYear(), hoy.getMonth() - atras + 1, 0);
+    const finAnterior = new Date(fin.getFullYear(), fin.getMonth(), 0);
+    if (fin.getDate() === 31 && finAnterior.getDate() < 31) mesLargo = fin;
   }
+  assert.ok(mesLargo, 'en un año hacia atrás tiene que haber un mes de 31 días seguido de uno más corto');
+
+  mostrarDia(claveDia(mesLargo)).click();
+  assert.equal($('#cal .cal-dia.elegido').dataset.dia, claveDia(mesLargo));
+  const antes = $('#cal-titulo').textContent;
+  flecha('PageUp');
+  const destino = $('#cal .cal-dia.elegido').dataset.dia;
+  // `setMonth` a pelo desbordaba: del 31 de un mes al 3 del siguiente, saltándose
+  // uno entero. Lo que tiene que pasar es caer en el mes de justo antes.
+  const esperado = new Date(mesLargo.getFullYear(), mesLargo.getMonth() - 1, 1);
+  assert.equal(destino.slice(0, 7), claveDia(esperado).slice(0, 7),
+    `de ${claveDia(mesLargo)} con RePág se va a ${destino}`);
+  assert.notEqual($('#cal-titulo').textContent, antes, 'y el calendario cambia de mes');
   $('#dlg-settings').close();
 });
 
