@@ -8,6 +8,8 @@
 //
 // Módulo puro: no toca el DOM ni el almacén, solo hace cuentas con fechas.
 
+import { SOLVABLE_SEEDS } from './solvable-seeds.js';
+
 /** Cuántos días atrás se puede jugar. Un año de calendario da de sobra. */
 export const DIAS_ATRAS = 365;
 
@@ -36,19 +38,21 @@ export function fechaDeClave(clave) {
 }
 
 /**
- * La semilla del día. FNV-1a de 32 bits sobre la clave, llevada al rango de
- * repartos (1..999999). Es determinista y no guarda relación con el día de al
- * lado: dos fechas seguidas dan barajas que no se parecen en nada, que es justo
- * lo que se le pide a un reto diario.
+ * La semilla del día: siempre una con solución comprobada.
+ *
+ * Se cuentan los días desde la época y se entra con ese número en la lista de
+ * semillas resueltas (`SOLVABLE_SEEDS`). La lista es más larga que la ventana
+ * jugable (365 días), así que dentro de un año ningún día repite reparto, y el
+ * de cada fecha no cambia nunca: es lo que hace que dos personas se encuentren
+ * con la misma mano el mismo día. La lista va barajada con una semilla fija,
+ * de modo que dos fechas seguidas caen en repartos que no se parecen en nada.
  */
 export function semillaDelDia(clave) {
   if (!esClaveValida(clave)) return null;
-  let h = 0x811c9dc5;
-  for (let i = 0; i < clave.length; i++) {
-    h ^= clave.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return (h % 999999) + 1;
+  const [a, m, d] = clave.split('-').map(Number);
+  const dias = Math.floor(Date.UTC(a, m - 1, d) / 86400000);
+  const i = ((dias % SOLVABLE_SEEDS.length) + SOLVABLE_SEEDS.length) % SOLVABLE_SEEDS.length;
+  return SOLVABLE_SEEDS[i];
 }
 
 /** Días de diferencia entre dos claves (b − a), contando días naturales. */

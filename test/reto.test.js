@@ -6,6 +6,7 @@ import {
   DIAS_ATRAS, claveDia, distanciaDias, esClaveValida, esFuturo, esJugable,
   fechaDeClave, mejorResultado, rejillaDelMes, semillaDelDia,
 } from '../src/reto.js';
+import { SOLVABLE_SEEDS } from '../src/solvable-seeds.js';
 
 test('la clave del día es la fecha local, no la UTC', () => {
   // A las 23:30 de un 31 de diciembre, en UTC ya es el día siguiente. El reto va
@@ -41,22 +42,26 @@ test('la semilla sale del día y solo del día', () => {
   }
 });
 
-test('dos días seguidos no reparten manos parecidas, y en tres años no se repite ninguna', () => {
-  // Si la semilla fuera «días desde 1970» las de dos días seguidos irían
-  // pegadas, y con un generador lineal eso se nota en las cartas.
-  const semillas = new Map();
-  let choques = 0;
+test('en un año no se repite ningún reparto, y todos son solucionables', () => {
+  // La semilla sale de una lista finita de repartos resueltos: el reto es
+  // resoluble todos los días, se juegue robando de una o de tres. Y la lista es
+  // más larga que la ventana jugable, así que dentro del último año no hay dos
+  // fechas con el mismo reparto.
+  const semillas = new Set();
   const d = new Date(2026, 0, 1);
-  for (let i = 0; i < 365 * 3; i++) {
+  for (let i = 0; i < 366; i++) {
     const clave = claveDia(d);
     const n = semillaDelDia(clave);
-    if (semillas.has(n)) choques++;
-    semillas.set(n, clave);
+    assert.ok(SOLVABLE_SEEDS.includes(n), `el ${clave} cae en ${n}, sin solución comprobada`);
+    assert.equal(semillas.has(n), false, `el reparto ${n} se repite el ${clave}`);
+    semillas.add(n);
     d.setDate(d.getDate() + 1);
   }
-  // Con 1095 días y un millón de semillas, la paradoja del cumpleaños da menos
-  // de una coincidencia esperada; tres serían señal de que la mezcla es mala.
-  assert.ok(choques <= 3, `demasiadas fechas comparten reparto: ${choques}`);
+});
+
+test('la lista de repartos resueltos no se repite y cubre de sobra la ventana jugable', () => {
+  assert.equal(new Set(SOLVABLE_SEEDS).size, SOLVABLE_SEEDS.length, 'hay semillas duplicadas');
+  assert.ok(SOLVABLE_SEEDS.length > DIAS_ATRAS, 'más corta que el año que se puede jugar');
 });
 
 test('del futuro no se reparte, y del pasado solo hasta donde llega la ventana', () => {

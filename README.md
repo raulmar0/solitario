@@ -20,13 +20,14 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   pistas, subida automática de las cartas que ya no estorban y autocompletado
   cuando la partida está resuelta.
 - **Reto diario**: cada día tiene su reparto, y sale de la fecha y de nada más
-  (`src/reto.js`, FNV-1a sobre `AAAA-MM-DD`). Sin servidor, sin cuentas y sin
-  ponerse de acuerdo: dos personas que abran el juego el mismo día reparten las
-  mismas 52 cartas y pueden comparar la puntuación. El calendario del panel
-  enseña el mes entero con un punto en cada día jugado —verde si se ganó—, deja
-  volver a cualquiera del último año y guarda tu mejor intento de cada uno. Del
-  futuro no reparte. Se abre con **D** o desde el menú, y se puede compartir con
-  `?reto=hoy` o `?reto=AAAA-MM-DD`.
+  (`src/reto.js`). Sin servidor, sin cuentas y sin ponerse de acuerdo: dos
+  personas que abran el juego el mismo día reparten las mismas 52 cartas y
+  pueden comparar la puntuación. Cada fecha cae en una semilla con solución
+  comprobada —robando de una y de tres—, así que el reto es resoluble todos los
+  días. El calendario del panel enseña el mes entero con un punto en cada día
+  jugado —verde si se ganó—, deja volver a cualquiera del último año y guarda tu
+  mejor intento de cada uno. Del futuro no reparte. Se abre con **D** o desde el
+  menú, y se puede compartir con `?reto=hoy` o `?reto=AAAA-MM-DD`.
 - **Cinco idiomas**: español, inglés, francés, portugués y coreano, con la misma
   cobertura los cinco. Al entrar por primera vez se mira el idioma del navegador;
   desde Ajustes se cambia en caliente, sin recargar y sin perder la partida.
@@ -47,8 +48,9 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   donde estaba (con parte del historial de deshacer).
 - **Repartos reproducibles**: cada partida tiene un número. El mismo número
   reparte siempre las mismas cartas, así que se puede competir con alguien por el
-  mismo reparto. Con «solo manos con solución» se reparte de una lista de 150
-  semillas resueltas por el buscador de `test/engine.test.js`.
+  mismo reparto. Con «solo manos con solución» se reparte de una lista de 1070
+  semillas resueltas por el buscador de `scripts/gen-solvables.js` (el mismo del
+  test `test/engine.test.js`).
 - **Picar una carta la mueve sola** a su mejor destino: primero la pila de arriba
   —si sube sin riesgo— y, si no, la columna que mejor le venga (los huecos
   vacíos se dejan para el final, que hacen falta para los reyes). Si lo único que
@@ -209,7 +211,7 @@ al cerrar.
 src/cards.js           baraja, aleatoriedad reproducible (mulberry32)
 src/engine.js          reglas del Klondike, funciones puras
 src/advisor.js         qué jugada conviene y por qué (pista y toque, un solo criterio)
-src/reto.js            el reto diario: fecha → semilla, y las cuentas del calendario
+src/reto.js            el reto diario: fecha → semilla solucionable, y las cuentas del calendario
 src/scoring.js         los dos sistemas de puntuación
 src/storage.js         localStorage con reserva en memoria
 src/game.js            partida: motor + puntos + reloj + guardado + deshacer
@@ -221,7 +223,7 @@ src/locales/*.js       los cinco diccionarios (es, en, fr, pt, ko)
 src/motion.js          un solo interruptor de movimiento para toda la aplicación
 src/pwa.js             service worker, actualización e instalación
 src/version.js         la versión, generada desde package.json
-src/solvable-seeds.js  150 repartos con solución comprobada
+src/solvable-seeds.js  1070 repartos con solución comprobada (robar de 1 y de 3)
 sw.js                  service worker: precarga y caché
 manifest.webmanifest   nombre, iconos, colores y modo de la aplicación
 icons/                 iconos generados por scripts/iconos.py
