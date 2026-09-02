@@ -36,10 +36,25 @@ export function alCambiarMovimiento(fn) {
   return () => mq.removeEventListener('change', alCambiar);
 }
 
+/** Fracción 0..1 de un vuelo respecto al tope. NaN y negativos caen a 0. */
+function tramo(dist) {
+  return dist > 0 ? Math.min(1, dist / TOPE) : 0;
+}
+
 /** Cuánto tarda un vuelo según lo lejos que va: cruzar el tablero no es
  *  ajustarse un pelo. Crece con la distancia entre VUELO_MIN y `max`. */
 export function duracionVuelo(dist, max = 320) {
   if (!(max > VUELO_MIN)) return Math.round(max);
-  const t = dist > 0 ? Math.min(1, dist / TOPE) : 0;   // NaN y negativos caen al mínimo
-  return Math.round(VUELO_MIN + (max - VUELO_MIN) * t);
+  return Math.round(VUELO_MIN + (max - VUELO_MIN) * tramo(dist));
+}
+
+/** A qué altura se alza, en px. Un salto de columna no es cruzar el tapete. */
+export function alturaVuelo(dist) {
+  return Math.round(5 + 9 * tramo(dist));
+}
+
+/** Cuánto se ladea hacia el destino, en grados. El signo lo marca el eje X. */
+export function giroVuelo(dx) {
+  if (!Number.isFinite(dx) || dx === 0) return 0;
+  return Math.round(Math.max(-3.2, Math.min(3.2, dx / 110)) * 10) / 10;
 }

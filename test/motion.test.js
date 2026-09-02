@@ -18,6 +18,8 @@ import {
   aplicarMovimiento,
   alCambiarMovimiento,
   duracionVuelo,
+  alturaVuelo,
+  giroVuelo,
 } from '../src/motion.js';
 import { VUELO_POR_DEFECTO } from '../src/ui.js';
 
@@ -253,4 +255,23 @@ test('la reserva del JS y el techo de la hoja de estilos no se descuelgan', () =
 
   assert.equal(duracionVuelo(0, enCss), VUELO_MIN, 'el ajuste más corto con el techo de verdad');
   assert.equal(duracionVuelo(9999, enCss), Math.round(enCss), 'y el vuelo más largo se queda en el techo');
+});
+
+test('la altura del vuelo crece con la distancia, entre 5 y 14 px', () => {
+  assert.equal(alturaVuelo(0), 5);
+  assert.equal(alturaVuelo(700), 14);
+  assert.equal(alturaVuelo(4000), 14, 'satura igual que la duración');
+  assert.ok(alturaVuelo(350) > alturaVuelo(80));
+  assert.equal(alturaVuelo(-10), 5);
+  assert.equal(alturaVuelo(NaN), 5);
+});
+
+test('el ladeo mira hacia donde va la carta y no se pasa de 3.2°', () => {
+  assert.equal(giroVuelo(0), 0);
+  assert.equal(giroVuelo(NaN), 0);
+  assert.ok(giroVuelo(400) > 0);
+  assert.ok(giroVuelo(-400) < 0);
+  assert.equal(giroVuelo(400), -giroVuelo(-400));
+  assert.equal(giroVuelo(4000), 3.2);
+  assert.equal(giroVuelo(-4000), -3.2);
 });

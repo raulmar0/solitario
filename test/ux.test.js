@@ -937,6 +937,8 @@ test('la quietud se enciende con una sola variable y nada la esquiva', () => {
   // que eso es una declaración y no una animación: también pasa por la variable.
   assert.match(regla('.anim .card.dragging').style.getPropertyValue('translate'), /^var\(--quieto,/);
   assert.match(regla('.card.dragging .face, .card.dragging .back').style.getPropertyValue('scale'), /^var\(--quieto,/);
+  assert.match(regla('.card.dragging').style.getPropertyValue('transition'), /^var\(--quieto,/,
+    'el alzado al coger la carta también se apaga');
 
   // Las demás familias van por nombre de @keyframes. Cada declaración que use una
   // tiene que llevar su valor de siempre como respaldo de var(--quieto, …).
@@ -946,7 +948,7 @@ test('la quietud se enciende con una sola variable y nada la esquiva', () => {
     pista: ['pista', 'pista-cara', 'pista-destino'],
     // La carta que vuela se levanta, crece un pelo y deja la sombra en la mesa.
     vuelo: ['alzar-carta', 'alzar-cara', 'alzar-sombra'],
-    volteo: ['voltear-cara', 'voltear-sombra'],
+    volteo: ['voltear-cara', 'voltear-sombra', 'voltear-suelo'],
     nope: ['nope'],
     bump: ['bump'],
     latido: ['latido'],

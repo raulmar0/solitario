@@ -7,8 +7,9 @@
   --radius: 9px;
   --speed: 180ms;         /* transiciones de la interfaz */
   --card-speed: 324ms;    /* lo que tarda una carta como mucho en ir de un sitio a otro */
-  --flip-speed: 240ms;    /* el volteo al destapar, un pelo más corto que el vuelo */
+  --flip-speed: 280ms;    /* el volteo al destapar, un pelo más corto que el vuelo */
   --vuelo: cubic-bezier(.2, .75, .25, 1);   /* arranca rápido, posa suave */
+  --volteo: cubic-bezier(.15, .45, .85, .55);  /* corre al salir y se frena en el canto */
 
   --felt-1: #14663f;
   --felt-2: #0b3f28;
@@ -478,6 +479,7 @@ html[data-theme="light"] body::before {
   box-shadow: var(--shadow);
   cursor: default;
   perspective: 700px;      /* el volteo necesita fondo para no verse plano */
+  transform-style: preserve-3d;
 }
 /* El relieve del vuelo va en una capa aparte, no en el box-shadow de la carta:
    animar una sombra obliga a redibujarla en cada fotograma, mientras que
@@ -497,10 +499,11 @@ html[data-theme="light"] body::before {
    entra y sale suave. El levantamiento ya no va por transición: ver más abajo. */
 .anim .card { transition: var(--quieto, transform var(--card-speed) var(--vuelo), translate 140ms linear); }
 .anim .card::after { transition: var(--quieto, opacity var(--speed) linear); }
-.anim .card .face, .anim .card .back { transition: var(--quieto, transform var(--flip-speed) ease-in-out); }
+.anim .card .face, .anim .card .back { transition: var(--quieto, transform var(--flip-speed) var(--volteo)); }
 
 .card.playable { cursor: grab; }
-.card.dragging { cursor: grabbing; transition: none; }
+/* El transform sigue al dedo sin interpolar; el alzado sí entra suave. */
+.card.dragging { cursor: grabbing; transition: var(--quieto, translate 90ms var(--vuelo)); }
 
 /* Una carta que va de un sitio a otro no se desliza por la mesa: alguien la
    coge, la lleva por el aire y la posa. Eso son cuatro cosas a la vez, y las
@@ -509,36 +512,40 @@ html[data-theme="light"] body::before {
    con una transición de 140 ms, así que la carta seguía subiendo cuando ya había
    llegado y bajaba después de posarse, como si se hundiera en la mesa.
 
-   1. La carta sube y baja (`translate`, que no toca la posición del transform).
+   La curva es la del vuelo (`--vuelo`): si el alzado iba lineal, la carta
+   frenaba en el plano y la altura se quedaba fija, como un raíl.
+
+   1. La carta sube y baja (`translate`, que no toca la posición del transform)
+      y se ladea un pelo hacia donde va (`--giro`).
    2. Las caras crecen un pelo: lo que está más cerca del ojo se ve más grande.
       Va en las caras y no en la carta porque `scale` se aplica ANTES que
       `transform` y le multiplicaría la posición, con saltos de 22 px.
    3. La sombra se queda en la mesa —se desplaza al revés que la carta— y se
       abre. Es el truco de toda la vida: lo que dice a qué altura está algo no es
       el objeto, es su sombra.
-   4. Al llegar, un golpecito de 1 px. Una carta que se posa hace ruido. */
+   4. Al llegar, un golpecito. Una carta que se posa hace ruido. */
 .anim .card.volando {
-  animation: var(--quieto, alzar-carta var(--vuelo-ms, 240ms) linear var(--vuelo-espera, 0ms) both);
+  animation: var(--quieto, alzar-carta var(--vuelo-ms, 240ms) var(--vuelo) var(--vuelo-espera, 0ms) both);
 }
 .anim .card.volando .face, .anim .card.volando .back {
-  animation: var(--quieto, alzar-cara var(--vuelo-ms, 240ms) linear var(--vuelo-espera, 0ms) both);
+  animation: var(--quieto, alzar-cara var(--vuelo-ms, 240ms) var(--vuelo) var(--vuelo-espera, 0ms) both);
 }
 .anim .card.volando::after {
-  animation: var(--quieto, alzar-sombra var(--vuelo-ms, 240ms) linear var(--vuelo-espera, 0ms) both);
+  animation: var(--quieto, alzar-sombra var(--vuelo-ms, 240ms) var(--vuelo) var(--vuelo-espera, 0ms) both);
 }
 @keyframes alzar-carta {
-  0% { translate: 0 0; }
-  16%, 84% { translate: 0 -9px; }
-  95% { translate: 0 1px; }        /* el golpecito contra la mesa */
-  100% { translate: 0 0; }
+  0% { translate: 0 0; rotate: 0deg; }
+  22%, 72% { translate: 0 var(--alza, -10px); rotate: var(--giro, 0deg); }
+  88% { translate: 0 3px; rotate: 0deg; }
+  100% { translate: 0 0; rotate: 0deg; }
 }
 @keyframes alzar-cara {
   0%, 100% { scale: 1; }
-  16%, 84% { scale: 1.035; }
+  22%, 72% { scale: 1.04; }
 }
 @keyframes alzar-sombra {
   0%, 100% { translate: 0 0; opacity: 0; }
-  16%, 84% { translate: 0 11px; opacity: 1; }
+  22%, 72% { translate: 0 calc(2px - var(--alza, -10px)); opacity: 1; }
 }
 
 /* La que llevas en la mano se queda levantada mientras la lleves: ahí no hay
@@ -548,20 +555,34 @@ html[data-theme="light"] body::before {
 .card.dragging .face, .card.dragging .back { scale: var(--quieto, 1.04); }
 .card.volando, .card.dragging { will-change: transform, translate; }
 
-/* El volteo tampoco es plano: la carta se levanta un poco al darse la vuelta,
-   como cuando el pulgar la despega de la mesa. Va después de las reglas del
-   vuelo a propósito: si una carta aterriza y se destapa a la vez, manda esta. */
-.anim .card.volteando .face, .anim .card.volteando .back {
-  animation: var(--quieto, voltear-cara var(--flip-speed) ease-in-out);
+/* El volteo tampoco es plano: la carta se levanta en Z al darse la vuelta,
+   como cuando el pulgar la despega de la mesa. El giro (rotateY) va por
+   transición, con una curva que se frena en el canto; el alzado es otra
+   propiedad (`translate` en Z), así que puede convivir con el vuelo. */
+.anim .card.volteando {
+  animation: var(--quieto, voltear-suelo var(--flip-speed) ease-in-out both);
 }
-.anim .card.volteando::after { animation: var(--quieto, voltear-sombra var(--flip-speed) ease-in-out); }
+.anim .card.volteando .face, .anim .card.volteando .back {
+  animation: var(--quieto, voltear-cara var(--flip-speed) ease-in-out both);
+}
+.anim .card.volteando::after { animation: var(--quieto, voltear-sombra var(--flip-speed) ease-in-out both); }
+.anim .card.volando.volteando {
+  animation: var(--quieto, alzar-carta var(--vuelo-ms, 240ms) var(--vuelo) var(--vuelo-espera, 0ms) both, voltear-suelo var(--flip-speed) ease-in-out both);
+}
+.anim .card.volando.volteando .face, .anim .card.volando.volteando .back {
+  animation: var(--quieto, alzar-cara var(--vuelo-ms, 240ms) var(--vuelo) var(--vuelo-espera, 0ms) both, voltear-cara var(--flip-speed) ease-in-out both);
+}
 @keyframes voltear-cara {
-  0%, 100% { scale: 1; }
-  50% { scale: 1.05; }
+  0%, 100% { translate: 0 0 0; }
+  50% { translate: 0 0 32px; }
 }
 @keyframes voltear-sombra {
-  0%, 100% { translate: 0 0; opacity: 0; }
-  50% { translate: 0 6px; opacity: .85; }
+  0%, 100% { translate: 0 0; scale: 1 1; opacity: 0; }
+  50% { translate: 0 8px; scale: .22 1; opacity: .9; }
+}
+@keyframes voltear-suelo {
+  0%, 100% { box-shadow: var(--shadow); }
+  50% { box-shadow: 0 1px 2px rgba(0, 0, 0, .1); }
 }
 
 /* La pista: la carta que hay que tocar late fuerte; el sitio donde va, flojito.

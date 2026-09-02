@@ -15,7 +15,7 @@ const REPARTO_PASO = 25;      // ms entre carta y carta al repartir
 // otra tiene que verse: por debajo de esto parece que salen las tres a la vez.
 // Por arriba tampoco puede pasarse, que robando de tres se roba mucho.
 const ROBO_PASO = 55;
-const VOLTEO_POR_DEFECTO = 240;   // reserva si el navegador no resuelve --flip-speed
+const VOLTEO_POR_DEFECTO = 280;   // reserva si el navegador no resuelve --flip-speed
 // El montón del mazo se dibuja escalonado: cada carta asoma un pelo sobre la de
 // abajo, hasta seis, para que se vea que hay mazo y no una carta suelta.
 const MAZO_ESCALON = 0.6;
@@ -298,7 +298,16 @@ export function createBoard({
    * z-index natural es el del sitio al que va, y por el camino cruza columnas
    * que están más arriba en la pila. Se le sube mientras dura la transición.
    */
-  function alzar(id, duracion = vueloMs(), espera = 0) {
+  function soltarVuelo(el) {
+    if (!el) return;
+    el.classList.remove('volando');
+    el.style.removeProperty('--vuelo-ms');
+    el.style.removeProperty('--vuelo-espera');
+    el.style.removeProperty('--alza');
+    el.style.removeProperty('--giro');
+  }
+
+  function alzar(id, duracion = vueloMs(), espera = 0, dist = 0, dx = 0) {
     clearTimeout(volando.get(id));
     const el = els.get(id);
     if (el) {
@@ -307,6 +316,8 @@ export function createBoard({
       // subiendo con la jugada ya hecha.
       el.style.setProperty('--vuelo-ms', `${duracion}ms`);
       el.style.setProperty('--vuelo-espera', `${espera}ms`);
+      el.style.setProperty('--alza', `-${motion.alturaVuelo(dist)}px`);
+      el.style.setProperty('--giro', `${motion.giroVuelo(dx)}deg`);
       // Volver a poner una clase que ya estaba no reinicia su animación, y en
       // una cascada la segunda carta se quedaba sin levantarse.
       if (el.classList.contains('volando')) {
@@ -318,9 +329,7 @@ export function createBoard({
     volando.set(id, setTimeout(() => {
       volando.delete(id);
       if (!el) return;
-      el.classList.remove('volando');
-      el.style.removeProperty('--vuelo-ms');
-      el.style.removeProperty('--vuelo-espera');
+      soltarVuelo(el);
       // Si para cuando aterriza el jugador la tiene cogida, el z lo manda el
       // arrastre: devolverle el suyo la hundía por debajo del tablero.
       if (drag?.ids.includes(id)) return;
@@ -339,9 +348,7 @@ export function createBoard({
     volando.delete(id);
     const el = els.get(id);
     if (!el) return;
-    el.classList.remove('volando');
-    el.style.removeProperty('--vuelo-ms');
-    el.style.removeProperty('--vuelo-espera');
+    soltarVuelo(el);
   }
 
   /** Marca el volteo para que la carta se levante mientras se da la vuelta. */
@@ -481,7 +488,9 @@ export function createBoard({
         const antes = posiciones.get(id);
         const seMueve = antes && (Math.abs(antes.x - x) > 0.5 || Math.abs(antes.y - y) > 0.5);
         if (vuelo && seMueve && animando()) {
-          const dur = motion.duracionVuelo(Math.hypot(antes.x - x, antes.y - y), vueloMs());
+          const dx = x - antes.x;
+          const dist = Math.hypot(dx, y - antes.y);
+          const dur = motion.duracionVuelo(dist, vueloMs());
           const espera = retrasos?.get(id) ?? 0;
           // Vuelo a la medida de la distancia. Son DOS duraciones porque en la
           // hoja de estilos `.anim .card` transiciona dos propiedades, transform
@@ -489,7 +498,7 @@ export function createBoard({
           // emparejan por índice—, así que el segundo valor tiene que estar.
           el.style.transitionDuration = `${dur}ms, 140ms`;
           el.style.transitionDelay = espera ? `${espera}ms, ${espera}ms` : '';
-          alzar(id, dur, espera);
+          alzar(id, dur, espera, dist, dx);
           if (espera || robadas.has(id)) programarRobo(id, dur + espera);
         } else {
           if (el.style.transitionDuration) el.style.transitionDuration = '';
@@ -573,10 +582,7 @@ export function createBoard({
   function repintarSinVuelo() {
     for (const [id, reloj] of volando) {
       clearTimeout(reloj);
-      const el = els.get(id);
-      el?.classList.remove('volando');
-      el?.style.removeProperty('--vuelo-ms');
-      el?.style.removeProperty('--vuelo-espera');
+      soltarVuelo(els.get(id));
     }
     volando = new Map();
     posiciones = new Map();

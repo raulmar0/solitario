@@ -888,7 +888,7 @@ test('nada de escalar la carta entera: le multiplicaría la posición', () => {
   assert.ok(conEscala.length, 'alguna animación crece, que si no esto no vigila nada');
   for (const nombre of conEscala) {
     for (const [, selector] of css.matchAll(new RegExp(`([^{}]+)\\{[^{}]*animation:[^;]*\\b${nombre}\\b`, 'g'))) {
-      assert.match(selector.trim(), /\.face|\.back/,
+      assert.match(selector.trim(), /\.face|\.back|::after/,
         `«${selector.trim()}» crece con ${nombre} y eso le movería el sitio`);
     }
   }
@@ -897,13 +897,17 @@ test('nada de escalar la carta entera: le multiplicaría la posición', () => {
 test('el vuelo de las cartas acelera y frena; los controles van a velocidad fija', () => {
   const raiz = reglas().find((r) => r.selectorText === ':root').style;
   assert.match(raiz.getPropertyValue('--vuelo'), /cubic-bezier/, 'hay una curva de vuelo definida');
+  assert.match(raiz.getPropertyValue('--volteo'), /cubic-bezier/, 'y otra para el volteo');
 
   const vuelo = regla('.anim .card').style.getPropertyValue('transition');
   assert.ok(vuelo.includes('var(--vuelo)'), 'la carta vuela con la curva');
   assert.ok(vuelo.includes('translate 140ms linear'), 'y el levantamiento sigue a golpe fijo');
+  assert.match(regla('.anim .card.volando').style.getPropertyValue('animation'), /var\(--vuelo\)/,
+    'el alzado del vuelo usa la misma curva que el trayecto');
 
   const volteo = regla('.anim .card .face, .anim .card .back').style.getPropertyValue('transition');
-  assert.ok(volteo.includes('ease-in-out'), 'el volteo entra y sale suave');
+  assert.ok(volteo.includes('var(--volteo)'), 'el volteo se frena en el canto, no corre ahí');
+  assert.equal(/ease-in-out/.test(volteo), false, 'ease-in-out precipita el 90° y parece un parpadeo');
 
   for (const sel of ['.tool', '.slot', '.btn']) {
     const valor = regla(sel).style.getPropertyValue('transition');
@@ -933,7 +937,10 @@ test('el vuelo dura según la distancia, no lo mismo para todo', () => {
     stock: [{ id: '2H', rank: 2, suit: 'H', faceUp: false }],
   });
   assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 6 }, to: { pile: 'tableau', index: 0 }, count: 1 }), true);
-  const largo = cartaEl('9H').style.transitionDuration;
+  const larga = cartaEl('9H');
+  const largo = larga.style.transitionDuration;
+  const alzaLargo = parseFloat(larga.style.getPropertyValue('--alza'));
+  const giroLargo = parseFloat(larga.style.getPropertyValue('--giro'));
   // Dos duraciones, no tres: `.anim .card` transiciona `transform` y `translate`
   // —la sombra vive en `.card::after`—, y una duración de más se descartaría por
   // el final, dejando el levantamiento al ritmo del vuelo en vez de en 140 ms.
@@ -949,9 +956,14 @@ test('el vuelo dura según la distancia, no lo mismo para todo', () => {
     stock: [{ id: '2S', rank: 2, suit: 'S', faceUp: false }],
   });
   assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 1 }, to: { pile: 'tableau', index: 2 }, count: 1 }), true);
-  const corto = cartaEl('3C').style.transitionDuration;
+  const corta = cartaEl('3C');
+  const corto = corta.style.transitionDuration;
   assert.ok(parseFloat(corto) < parseFloat(largo), `un salto corto (${corto}) tarda menos que cruzar el tablero (${largo})`);
   assert.ok(parseFloat(corto) >= 180, 'pero tampoco baja de 180 ms');
+  assert.ok(Math.abs(alzaLargo) > Math.abs(parseFloat(corta.style.getPropertyValue('--alza'))),
+    'cruzar el tapete también se alza más que un salto de columna');
+  assert.ok(giroLargo < 0, 'hacia la izquierda se ladea a la izquierda');
+  assert.ok(parseFloat(corta.style.getPropertyValue('--giro')) > 0, 'y hacia la derecha, a la derecha');
 });
 
 test('la pista marca fuerte la carta que hay que tocar y flojo el sitio donde va', () => {
@@ -1188,6 +1200,15 @@ test('las cartas se voltean de verdad, no aparecen y desaparecen', () => {
   assert.equal(regla('.card .face, .card .back').style.getPropertyValue('backface-visibility'), 'hidden',
     'cada cara se esconde sola al darse la vuelta');
   assert.equal(regla('.card').style.getPropertyValue('perspective'), '700px', 'y con fondo, que si no se ve plano');
+  assert.equal(regla('.card').style.getPropertyValue('transform-style'), 'preserve-3d',
+    'el alzado en Z del volteo se aplana si no');
+  assert.match(regla('.anim .card.volteando .face, .anim .card.volteando .back').style.getPropertyValue('animation'),
+    /voltear-cara/, 'y se levanta hacia la cámara mientras gira');
+  const aLaVez = regla('.anim .card.volando.volteando .face, .anim .card.volando.volteando .back')
+    .style.getPropertyValue('animation');
+  assert.match(aLaVez, /alzar-cara/, 'si aterriza y se destapa a la vez no se pisan');
+  assert.match(aLaVez, /voltear-cara/);
+  assert.match(css, /translate:\s*0 0 32px/, 'con un translateZ, no con un scale 2D');
   assert.equal(regla('.card.down .face').style.getPropertyValue('visibility'), '',
     'ya no se esconde a lo bruto');
 });
