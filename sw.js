@@ -17,7 +17,7 @@ const VERSION = '1.6.1';
  * anterior, y (b) un cambio de código sin subir la versión también renueve la
  * caché en vez de dejar a los ya instalados atrapados en lo viejo. */
 /* === generado: huella === */
-const BUILD = 'f50b9486';
+const BUILD = '4dc27290';
 /* === fin generado === */
 
 const CACHE = `solitario-v${VERSION}-${BUILD}`;

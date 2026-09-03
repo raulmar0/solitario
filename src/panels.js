@@ -617,11 +617,152 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   $('#btn-reto-jugar').addEventListener('click', () => jugarReto(diaElegido));
   $('#btn-reto-hoy').addEventListener('click', () => { irADia(claveDia()); renderReto(); });
 
-  // ---------- final de partida ----------
+  // ---------- final de partida y celebración ----------
+
+  let cascadaRaf = null;
+
+  function detenerCascada() {
+    if (cascadaRaf) {
+      cancelAnimationFrame(cascadaRaf);
+      cascadaRaf = null;
+    }
+    if (globalThis.navigator?.userAgent?.includes('jsdom')) return;
+    const canvas = $('#win-canvas');
+    if (canvas) {
+      canvas.hidden = true;
+      const ctx = canvas.getContext?.('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  function cascadaVictoria() {
+    if (globalThis.navigator?.userAgent?.includes('jsdom')) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || game.prefs.animations === false) return;
+    const canvas = $('#win-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext?.('2d');
+    if (!ctx) return;
+
+    detenerCascada();
+    const w = window.innerWidth || 800;
+    const h = window.innerHeight || 600;
+    canvas.width = w;
+    canvas.height = h;
+    canvas.hidden = false;
+
+    const cw = Math.max(50, Math.min(90, Math.round(w * 0.075)));
+    const ch = Math.round(cw * 1.4);
+    const radius = Math.round(cw * 0.1);
+
+    const palos = [
+      { simbolo: '♠', color: '#1b1b1b' },
+      { simbolo: '♥', color: '#c0392b' },
+      { simbolo: '♣', color: '#1a7a3c' },
+      { simbolo: '♦', color: '#1553a8' },
+    ];
+    const rangos = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+    const slotsFound = $$('#board .slot[data-pile="foundation"]');
+    const origenes = slotsFound.map((slot) => {
+      const rect = slot.getBoundingClientRect();
+      return { x: rect.left, y: rect.top };
+    });
+
+    const cartas = [];
+    for (let f = 0; f < 4; f++) {
+      const orig = origenes[f] || { x: (f + 1) * (w / 6), y: 60 };
+      const palo = palos[f];
+      for (let r = 12; r >= 0; r--) {
+        cartas.push({
+          palo,
+          rango: rangos[r],
+          x: orig.x,
+          y: orig.y,
+          vx: (Math.random() - 0.5) * 11 + (f < 2 ? -2.8 : 2.8),
+          vy: -Math.random() * 4 - 2,
+          gravity: 0.62,
+          rebote: 0.81,
+          salida: (12 - r) * 110 + f * 25,
+          activa: false,
+        });
+      }
+    }
+
+    const t0 = performance.now();
+    function dibujarCarta(c) {
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+      ctx.shadowBlur = 5;
+      ctx.shadowOffsetY = 2;
+      ctx.fillStyle = '#fdfcf8';
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(0, 0, cw, ch, radius);
+      } else {
+        ctx.rect(0, 0, cw, ch);
+      }
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = c.palo.color;
+      ctx.font = `bold ${Math.round(cw * 0.22)}px sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(c.rango, cw * 0.1, ch * 0.08);
+
+      ctx.font = `${Math.round(cw * 0.2)}px sans-serif`;
+      ctx.fillText(c.palo.simbolo, cw * 0.1, ch * 0.26);
+
+      ctx.font = `${Math.round(cw * 0.44)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(c.palo.simbolo, cw * 0.5, ch * 0.56);
+      ctx.restore();
+    }
+
+    function animar(t) {
+      const transcurrido = t - t0;
+      let vivas = 0;
+
+      for (const c of cartas) {
+        if (!c.activa && transcurrido >= c.salida) c.activa = true;
+        if (!c.activa) continue;
+
+        c.vy += c.gravity;
+        c.x += c.vx;
+        c.y += c.vy;
+
+        if (c.y + ch >= h) {
+          c.y = h - ch;
+          c.vy = -c.vy * c.rebote;
+          c.vx *= 0.96;
+        }
+        if (c.x <= 0) { c.x = 0; c.vx = -c.vx * 0.8; }
+        else if (c.x + cw >= w) { c.x = w - cw; c.vx = -c.vx * 0.8; }
+
+        if (c.x > -cw && c.x < w + cw && Math.abs(c.vy) > 0.35) {
+          vivas++;
+        }
+        dibujarCarta(c);
+      }
+
+      if (transcurrido < 8500 && vivas > 0) {
+        cascadaRaf = requestAnimationFrame(animar);
+      } else {
+        setTimeout(detenerCascada, 2000);
+      }
+    }
+    cascadaRaf = requestAnimationFrame(animar);
+  }
 
   function confeti() {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || game.prefs.animations === false) return;
     const caja = $('#confetti');
+    caja.classList.remove('fading');
     const colores = ['#f0c453', '#e06a5c', '#6ee7a8', '#7db8f0', '#ffffff'];
     const piezas = [];
     for (let i = 0; i < 70; i++) {
@@ -631,14 +772,18 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       p.style.animationDuration = `${1.6 + Math.random() * 1.6}s`;
       p.style.animationDelay = `${Math.random() * 0.6}s`;
       p.style.transform = `rotate(${Math.random() * 360}deg)`;
-      // Cada papelito cae por su lado y da sus vueltas: setenta iguales serían
-      // una persiana bajando, no una celebración.
       p.style.setProperty('--deriva', `${redondea(Math.random() * 36 - 18)}vw`);
       p.style.setProperty('--giro', `${Math.round(360 + Math.random() * 720)}deg`);
       piezas.push(p);
     }
     caja.replaceChildren(...piezas);
-    setTimeout(() => caja.replaceChildren(), 4200);
+    setTimeout(() => {
+      caja.classList.add('fading');
+      setTimeout(() => {
+        caja.replaceChildren();
+        caja.classList.remove('fading');
+      }, 420);
+    }, 3800);
   }
 
   /** Las medallas de la victoria; se repintan solas si cambia el idioma. */
@@ -665,15 +810,17 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     $('#win-moves').textContent = String(r.moves);
     pintarNotasVictoria();
 
+    cascadaVictoria();
     confeti();
     dlgWin.showModal();
   }
 
   dlgWin.addEventListener('click', (event) => {
     const accion = event.target.closest('[data-action]')?.dataset.action;
-    if (accion === 'new') { dlgWin.close(); game.newGame(); }
-    if (accion === 'stats') { dlgWin.close(); api.openStats(); }
+    if (accion === 'new') { detenerCascada(); dlgWin.close(); game.newGame(); }
+    if (accion === 'stats') { detenerCascada(); dlgWin.close(); api.openStats(); }
   });
+  dlgWin.addEventListener('close', detenerCascada);
 
   // ---------- partida sin salida ----------
 

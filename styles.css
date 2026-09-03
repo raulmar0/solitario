@@ -57,7 +57,7 @@
   --card-line: rgba(0, 0, 0, .16);
   --topbar-veil: rgba(0, 0, 0, .22);  /* el velo de la barra: en claro hace falta más cuerpo */
   --shadow: 0 2px 5px rgba(0, 0, 0, .3);
-  --shadow-lift: 0 14px 28px rgba(0, 0, 0, .42);
+  --shadow-lift: 0 6px 14px rgba(0, 0, 0, .26), 0 18px 36px rgba(0, 0, 0, .42);
 
   /* Las zonas seguras, con nombre. Van por variable y no por `env()` suelto en
      cada regla por dos motivos: se pueden simular para probarlas, y sobre todo
@@ -90,7 +90,7 @@ html[data-theme="light"] {
   --ok: #12734a;
   --topbar-veil: rgba(0, 0, 0, .44);
   --shadow: 0 2px 5px rgba(0, 0, 0, .18);
-  --shadow-lift: 0 14px 28px rgba(0, 0, 0, .28);
+  --shadow-lift: 0 6px 14px rgba(0, 0, 0, .14), 0 16px 36px rgba(0, 0, 0, .26);
 }
 
 /* Quietud a petición. La pide el sistema (prefers-reduced-motion) o la pide el
@@ -232,11 +232,13 @@ body {
 .stat dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .stat-wide dd { font-size: 13px; padding-top: 2px; }
 .stat.bump dd { animation: var(--quieto, bump 320ms linear); }
+.stat.bump-down dd { animation: var(--quieto, bump-down 320ms linear); }
 /* Los números que brincan (marcador y contador del mazo) están los dos sobre
    fondo oscuro en ambos temas, así que el resalte usa el acento claro: con el
    del tema claro el número se apagaba justo en el fotograma en que quería
-   llamar la atención. */
+   llamar la atención. Las penalizaciones usan el color de peligro. */
 @keyframes bump { 40% { transform: scale(1.22); color: var(--felt-accent); } }
+@keyframes bump-down { 40% { transform: scale(1.22); color: var(--danger); } }
 
 /* El reloj parado. Antes era una pastilla con su rótulo debajo del número, y
    cada vez que el jugador cambiaba de pestaña la cabecera crecía 22 px y el
@@ -498,10 +500,18 @@ html[data-theme="light"] body::before {
 /* La posición vuela a la medida de la distancia (el JS ajusta la duración) y
    entra y sale suave. El levantamiento ya no va por transición: ver más abajo. */
 .anim .card { transition: var(--quieto, transform var(--card-speed) var(--vuelo), translate 140ms linear); }
-.anim .card::after { transition: var(--quieto, opacity var(--speed) linear); }
+.anim .card::after { transition: var(--quieto, opacity var(--speed) linear, translate var(--speed) linear, filter var(--speed) linear); }
 .anim .card .face, .anim .card .back { transition: var(--quieto, transform var(--flip-speed) var(--volteo)); }
 
 .card.playable { cursor: grab; }
+@media (hover: hover) {
+  .card.playable:not(.dragging):hover { translate: var(--quieto, 0 -3px); }
+  .card.playable:not(.dragging):hover::after {
+    opacity: var(--quieto, 0.42);
+    translate: var(--quieto, 0 6px);
+    filter: var(--quieto, blur(1.5px));
+  }
+}
 /* El transform sigue al dedo sin interpolar; el alzado sí entra suave. */
 .card.dragging { cursor: grabbing; transition: var(--quieto, translate 90ms var(--vuelo)); }
 
@@ -535,22 +545,27 @@ html[data-theme="light"] body::before {
 }
 @keyframes alzar-carta {
   0% { translate: 0 0; rotate: 0deg; }
-  22%, 72% { translate: 0 var(--alza, -10px); rotate: var(--giro, 0deg); }
-  88% { translate: 0 3px; rotate: 0deg; }
+  18% { translate: 0 calc(var(--alza, -10px) * 0.72); rotate: calc(var(--giro, 0deg) * 0.65); }
+  48% { translate: 0 var(--alza, -10px); rotate: var(--giro, 0deg); }
+  78% { translate: 0 calc(var(--alza, -10px) * 0.42); rotate: calc(var(--giro, 0deg) * 0.35); }
+  90% { translate: 0 2px; rotate: 0deg; }
   100% { translate: 0 0; rotate: 0deg; }
 }
 @keyframes alzar-cara {
   0%, 100% { scale: 1; }
-  22%, 72% { scale: 1.04; }
+  48% { scale: 1.045; }
 }
 @keyframes alzar-sombra {
-  0%, 100% { translate: 0 0; opacity: 0; }
-  22%, 72% { translate: 0 calc(2px - var(--alza, -10px)); opacity: 1; }
+  0%, 100% { translate: 0 0; opacity: 0; filter: blur(0); scale: 1 1; }
+  18% { translate: calc(var(--giro, 0deg) * 0.4px) calc(0.72 * (3px - var(--alza, -10px))); opacity: .78; filter: blur(1px); scale: 1.01 1.01; }
+  48% { translate: calc(var(--giro, 0deg) * 0.9px) calc(3px - var(--alza, -10px) * 1.05); opacity: 1; filter: blur(2.5px); scale: 1.04 1.02; }
+  78% { translate: calc(var(--giro, 0deg) * 0.4px) calc(0.42 * (3px - var(--alza, -10px))); opacity: .7; filter: blur(1.2px); scale: 1.01 1.01; }
+  90% { translate: 0 1px; opacity: .3; filter: blur(0.4px); scale: 0.99 0.99; }
 }
 
 /* La que llevas en la mano se queda levantada mientras la lleves: ahí no hay
    trayecto que acompañar, hay una carta en el aire hasta que la sueltes. */
-.card.dragging::after { opacity: 1; translate: var(--quieto, 0 12px); }
+.card.dragging::after { opacity: 1; translate: var(--quieto, 0 16px); filter: blur(2.5px); }
 .anim .card.dragging { translate: var(--quieto, 0 -10px); }
 .card.dragging .face, .card.dragging .back { scale: var(--quieto, 1.04); }
 .card.volando, .card.dragging { will-change: transform, translate; }
@@ -573,16 +588,16 @@ html[data-theme="light"] body::before {
   animation: var(--quieto, alzar-cara var(--vuelo-ms, 240ms) var(--vuelo) var(--vuelo-espera, 0ms) both, voltear-cara var(--flip-speed) ease-in-out both);
 }
 @keyframes voltear-cara {
-  0%, 100% { translate: 0 0 0; }
-  50% { translate: 0 0 32px; }
+  0%, 100% { translate: 0 0 0; filter: brightness(1); }
+  50% { translate: 0 0 32px; filter: brightness(0.92); }
 }
 @keyframes voltear-sombra {
-  0%, 100% { translate: 0 0; scale: 1 1; opacity: 0; }
-  50% { translate: 0 8px; scale: .22 1; opacity: .9; }
+  0%, 100% { translate: 0 0; scale: 1 1; opacity: 0; filter: blur(0); }
+  50% { translate: 0 10px; scale: .14 1.03; opacity: .95; filter: blur(2px); }
 }
 @keyframes voltear-suelo {
   0%, 100% { box-shadow: var(--shadow); }
-  50% { box-shadow: 0 1px 2px rgba(0, 0, 0, .1); }
+  50% { box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
 }
 
 /* La pista: la carta que hay que tocar late fuerte; el sitio donde va, flojito.
@@ -617,11 +632,12 @@ html[data-theme="light"] body::before {
 }
 .card.nope { animation: var(--quieto, nope 380ms linear); }
 @keyframes nope {
-  0%, 100% { translate: 0; box-shadow: var(--shadow); }
-  20% { translate: -5px; }
-  40% { translate: 5px; box-shadow: 0 0 0 3px var(--danger), 0 8px 18px rgba(0, 0, 0, .35); }
-  60% { translate: -3px; }
-  80% { translate: 3px; }
+  0%, 100% { translate: 0; rotate: 0deg; box-shadow: var(--shadow); }
+  15% { translate: -7px; rotate: -1.5deg; }
+  35% { translate: 6px; rotate: 1.2deg; box-shadow: 0 0 0 3px var(--danger), 0 8px 20px rgba(0, 0, 0, .35); }
+  55% { translate: -3px; rotate: -0.6deg; }
+  75% { translate: 2px; rotate: 0.3deg; }
+  90% { translate: -1px; rotate: 0deg; }
 }
 @keyframes pista {
   0%, 100% { box-shadow: var(--shadow); }
@@ -782,9 +798,35 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   overflow-y: auto;
   overscroll-behavior: contain;
   box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+  transition: var(--quieto, opacity var(--speed) ease-out, transform var(--speed) cubic-bezier(0.16, 1, 0.3, 1), overlay var(--speed) allow-discrete, display var(--speed) allow-discrete);
+  opacity: 0;
+  transform: scale(0.96);
+}
+.dlg[open] {
+  opacity: 1;
+  transform: scale(1);
+}
+@starting-style {
+  .dlg[open] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }
 .dlg-wide { width: min(94vw, 720px); }
-.dlg::backdrop { background: rgba(0, 0, 0, .55); backdrop-filter: blur(2px); }
+.dlg::backdrop {
+  background: rgba(0, 0, 0, .55);
+  backdrop-filter: blur(2px);
+  transition: var(--quieto, opacity var(--speed) linear, overlay var(--speed) allow-discrete, display var(--speed) allow-discrete);
+  opacity: 0;
+}
+.dlg[open]::backdrop {
+  opacity: 1;
+}
+@starting-style {
+  .dlg[open]::backdrop {
+    opacity: 0;
+  }
+}
 .dlg h2 { margin: 0 0 4px; font-size: 19px; }
 .dlg h3 { margin: 18px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: .8px; color: var(--panel-ink-soft); }
 .dlg p { margin: 6px 0; }
@@ -1088,18 +1130,38 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .keys dt { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); font-weight: 700; }
 .keys dd { margin: 0; color: var(--panel-ink-soft); }
 
-/* ---------- confeti ---------- */
+/* ---------- confeti y celebración ---------- */
 
-.confetti { display: var(--quieto, block); position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 60; }
+.confetti {
+  display: var(--quieto, block);
+  position: fixed; inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 60;
+  transition: opacity 400ms ease-out;
+}
+.confetti.fading { opacity: 0; }
+.win-canvas {
+  display: var(--quieto, block);
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  pointer-events: none;
+  z-index: 55;
+}
 .confetti i {
   position: absolute; top: -14px;
   width: 9px; height: 14px; border-radius: 2px;
-  animation: var(--quieto, fall linear forwards);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .25);
+  animation: var(--quieto, fall cubic-bezier(.25, .46, .45, .94) forwards);
 }
 /* La deriva y el giro los reparte panels.js pieza a pieza: si todas cayeran en
-   vertical y con la misma vuelta, setenta papelitos parecerían una persiana. */
+   vertical y con la misma vuelta, setenta papelitos parecerían una persiana.
+   El aleteo en 3D (rotateY) simula la resistencia del aire sobre el papel. */
 @keyframes fall {
-  to { transform: translate(var(--deriva, 0), 102vh) rotate(var(--giro, 760deg)); opacity: .1; }
+  0% { transform: translate(0, -10px) rotate(0deg) rotateY(0deg); opacity: 1; }
+  35% { transform: translate(calc(var(--deriva, 0) * 0.45), 34vh) rotate(calc(var(--giro, 760deg) * 0.35)) rotateY(180deg); }
+  70% { transform: translate(calc(var(--deriva, 0) * 0.8), 72vh) rotate(calc(var(--giro, 760deg) * 0.7)) rotateY(360deg); }
+  100% { transform: translate(var(--deriva, 0), 102vh) rotate(var(--giro, 760deg)) rotateY(540deg); opacity: .1; }
 }
 
 /* Móvil apaisado: 844x390 es ancho, así que la compactación de arriba no entra,

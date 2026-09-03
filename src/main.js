@@ -51,7 +51,14 @@ function sonarJugada(eventos) {
     else if (ev.type === 'recycle') sonidos.barajar();
     else if (ev.type === 'flip') sonidos.voltear();
     else if (ev.type === 'move') {
-      if (ev.to === PILE.FOUNDATION) sonidos.fundacion(); else sonidos.colocar();
+      const retraso = motion.hayMovimiento(game.prefs) ? Math.min(220, Math.round(board.flightMs * 0.75)) : 0;
+      if (retraso > 0) {
+        setTimeout(() => {
+          if (ev.to === PILE.FOUNDATION) sonidos.fundacion(); else sonidos.colocar();
+        }, retraso);
+      } else {
+        if (ev.to === PILE.FOUNDATION) sonidos.fundacion(); else sonidos.colocar();
+      }
     }
   }
 }
@@ -255,10 +262,11 @@ function refreshHeader() {
   $('#mode-chip').textContent = textoModo();
 
   if (ultimaPuntuacion !== null && puntos !== ultimaPuntuacion) {
+    const baja = typeof puntos === 'number' && typeof ultimaPuntuacion === 'number' && puntos < ultimaPuntuacion;
     const caja = $('#score').closest('.stat');
-    caja.classList.remove('bump');
+    caja.classList.remove('bump', 'bump-down');
     void caja.offsetWidth;
-    caja.classList.add('bump');
+    caja.classList.add(baja ? 'bump-down' : 'bump');
   }
   ultimaPuntuacion = puntos;
 

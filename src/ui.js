@@ -94,6 +94,7 @@ export function createBoard({
   let relojes = [];            // temporizadores del reparto
   let volando = new Map();     // id -> temporizador; mientras vuela, la carta va arriba del todo
   let posiciones = new Map();  // id -> {x, y} del último pintado, para saber qué se ha movido
+  let snapbacks = new Map();   // id -> {dur, dist, dx} para retorno proporcional tras arrastre
   let caras = new Map();       // id -> ¿estaba boca abajo?, para saber cuál se acaba de voltear
   let volteos = new Map();     // id -> temporizador del volteo en marcha
   let robadas = new Set();     // ids que salen del mazo y siguen boca abajo hasta llegar al descarte
@@ -352,21 +353,26 @@ export function createBoard({
   }
 
   /** Marca el volteo para que la carta se levante mientras se da la vuelta. */
-  function marcarVolteo(id) {
+  function marcarVolteo(id, retraso = 0) {
     const el = els.get(id);
     if (!el) return;
     clearTimeout(volteos.get(id));
-    // Reiniciar la animación cuesta un reflujo, así que solo se paga cuando de
-    // verdad hace falta: si la clase no estaba, ponerla ya la arranca.
-    if (el.classList.contains('volteando')) {
-      el.classList.remove('volteando');
-      void el.offsetWidth;
+    const ejecutar = () => {
+      if (el.classList.contains('volteando')) {
+        el.classList.remove('volteando');
+        void el.offsetWidth;
+      }
+      el.classList.add('volteando');
+      volteos.set(id, setTimeout(() => {
+        volteos.delete(id);
+        el.classList.remove('volteando');
+      }, volteoMs() + 30));
+    };
+    if (retraso > 0) {
+      volteos.set(id, setTimeout(ejecutar, retraso));
+    } else {
+      ejecutar();
     }
-    el.classList.add('volteando');
-    volteos.set(id, setTimeout(() => {
-      volteos.delete(id);
-      el.classList.remove('volteando');
-    }, volteoMs() + 30));
   }
 
   /**
@@ -387,6 +393,25 @@ export function createBoard({
     relojesRobo = [];
     for (const id of [...robadas]) destaparRobada(id);
     robadas.clear();
+  }
+
+  const PASO_RECICLADO = 12;
+
+  /**
+   * Al reciclar el descarte entero hacia el mazo, las cartas se recogen en
+   * cascada escalonada en vez de salir todas de golpe en bloque monolítico.
+   */
+  function retrasosDelReciclado(state, mazoX, wasteX) {
+    if (!state.stock.length) return null;
+    const delDescarte = state.stock.filter((card) => {
+      const antes = posiciones.get(card.id);
+      return antes && Math.abs(antes.x - wasteX) < 1 && antes.y <= ALTO_MAZO + 1;
+    });
+    if (!delDescarte.length) return null;
+    const mapa = new Map();
+    const paso = Math.max(6, Math.min(PASO_RECICLADO, Math.floor(160 / delDescarte.length)));
+    delDescarte.forEach((card, i) => mapa.set(card.id, i * paso));
+    return mapa;
   }
 
   /**
@@ -460,6 +485,7 @@ export function createBoard({
     stock.classList.toggle('dead', state.stock.length === 0 && !engine.isLegal(state, { type: 'recycle' }));
 
     const mazoX = colX(COLUMNA.stock, m);
+    const wasteX = colX(COLUMNA.waste, m);
     if (contador) {
       // Con el mazo vacío el hueco ya enseña su flecha de reciclar: un cero ahí solo estorba.
       contador.hidden = state.stock.length === 0;
@@ -470,6 +496,7 @@ export function createBoard({
     // El robo escalonado se decide antes del bucle: hay que mirar el descarte
     // entero para saber cuál sale primero, y dentro del bucle solo se aplica.
     const retrasos = vuelo && animando() ? retrasosDelRobo(state, mazoX) : null;
+    const retrasosReciclar = vuelo && animando() ? retrasosDelReciclado(state, mazoX, wasteX) : null;
     if (retrasos) { cortarRobo(); for (const id of retrasos.keys()) robadas.add(id); }
 
     for (const [id, el] of els) {
@@ -487,11 +514,12 @@ export function createBoard({
         // no levantar ninguna.
         const antes = posiciones.get(id);
         const seMueve = antes && (Math.abs(antes.x - x) > 0.5 || Math.abs(antes.y - y) > 0.5);
-        if (vuelo && seMueve && animando()) {
-          const dx = x - antes.x;
-          const dist = Math.hypot(dx, y - antes.y);
-          const dur = motion.duracionVuelo(dist, vueloMs());
-          const espera = retrasos?.get(id) ?? 0;
+        const snap = snapbacks.get(id);
+        if (vuelo && (seMueve || snap) && animando()) {
+          const dx = snap ? snap.dx : (x - antes.x);
+          const dist = snap ? snap.dist : Math.hypot(dx, y - antes.y);
+          const dur = snap ? snap.dur : motion.duracionVuelo(dist, vueloMs());
+          const espera = retrasos?.get(id) ?? retrasosReciclar?.get(id) ?? 0;
           // Vuelo a la medida de la distancia. Son DOS duraciones porque en la
           // hoja de estilos `.anim .card` transiciona dos propiedades, transform
           // y translate. Si se manda una de más, el navegador la descarta —se
@@ -504,6 +532,7 @@ export function createBoard({
           if (el.style.transitionDuration) el.style.transitionDuration = '';
           if (el.style.transitionDelay) el.style.transitionDelay = '';
         }
+        snapbacks.delete(id);
         posiciones.set(id, { x, y });
         el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         // Sumar p.z mantiene el orden entre las cartas que vuelan a la vez
@@ -514,7 +543,11 @@ export function createBoard({
       // reparto o si viene volando del mazo y todavía no ha aterrizado.
       const abajo = !p.faceUp || !!tapadas?.has(id) || robadas.has(id);
       const antesAbajo = caras.get(id);
-      if (antesAbajo !== undefined && antesAbajo !== abajo && animando()) marcarVolteo(id);
+      if (antesAbajo !== undefined && antesAbajo !== abajo && animando()) {
+        const delay = (antesAbajo && !abajo && p.from?.pile === PILE.TABLEAU) ? 80
+          : (retrasosReciclar?.has(id) ? ((retrasosReciclar.get(id) ?? 0) + 60) : 0);
+        marcarVolteo(id, delay);
+      }
       caras.set(id, abajo);
       el.classList.toggle('down', abajo);
       el.classList.toggle('playable', !!p.playable);
@@ -775,6 +808,9 @@ export function createBoard({
     drag = {
       ids, grab, pointerId: event.pointerId,
       startX: event.clientX, startY: event.clientY,
+      lastX: event.clientX, lastY: event.clientY,
+      lastTime: performance.now(),
+      tilt: 0,
       bases: ids.map((cid) => {
         const p = layout.positions.get(cid);
         return { id: cid, x: p.x, y: p.y };
@@ -796,15 +832,43 @@ export function createBoard({
     const dy = event.clientY - drag.startY;
     if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
     drag.moved = true;
-    for (const base of drag.bases) {
-      els.get(base.id).style.transform = `translate3d(${base.x + dx}px, ${base.y + dy}px, 0)`;
+
+    // Balanceo dinámico según la velocidad del arrastre (inercia y resistencia física)
+    const now = performance.now();
+    const dt = Math.max(16, now - (drag.lastTime || now));
+    const vx = (event.clientX - (drag.lastX ?? event.clientX)) / dt;
+    drag.lastX = event.clientX;
+    drag.lastY = event.clientY;
+    drag.lastTime = now;
+
+    const targetTilt = Math.max(-5, Math.min(5, vx * 12));
+    drag.tilt = drag.tilt * 0.65 + targetTilt * 0.35;
+    const baseGiro = animando() ? Math.round(drag.tilt * 10) / 10 : 0;
+
+    for (let i = 0; i < drag.bases.length; i++) {
+      const base = drag.bases[i];
+      const el = els.get(base.id);
+      if (!el) continue;
+      // Las cartas inferiores de la secuencia llevan un sutil ladeo acentuado simulando flexibilidad
+      const giro = animando() ? Math.round((baseGiro * (1 + i * 0.08)) * 10) / 10 : 0;
+      const rot = giro ? ` rotate(${giro}deg)` : '';
+      el.style.transform = `translate3d(${base.x + dx}px, ${base.y + dy}px, 0)${rot}`;
     }
   }
 
   /** Se suelta fuera, el sistema se queda el puntero o llega otro dedo: no se juega nada. */
   function cancelDrag() {
     if (!drag) return;
-    drag.ids.forEach((cid) => {
+    const { ids, bases, moved, startX, startY, lastX, lastY } = drag;
+    // Si se había movido, registrar el retorno proporcional con la distancia recorrida
+    if (moved && animando() && bases?.length) {
+      const curDx = (lastX ?? startX) - startX;
+      const curDy = (lastY ?? startY) - startY;
+      const dist = Math.hypot(curDx, curDy);
+      const dur = motion.duracionVuelo(dist, vueloMs());
+      ids.forEach((cid) => snapbacks.set(cid, { dx: curDx, dist, dur }));
+    }
+    ids.forEach((cid) => {
       const el = els.get(cid);
       el?.classList.remove('dragging');
       if (el) el.style.transitionDuration = '';   // la vuelta va al ritmo de siempre
@@ -816,7 +880,7 @@ export function createBoard({
   }
 
   function endDrag(event) {
-    const { ids, grab, moved, id } = drag;
+    const { ids, grab, moved, id, bases, startX, startY, lastX, lastY } = drag;
     ids.forEach((cid) => {
       const el = els.get(cid);
       el.classList.remove('dragging');
@@ -830,6 +894,11 @@ export function createBoard({
 
     if (!sigueValida(grab)) { paint(); return; }   // el tablero cambió mientras arrastrábamos
 
+    const curDx = (lastX ?? event.clientX) - startX;
+    const curDy = (lastY ?? event.clientY) - startY;
+    const dist = Math.hypot(curDx, curDy);
+    const dur = motion.duracionVuelo(dist, vueloMs());
+
     const rect = els.get(ids[0]).getBoundingClientRect();
     const zone = bestZone({
       left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
@@ -837,18 +906,28 @@ export function createBoard({
       left: event.clientX - 1, top: event.clientY - 1, right: event.clientX + 1, bottom: event.clientY + 1,
     });
 
+    let exito = false;
     if (zone) {
       const move = { type: 'move', from: grab.from, to: zone.to, count: grab.count };
       const subeCarta = grab.count === 1 && grab.from.pile !== PILE.FOUNDATION;
-      if (!game.play(move)) {
+      exito = game.play(move);
+      if (!exito) {
         // Soltó sobre la fundación equivocada: se prueba la suya antes de negar.
         const colada = subeCarta && zone.to.pile === PILE.FOUNDATION
           && game.sendToFoundation(grab.from, ids[0]);
-        // Y si de verdad no cabía, que alguien explique la regla: devolver la
-        // carta a su sitio sin decir nada deja al jugador sin saber qué falló.
-        if (!colada) onDropIlegal({ from: grab.from, to: zone.to, count: grab.count });
+        if (!colada) {
+          onDropIlegal({ from: grab.from, to: zone.to, count: grab.count });
+        } else {
+          exito = true;
+        }
       }
     }
+
+    // Si soltó fuera o la jugada no fue legal, la vuelta es un retorno proporcional
+    if (!exito && animando() && bases?.length) {
+      ids.forEach((cid) => snapbacks.set(cid, { dx: curDx, dist, dur }));
+    }
+
     paint();
   }
 
