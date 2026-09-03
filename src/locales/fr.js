@@ -19,7 +19,6 @@ export default {
   'app.install.boton': 'Installer',
   'app.install.nota': 'Elle s’ouvre en plein écran, comme n’importe quelle application.',
   'app.install.ios': 'Sur iPhone ou iPad : Partager → « Sur l’écran d’accueil ».',
-  'app.install.ya': 'Vous l’avez déjà installée.',
   'app.install.hecha': 'Installée. Cherchez-la parmi vos applications.',
   'app.install.error': 'Le navigateur n’a pas voulu ouvrir la fenêtre d’installation.',
 

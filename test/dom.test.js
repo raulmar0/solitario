@@ -1688,7 +1688,10 @@ test('sin service worker, el botón de actualizar se desactiva y se explica', ()
 
 test('la fila de instalar aparece solo cuando el navegador la ofrece', () => {
   panels.openSettings();
-  assert.equal($('#install-row').hidden, true, 'sin oferta no se enseña nada');
+  const fila = $('#install-row');
+  assert.equal(fila.hidden, true, 'sin oferta no se enseña nada');
+  assert.equal(fila.parentElement, $('#panel-ajustes'), 'la instalación vive fuera de los desplegables');
+  assert.equal(fila.nextElementSibling, $('#settings-group-partida'), 'la instalación aparece al principio de Ajustes');
   assert.equal(instalador.puede, false);
 
   const evento = new window.Event('beforeinstallprompt', { cancelable: true });
@@ -1699,10 +1702,17 @@ test('la fila de instalar aparece solo cuando el navegador la ofrece', () => {
 
   assert.equal(evento.defaultPrevented, true, 'se le quita el cartel automático al navegador');
   assert.equal(instalador.puede, true);
-  assert.equal($('#install-row').hidden, false);
+  assert.equal(fila.hidden, false);
   assert.equal($('#btn-install').hidden, false);
   assert.equal(pedido, 0, 'todavía no se ha pedido nada');
   $('#dlg-settings').close();
+});
+
+test('la fila de instalar se oculta cuando la app ya está instalada', () => {
+  Object.defineProperty(window.navigator, 'standalone', { configurable: true, value: true });
+  window.dispatchEvent(new window.Event('appinstalled'));
+  assert.equal($('#install-row').hidden, true);
+  delete window.navigator.standalone;
 });
 
 test('el aviso de versión nueva empieza escondido', () => {

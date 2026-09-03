@@ -83,18 +83,18 @@ function pintarAjustesApp() {
   $('#app-version').textContent = t('app.version', { version: VERSION });
   const fila = $('#install-row');
   const boton = $('#btn-install');
-  if (instalador.puede) {
+  const noInstalada = !esStandalone();
+  if (noInstalada && instalador.puede) {
     fila.hidden = false;
     boton.hidden = false;
     $('#install-hint').textContent = t('app.install.nota');
-  } else if (instalador.pistaIos) {
+  } else if (noInstalada && instalador.pistaIos) {
     fila.hidden = false;
     boton.hidden = true;
     $('#install-hint').textContent = t('app.install.ios');
   } else {
-    fila.hidden = !esStandalone();
+    fila.hidden = true;
     boton.hidden = true;
-    if (esStandalone()) $('#install-hint').textContent = t('app.install.ya');
   }
   $('#btn-update').disabled = !pwa.soportado;
   if (!pwa.soportado) $('#update-hint').textContent = t('app.update.nosoportado');

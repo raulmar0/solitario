@@ -1053,6 +1053,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .app-row-info strong { font-size: 14px; font-variant-numeric: tabular-nums; }
 .app-row .hint-text { margin-top: 2px; }
 .app-row .btn { flex: 0 0 auto; }
+.settings-install { margin: 0 0 18px; }
 
 .bank-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;

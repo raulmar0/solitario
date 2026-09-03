@@ -19,7 +19,6 @@ export default {
   'app.install.boton': 'Instalar',
   'app.install.nota': 'Abre como um app à parte, sem as barras do navegador.',
   'app.install.ios': 'No iPhone ou iPad: Compartilhar → “Adicionar à Tela de Início”.',
-  'app.install.ya': 'Já está instalado.',
   'app.install.hecha': 'Instalado. Procure na sua lista de apps.',
   'app.install.error': 'O navegador não deixou abrir a janela de instalação.',
 

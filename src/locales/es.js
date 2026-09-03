@@ -20,7 +20,6 @@ export default {
   'app.install.boton': 'Instalar',
   'app.install.nota': 'Se abre a pantalla completa, como una aplicación más.',
   'app.install.ios': 'En iPhone o iPad: Compartir → «Añadir a pantalla de inicio».',
-  'app.install.ya': 'Ya la tienes instalada.',
   'app.install.hecha': 'Instalada. Búscala entre tus aplicaciones.',
   'app.install.error': 'El navegador no dejó abrir el diálogo de instalación.',
 

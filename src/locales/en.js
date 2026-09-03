@@ -19,7 +19,6 @@ export default {
   'app.install.boton': 'Install',
   'app.install.nota': 'It opens full screen, like any other app.',
   'app.install.ios': 'On iPhone or iPad: Share → “Add to Home Screen”.',
-  'app.install.ya': 'You already have it installed.',
   'app.install.hecha': 'Installed. Look for it among your apps.',
   'app.install.error': 'The browser wouldn’t open the install dialog.',
 

@@ -189,6 +189,14 @@
   </section>
 
   <section class="panel" id="panel-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" tabindex="0">
+    <div class="app-row settings-install" id="install-row" hidden>
+      <div class="app-row-info">
+        <strong data-i18n="app.install.titulo">Instalar en el dispositivo</strong>
+        <p class="hint-text" id="install-hint" data-i18n="app.install.nota">Se abre a pantalla completa, como una aplicación más.</p>
+      </div>
+      <button class="btn small primary" id="btn-install" type="button" data-i18n="app.install.boton">Instalar</button>
+    </div>
+
     <div class="settings-group" id="settings-group-partida">
       <h3 data-i18n="settings.grupo.partida">Partida</h3>
 
@@ -268,13 +276,6 @@
             <button class="btn small" id="btn-update" type="button" data-i18n="app.update.buscar">Buscar actualización</button>
           </div>
 
-          <div class="app-row" id="install-row" hidden>
-            <div class="app-row-info">
-              <strong data-i18n="app.install.titulo">Instalar en el dispositivo</strong>
-              <p class="hint-text" id="install-hint" data-i18n="app.install.nota">Se abre a pantalla completa, como una aplicación más.</p>
-            </div>
-            <button class="btn small primary" id="btn-install" type="button" data-i18n="app.install.boton">Instalar</button>
-          </div>
         </div>
 
         <div class="field">

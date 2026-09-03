@@ -20,7 +20,6 @@ export default {
   'app.install.boton': '설치',
   'app.install.nota': '다른 앱처럼 전체 화면으로 열려요.',
   'app.install.ios': '아이폰이나 아이패드에서는 공유 → ‘홈 화면에 추가’를 누르세요.',
-  'app.install.ya': '이미 설치되어 있어요.',
   'app.install.hecha': '설치했어요. 앱 목록에서 찾아보세요.',
   'app.install.error': '브라우저가 설치 창을 열어 주지 않았어요.',
 
