@@ -37,6 +37,7 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
   let selectionEpoch = 0;      // sube con cada cambio de estado: sirve para invalidar cachés de la interfaz
   let dealId = 0;              // sube solo al repartir de nuevo: la interfaz lo usa para animar el reparto
   let dia = null;              // 'AAAA-MM-DD' si esta mano es la del reto diario
+  let autoPasosSinProgreso = 0;
 
   const emit = () => { for (const fn of listeners) fn(api); };
 
@@ -243,6 +244,7 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       baseScore = initialScore(prefs.scoring);
       moves = 0;
       undos = 0;
+      autoPasosSinProgreso = 0;
       history = [];
       status = 'playing';
       startedAt = null;
@@ -366,6 +368,8 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
     /** Un paso del autocompletado, para poder animarlo desde la UI. */
     autoCompleteStep() {
       if (status !== 'playing') return false;
+
+      // 1. Subir la mejor carta posible a fundación (de descarte o de cualquier columna del tableau)
       const sources = [{ pile: PILE.WASTE }, ...state.tableau.map((_, index) => ({ pile: PILE.TABLEAU, index }))];
       let best = null;
       for (const from of sources) {
@@ -377,8 +381,40 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
         if (!engine.isLegal(state, move)) continue;
         if (!best || card.rank < best.rank) best = { move, rank: card.rank };
       }
-      if (!best) return false;
-      return api.play(best.move);
+      if (best) {
+        autoPasosSinProgreso = 0;
+        return api.play(best.move);
+      }
+
+      // 2. Si ninguna sube a fundación, colocar la del descarte en el tableau si cabe
+      const w = engine.top(state.waste);
+      if (w) {
+        for (let i = 0; i < 7; i++) {
+          const move = { type: 'move', from: { pile: PILE.WASTE }, to: { pile: PILE.TABLEAU, index: i }, count: 1 };
+          if (engine.isLegal(state, move)) {
+            autoPasosSinProgreso = 0;
+            return api.play(move);
+          }
+        }
+      }
+
+      // 3. Robar del mazo si quedan cartas
+      if (engine.isLegal(state, { type: 'draw' })) {
+        autoPasosSinProgreso++;
+        const max = state.stock.length + state.waste.length + 4;
+        if (autoPasosSinProgreso > max) return false;
+        return api.play({ type: 'draw' });
+      }
+
+      // 4. Si el mazo se vació pero hay descarte, reciclar
+      if (engine.isLegal(state, { type: 'recycle' })) {
+        autoPasosSinProgreso++;
+        const max = state.waste.length + 4;
+        if (autoPasosSinProgreso > max) return false;
+        return api.play({ type: 'recycle' });
+      }
+
+      return false;
     },
 
     undo() {

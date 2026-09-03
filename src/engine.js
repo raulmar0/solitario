@@ -192,10 +192,10 @@ export function isWon(state) {
   return state.foundations.reduce((n, p) => n + p.length, 0) === 52;
 }
 
-/** Todo boca arriba y sin mazo: ya solo queda subir cartas, se puede automatizar. */
+/** Todas las cartas del tablero boca arriba: ya se puede automatizar la resolución. */
 export function canAutoComplete(state) {
   if (isWon(state)) return false;
-  if (state.stock.length || state.waste.length) return false;
+  if (isStuck(state)) return false;
   return state.tableau.every((p) => p.every((c) => c.faceUp));
 }
 

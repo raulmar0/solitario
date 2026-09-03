@@ -259,7 +259,10 @@ test('isWon, canAutoComplete e isSafeToFoundation', () => {
   casi.foundations[0].pop();
   casi.tableau[0] = [{ id: 'KS', rank: 13, suit: 'S', faceUp: true }];
   assert.equal(engine.isWon(casi), false);
-  assert.equal(engine.canAutoComplete(casi), true);
+  const conMazo = engine.cloneState(casi);
+  conMazo.stock = [{ id: 'QS', rank: 12, suit: 'S', faceUp: false }];
+  conMazo.foundations[0].pop();
+  assert.equal(engine.canAutoComplete(conMazo), true, 'sin cartas tapadas en el tableau se puede completar');
 
   const tapada = engine.cloneState(casi);
   tapada.tableau[1] = [{ id: 'x', rank: 4, suit: 'H', faceUp: false }];

@@ -1441,14 +1441,37 @@ function partidaResuelta(quedan = 3) {
 }
 
 test('el botón de rematar solo aparece cuando ya no queda nada que decidir', () => {
-  escenario({ tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: true }]], stock: [{ id: '2H', rank: 2, suit: 'H', faceUp: false }] });
-  assert.equal(game.canAutoComplete, false, 'con cartas en el mazo todavía no');
+  escenario({ tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: false }]] });
+  assert.equal(game.canAutoComplete, false, 'con cartas tapadas en el tablero todavía no');
   assert.equal(botonFinal().hidden, true);
 
   partidaResuelta();
   assert.equal(game.canAutoComplete, true);
   assert.equal(botonFinal().hidden, false, 'ahora sí se ofrece');
   assert.ok(botonFinal().textContent.includes(t('tool.rematar')), 'el rótulo sale de tool.rematar');
+});
+
+test('el botón de rematar también se ofrece si queda mazo pero el tablero está destapado', async () => {
+  const palos = ['S', 'H', 'D', 'C'];
+  const foundations = palos.map((suit) => Array.from({ length: 13 - (suit === 'S' ? 2 : 0) },
+    (_, i) => ({ id: `${i + 1}${suit}`, rank: i + 1, suit, faceUp: true })));
+  escenario({
+    foundations,
+    tableau: [[{ id: '12S', rank: 12, suit: 'S', faceUp: true }]],
+    stock: [{ id: '13S', rank: 13, suit: 'S', faceUp: false }],
+  });
+  refresh();
+  board.settle();
+
+  assert.equal(game.canAutoComplete, true, 'con todo el tableau destapado se ofrece rematar');
+  assert.equal(botonFinal().hidden, false);
+
+  botonFinal().click();
+  const limite = Date.now() + 8000;
+  while (game.status !== 'won' && Date.now() < limite) await new Promise((r) => setTimeout(r, 60));
+  assert.equal(game.status, 'won');
+  assert.equal(game.state.foundations.flat().length, 52);
+  $('#dlg-win').close();
 });
 
 test('el botón remata la partida carta a carta y la da por ganada', async () => {
