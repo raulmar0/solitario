@@ -55,6 +55,7 @@
   --card-diamond: #1553a8;
   --card-club: #1a7a3c;
   --card-line: rgba(0, 0, 0, .16);
+  --header-bg: #105031;               /* el verde de fondo del header y barras */
   --topbar-veil: rgba(0, 0, 0, .22);  /* el velo de la barra: en claro hace falta más cuerpo */
   --shadow: 0 2px 5px rgba(0, 0, 0, .3);
   --shadow-lift: 0 6px 14px rgba(0, 0, 0, .26), 0 18px 36px rgba(0, 0, 0, .42);
@@ -88,6 +89,7 @@ html[data-theme="light"] {
   --warn: #7d4f05;                    /* el acento se queda en 4,3:1 sobre panel blanco */
   --danger: #a4241c;
   --ok: #12734a;
+  --header-bg: #1e5a39;
   --topbar-veil: rgba(0, 0, 0, .44);
   --shadow: 0 2px 5px rgba(0, 0, 0, .18);
   --shadow-lift: 0 6px 14px rgba(0, 0, 0, .14), 0 16px 36px rgba(0, 0, 0, .26);
@@ -108,7 +110,7 @@ html[data-motion="no"] { --quieto: none; }
 * { box-sizing: border-box; }
 
 html {
-  background-color: var(--felt-1);
+  background-color: var(--header-bg);
 }
 
 html, body {
@@ -126,7 +128,7 @@ html, body {
 body {
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   color: var(--ink);
-  background-color: var(--felt-1);
+  background-color: var(--header-bg);
   display: flex;
   flex-direction: column;
   -webkit-user-select: none;
@@ -148,7 +150,7 @@ body {
      arriba y abajo, las dos franjas del sistema son del color del fondo. */
   margin-top: var(--safe-top);
   padding: 10px max(12px, var(--safe-right)) 10px max(12px, var(--safe-left));
-  background: var(--topbar-veil);
+  background: var(--header-bg);
   border-bottom: 1px solid var(--line);
 }
 
@@ -366,7 +368,7 @@ html[data-theme="light"] body::before {
      una pantalla oscura parecía una banda negra pegada al borde. */
   margin-bottom: var(--safe-bottom);
   padding: 5px max(6px, var(--safe-right)) 5px max(6px, var(--safe-left));
-  background: var(--topbar-veil);
+  background: var(--header-bg);
   border-top: 1px solid var(--line);
 }
 

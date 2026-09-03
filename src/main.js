@@ -198,9 +198,8 @@ function avisar(clave, params = {}, tipo = '') {
   else message(clave, params, { aviso: tipo === 'err' });
 }
 
-// Arriba del degradado del tapete, que es lo que se ve en las zonas seguras.
-// Tiene que ir con --felt-1 de cada tema: hay una prueba que lo vigila.
-const COLOR_TAPETE = { dark: '#14663f', light: '#35a066' };
+// Color de la cabecera y barras, que es lo que se ve en las zonas seguras.
+const COLOR_TAPETE = { dark: '#105031', light: '#1e5a39' };
 
 function applyPrefs() {
   const prefs = game.prefs;

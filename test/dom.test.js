@@ -664,10 +664,10 @@ test('las zonas seguras se apartan por margen, y las pinta el tapete', () => {
   const sueltos = css.split('\n').filter((l) => l.includes('env(safe-area-inset') && !l.includes('--safe-'));
   assert.deepEqual(sueltos, [], 'las zonas seguras se leen solo desde :root');
 
-  assert.equal(regla('html').style.getPropertyValue('background-color'), 'var(--felt-1)',
-    'html lleva el fondo del tapete para que las zonas seguras del navegador no queden negras');
-  assert.equal(regla('body').style.getPropertyValue('background-color'), 'var(--felt-1)',
-    'body también para que las franjas de margen sean del mismo verde');
+  assert.equal(regla('html').style.getPropertyValue('background-color'), 'var(--header-bg)',
+    'html lleva el fondo de la cabecera para que las zonas seguras del navegador no queden negras');
+  assert.equal(regla('body').style.getPropertyValue('background-color'), 'var(--header-bg)',
+    'body también para que las franjas de margen sean del mismo verde que la cabecera');
 });
 
 test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', () => {
