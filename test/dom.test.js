@@ -671,11 +671,11 @@ test('las zonas seguras se apartan por margen, y las pinta el tapete', () => {
 });
 
 test('las barras y las zonas seguras usan el verde reforzado de cada tema', () => {
-  assert.equal(variables(':root')['--header-bg'], '#0b673b', 'el tema oscuro usa el verde reforzado');
-  assert.equal(variables('html[data-theme="light"]')['--header-bg'], '#177043', 'el tema claro usa el verde reforzado');
+  assert.equal(variables(':root')['--header-bg'], '#06452a', 'el tema oscuro usa el verde reforzado');
+  assert.equal(variables('html[data-theme="light"]')['--header-bg'], '#0d5833', 'el tema claro usa el verde reforzado');
   assert.equal(regla('.topbar').style.getPropertyValue('background'), 'var(--header-bg)');
   assert.equal(regla('.tools').style.getPropertyValue('background'), 'var(--header-bg)');
-  assert.equal(window.document.querySelector('meta[name="theme-color"]').content, '#0b673b',
+  assert.equal(window.document.querySelector('meta[name="theme-color"]').content, '#06452a',
     'el color del sistema sigue el verde de la cabecera oscura');
 });
 

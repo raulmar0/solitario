@@ -199,7 +199,7 @@ function avisar(clave, params = {}, tipo = '') {
 }
 
 // Color de la cabecera y barras, que es lo que se ve en las zonas seguras.
-const COLOR_TAPETE = { dark: '#0b673b', light: '#177043' };
+const COLOR_TAPETE = { dark: '#06452a', light: '#0d5833' };
 
 function applyPrefs() {
   const prefs = game.prefs;
