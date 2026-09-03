@@ -157,7 +157,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.7.3`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.8.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -240,7 +240,7 @@ Lo que está decidido y aún no está hecho vive en [`docs/TODO.md`](docs/TODO.m
 npm test
 ```
 
-379 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+399 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, el recomendador (que ninguna partida entre en
 bucle siguiendo sus consejos, que no mire cartas tapadas y que pista y toque no se

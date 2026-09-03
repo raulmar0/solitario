@@ -174,65 +174,6 @@
       <button class="btn primary" type="button" id="btn-reto-jugar" data-i18n="reto.jugar">Jugar este reto</button>
       <button class="btn" type="button" id="btn-reto-hoy" data-i18n="reto.hoy">Ir a hoy</button>
     </div>
-    <p class="hint-text" data-i18n="reto.nota">Se guarda tu mejor intento de cada día. El reparto no cambia: puedes repetirlo hasta que te salga.</p>
-  </section>
-
-  <section class="panel" id="panel-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" tabindex="0">
-    <div class="field">
-      <span class="field-label" data-i18n="settings.robo">Cartas por robo</span>
-      <div class="seg" role="radiogroup" aria-label="Cartas por robo" data-i18n-aria-label="settings.robo">
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="1" data-i18n="settings.robo.1">De una</button>
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="3" data-i18n="settings.robo.3">De tres</button>
-      </div>
-      <p class="hint-text" data-i18n="settings.robo.nota">De tres es la variante difícil: en Vegas solo permite tres pasadas al mazo.</p>
-    </div>
-
-    <div class="field">
-      <span class="field-label" data-i18n="settings.puntuacion">Puntuación</span>
-      <div class="seg" role="radiogroup" aria-label="Puntuación" data-i18n-aria-label="settings.puntuacion">
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="standard" data-i18n="modo.standard">Estándar</button>
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="vegas" data-i18n="modo.vegas">Vegas</button>
-      </div>
-      <p class="hint-text" id="scoring-hint"></p>
-    </div>
-
-    <label class="switch"><input type="checkbox" data-pref="timed"><span data-i18n-html="settings.contrarreloj">Contrarreloj <em>(−2 puntos cada 10 s y bonificación por ganar rápido)</em></span></label>
-    <label class="switch"><input type="checkbox" data-pref="penalizeHints"><span data-i18n-html="settings.penalizarPistas">Penalizar pistas <em>(−10 puntos por cada pista)</em></span></label>
-    <label class="switch"><input type="checkbox" data-pref="autoSafe"><span data-i18n="settings.autosubir">Subir solas las cartas que ya no estorban</span></label>
-    <label class="switch"><input type="checkbox" data-pref="solvableOnly"><span data-i18n="settings.solucionables">Repartir solo manos con solución comprobada</span></label>
-    <label class="switch"><input type="checkbox" data-pref="animations"><span data-i18n="settings.animaciones">Animaciones</span></label>
-    <label class="switch"><input type="checkbox" data-pref="sound"><span data-i18n-html="settings.sonidos">Sonidos <em>(los clics de las cartas y los avisos)</em></span></label>
-
-    <div class="field">
-      <label class="field-label" for="pref-name" data-i18n-html="settings.nombre">Tu nombre <em>(se guarda con cada récord)</em></label>
-      <input id="pref-name" class="text-input" data-pref="playerName" type="text" maxlength="24" placeholder="Anónimo" data-i18n-placeholder="settings.nombre.placeholder">
-    </div>
-
-    <div class="field">
-      <span class="field-label" data-i18n="settings.tema">Tema</span>
-      <div class="seg" role="radiogroup" aria-label="Tema" data-i18n-aria-label="settings.tema">
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="auto" data-i18n="settings.tema.auto">Automático</button>
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="light" data-i18n="settings.tema.claro">Claro</button>
-        <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="dark" data-i18n="settings.tema.oscuro">Oscuro</button>
-      </div>
-    </div>
-
-    <!-- Los nombres de los idiomas van en su propio idioma: quien se ha perdido
-         en una lengua que no entiende reconoce el suyo igual. -->
-    <div class="field">
-      <label class="field-label" for="pref-lang" data-i18n="settings.idioma">Idioma</label>
-      <select id="pref-lang" class="text-input" data-pref="lang">
-        <option value="auto" data-i18n="settings.idioma.auto">Automático</option>
-        <option value="es">Español</option>
-        <option value="en">English</option>
-        <option value="fr">Français</option>
-        <option value="pt">Português</option>
-        <option value="ko">한국어</option>
-      </select>
-    </div>
-
-    <label class="switch"><input type="checkbox" data-pref="fourColor"><span data-i18n-html="settings.cuatroColores">Baraja de cuatro colores <em>(cada palo con su propio color)</em></span></label>
-    <label class="switch"><input type="checkbox" data-pref="haptics"><span data-i18n-html="settings.vibracion">Vibración <em>(un toque corto cuando una carta cae en su sitio)</em></span></label>
 
     <div class="field">
       <label class="field-label" for="seed-input" data-i18n="settings.reparto">Jugar un reparto concreto</label>
@@ -244,38 +185,118 @@
       <p class="hint-text" data-i18n="settings.reparto.nota">El mismo número reparte siempre las mismas cartas. Útil para competir con alguien.</p>
     </div>
 
-    <div class="field">
-      <span class="field-label" data-i18n="settings.aplicacion">Aplicación</span>
+    <p class="hint-text" data-i18n="reto.nota">Se guarda tu mejor intento de cada día. El reparto no cambia: puedes repetirlo hasta que te salga.</p>
+  </section>
 
-      <div class="app-row">
-        <div class="app-row-info">
-          <strong id="app-version">v—</strong>
-          <p class="hint-text" id="update-hint" data-i18n="app.update.nota">Se instala en el dispositivo y funciona sin conexión.</p>
+  <section class="panel" id="panel-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" tabindex="0">
+    <div class="settings-group" id="settings-group-partida">
+      <h3 data-i18n="settings.grupo.partida">Partida</h3>
+
+      <div class="field">
+        <span class="field-label" data-i18n="settings.robo">Cartas por robo</span>
+        <div class="seg" role="radiogroup" aria-label="Cartas por robo" data-i18n-aria-label="settings.robo">
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="1" data-i18n="settings.robo.1">De una</button>
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="3" data-i18n="settings.robo.3">De tres</button>
         </div>
-        <button class="btn small" id="btn-update" type="button" data-i18n="app.update.buscar">Buscar actualización</button>
+        <p class="hint-text" data-i18n="settings.robo.nota">De tres es la variante difícil: en Vegas solo permite tres pasadas al mazo.</p>
       </div>
 
-      <div class="app-row" id="install-row" hidden>
-        <div class="app-row-info">
-          <strong data-i18n="app.install.titulo">Instalar en el dispositivo</strong>
-          <p class="hint-text" id="install-hint" data-i18n="app.install.nota">Se abre a pantalla completa, como una aplicación más.</p>
+      <div class="field">
+        <span class="field-label" data-i18n="settings.puntuacion">Puntuación</span>
+        <div class="seg" role="radiogroup" aria-label="Puntuación" data-i18n-aria-label="settings.puntuacion">
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="standard" data-i18n="modo.standard">Estándar</button>
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="vegas" data-i18n="modo.vegas">Vegas</button>
         </div>
-        <button class="btn small primary" id="btn-install" type="button" data-i18n="app.install.boton">Instalar</button>
+        <p class="hint-text" id="scoring-hint"></p>
       </div>
+
+      <label class="switch"><input type="checkbox" data-pref="timed"><span data-i18n="settings.contrarreloj">Contrarreloj</span></label>
+      <label class="switch"><input type="checkbox" data-pref="autoSafe"><span data-i18n="settings.autosubir">Subir automáticamente</span></label>
     </div>
-  <div class="field">
-    <span class="field-label" data-i18n="settings.datos">Tus datos</span>
-    <p class="hint-text" data-i18n="settings.datos.nota">Los récords y los ajustes viven en este navegador, en tu equipo. Aquí puedes llevártelos o borrarlos.</p>
-    <div class="row wrap">
-      <button class="btn small" id="btn-export" data-i18n="settings.datos.exportar">Exportar</button>
-      <button class="btn small" id="btn-import" data-i18n="settings.datos.importar">Importar</button>
-      <button class="btn small danger" id="btn-wipe" data-i18n="settings.datos.borrar">Borrar todo</button>
-      <input type="file" id="import-file" accept="application/json" hidden>
+
+    <div class="settings-group" id="settings-group-interfaz">
+      <h3 data-i18n="settings.grupo.interfaz">Interfaz y accesibilidad</h3>
+
+      <div class="field">
+        <span class="field-label" data-i18n="settings.tema">Tema</span>
+        <div class="seg" role="radiogroup" aria-label="Tema" data-i18n-aria-label="settings.tema">
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="auto" data-i18n="settings.tema.auto">Automático</button>
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="light" data-i18n="settings.tema.claro">Claro</button>
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="dark" data-i18n="settings.tema.oscuro">Oscuro</button>
+        </div>
+      </div>
+
+      <!-- Los nombres de los idiomas van en su propio idioma: quien se ha perdido
+           en una lengua que no entiende reconoce el suyo igual. -->
+      <div class="field">
+        <label class="field-label" for="pref-lang" data-i18n="settings.idioma">Idioma</label>
+        <select id="pref-lang" class="text-input" data-pref="lang">
+          <option value="auto" data-i18n="settings.idioma.auto">Automático</option>
+          <option value="es">Español</option>
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+          <option value="pt">Português</option>
+          <option value="ko">한국어</option>
+        </select>
+      </div>
+
+      <label class="switch"><input type="checkbox" data-pref="animations"><span data-i18n="settings.animaciones">Animaciones</span></label>
+      <label class="switch"><input type="checkbox" data-pref="sound"><span data-i18n="settings.sonidos">Sonidos</span></label>
+      <label class="switch"><input type="checkbox" data-pref="haptics"><span data-i18n="settings.vibracion">Vibración</span></label>
+      <label class="switch"><input type="checkbox" data-pref="fourColor"><span data-i18n="settings.cuatroColores">Cuatro colores</span></label>
     </div>
-  </div>
+
+    <details class="settings-details" id="settings-advanced">
+      <summary data-i18n="settings.grupo.avanzado">Opciones avanzadas</summary>
+      <div class="settings-details-body">
+        <label class="switch"><input type="checkbox" data-pref="penalizeHints"><span data-i18n="settings.penalizarPistas">Penalizar pistas</span></label>
+        <label class="switch"><input type="checkbox" data-pref="solvableOnly"><span data-i18n="settings.solucionables">Solo manos con solución comprobada</span></label>
+      </div>
+    </details>
+
+    <details class="settings-details" id="settings-tools">
+      <summary data-i18n="settings.grupo.aplicacionDatos">Aplicación y datos</summary>
+      <div class="settings-details-body">
+        <div class="field">
+          <span class="field-label" data-i18n="settings.aplicacion">Aplicación</span>
+
+          <div class="app-row">
+            <div class="app-row-info">
+              <strong id="app-version">v—</strong>
+              <p class="hint-text" id="update-hint" data-i18n="app.update.nota">Se instala en el dispositivo y funciona sin conexión.</p>
+            </div>
+            <button class="btn small" id="btn-update" type="button" data-i18n="app.update.buscar">Buscar actualización</button>
+          </div>
+
+          <div class="app-row" id="install-row" hidden>
+            <div class="app-row-info">
+              <strong data-i18n="app.install.titulo">Instalar en el dispositivo</strong>
+              <p class="hint-text" id="install-hint" data-i18n="app.install.nota">Se abre a pantalla completa, como una aplicación más.</p>
+            </div>
+            <button class="btn small primary" id="btn-install" type="button" data-i18n="app.install.boton">Instalar</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label" data-i18n="settings.datos">Tus datos</span>
+          <p class="hint-text" data-i18n="settings.datos.nota">Los récords y los ajustes viven en este navegador, en tu equipo. Aquí puedes llevártelos o borrarlos.</p>
+          <div class="row wrap">
+            <button class="btn small" id="btn-export" data-i18n="settings.datos.exportar">Exportar</button>
+            <button class="btn small" id="btn-import" data-i18n="settings.datos.importar">Importar</button>
+            <button class="btn small danger" id="btn-wipe" data-i18n="settings.datos.borrar">Borrar todo</button>
+            <input type="file" id="import-file" accept="application/json" hidden>
+          </div>
+        </div>
+      </div>
+    </details>
   </section>
 
   <section class="panel" id="panel-records" role="tabpanel" aria-labelledby="tab-records" tabindex="0" hidden>
+    <div class="field records-profile">
+      <label class="field-label" for="pref-name" data-i18n="settings.nombre">Tu nombre</label>
+      <input id="pref-name" class="text-input" data-pref="playerName" type="text" maxlength="24" placeholder="Anónimo" data-i18n-placeholder="settings.nombre.placeholder">
+      <p class="hint-text" data-i18n="settings.nombre.nota">Se guarda con cada récord.</p>
+    </div>
     <div class="tabs" id="stats-tabs" role="tablist" aria-label="Modalidad" data-i18n-aria-label="stats.modalidad"></div>
 
     <div id="stats-panel" role="tabpanel" tabindex="0">
@@ -315,19 +336,24 @@
       <li data-i18n="help.regla.voltear">Al destapar una carta se le da la vuelta sola.</li>
       <li data-i18n-html="help.regla.reto">El <strong>reto diario</strong> reparte las mismas cartas para todo el mundo cada día: quien juegue hoy a tu lado tendrá tu misma mano.</li>
     </ul>
-    <h3 data-i18n="help.atajos">Atajos</h3>
-    <dl class="keys">
-      <div><dt data-i18n="help.tecla.espacio">Espacio</dt><dd data-i18n="help.atajo.espacio">robar del mazo</dd></div>
-      <div><dt data-i18n="help.tecla.columnas">1…7</dt><dd data-i18n="help.atajo.columnas">subir la carta de esa columna</dd></div>
-      <div><dt data-i18n="help.tecla.descarte">0</dt><dd data-i18n="help.atajo.descarte">subir la carta del descarte</dd></div>
-      <div><dt data-i18n="help.tecla.deshacer">Ctrl+Z</dt><dd data-i18n="help.atajo.deshacer">deshacer</dd></div>
-      <div><dt data-i18n="help.tecla.pista">H</dt><dd data-i18n="help.atajo.pista">pista</dd></div>
-      <div><dt data-i18n="help.tecla.reto">D</dt><dd data-i18n="help.atajo.reto">reto diario</dd></div>
-      <div><dt data-i18n="help.tecla.auto">A</dt><dd data-i18n="help.atajo.auto">subir automáticamente</dd></div>
-      <div><dt data-i18n="help.tecla.partida">N / R</dt><dd data-i18n="help.atajo.partida">partida nueva / repetir reparto</dd></div>
-      <div><dt data-i18n="help.tecla.menu">, / P / ?</dt><dd data-i18n="help.atajo.menu">ajustes, récords y ayuda</dd></div>
-      <div><dt data-i18n="help.tecla.cancelar">Esc</dt><dd data-i18n="help.atajo.cancelar">cancelar el arrastre</dd></div>
-    </dl>
+    <h3 data-i18n="help.controles">Controles</h3>
+    <p id="help-mobile" hidden data-i18n="help.controles.movil">Toca una carta para moverla automáticamente, arrástrala para elegir el sitio y toca el mazo para robar.</p>
+    <div id="help-desktop" hidden>
+      <p data-i18n="help.controles.escritorio">Haz clic en una carta para moverla automáticamente, arrástrala para elegir el sitio y haz clic en el mazo para robar.</p>
+      <h3 data-i18n="help.atajos">Atajos</h3>
+      <dl class="keys">
+        <div><dt data-i18n="help.tecla.espacio">Espacio</dt><dd data-i18n="help.atajo.espacio">robar del mazo</dd></div>
+        <div><dt data-i18n="help.tecla.columnas">1…7</dt><dd data-i18n="help.atajo.columnas">subir la carta de esa columna</dd></div>
+        <div><dt data-i18n="help.tecla.descarte">0</dt><dd data-i18n="help.atajo.descarte">subir la carta del descarte</dd></div>
+        <div><dt data-i18n="help.tecla.deshacer">Ctrl+Z</dt><dd data-i18n="help.atajo.deshacer">deshacer</dd></div>
+        <div><dt data-i18n="help.tecla.pista">H</dt><dd data-i18n="help.atajo.pista">pista</dd></div>
+        <div><dt data-i18n="help.tecla.reto">D</dt><dd data-i18n="help.atajo.reto">reto diario</dd></div>
+        <div><dt data-i18n="help.tecla.auto">A</dt><dd data-i18n="help.atajo.auto">subir automáticamente</dd></div>
+        <div><dt data-i18n="help.tecla.partida">N / R</dt><dd data-i18n="help.atajo.partida">partida nueva / repetir reparto</dd></div>
+        <div><dt data-i18n="help.tecla.menu">, / P / ?</dt><dd data-i18n="help.atajo.menu">ajustes, récords y ayuda</dd></div>
+        <div><dt data-i18n="help.tecla.cancelar">Esc</dt><dd data-i18n="help.atajo.cancelar">cancelar el arrastre</dd></div>
+      </dl>
+    </div>
     <h3 data-i18n="help.puntuacion">Puntuación</h3>
     <p class="hint-text" data-i18n-html="help.puntuacion.detalle"><strong>Estándar:</strong> +10 por carta a las pilas de arriba, +5 al destapar una carta o traer una del descarte a una columna, −15 al bajar una carta de arriba, −100 al reciclar el mazo robando de una. <strong>Vegas:</strong> pagas 52 $ de entrada y cobras 5 $ por cada carta que subas; el saldo se acumula entre partidas.</p>
     <p class="hint-text" data-i18n="help.privacidad">Todo se guarda en este navegador, en tu equipo. No sale nada a ningún servidor.</p>

@@ -300,6 +300,46 @@ test('las cuatro secciones viven en el mismo panel y se cambia entre ellas', () 
   $('#dlg-settings').close();
 });
 
+test('los ajustes están agrupados y las acciones ocasionales viven fuera de Ajustes', () => {
+  assert.ok($('#settings-group-partida'), 'falta el grupo de partida');
+  assert.ok($('#settings-group-interfaz'), 'falta el grupo de interfaz');
+  assert.ok($('#settings-advanced'), 'falta el grupo de opciones avanzadas');
+  assert.equal($('#settings-advanced').open, false, 'las opciones avanzadas empiezan plegadas');
+  assert.equal($('#settings-advanced input[data-pref="penalizeHints"]') != null, true);
+  assert.equal($('#settings-advanced input[data-pref="solvableOnly"]') != null, true);
+  assert.equal($('#settings-group-partida input[data-pref="timed"]') != null, true);
+  assert.equal($('#settings-group-partida input[data-pref="autoSafe"]') != null, true);
+  assert.equal($('#seed-input').closest('#panel-reto') != null, true,
+    'el reparto concreto pertenece al reto');
+  assert.equal($('#pref-name').closest('#panel-records') != null, true,
+    'el nombre pertenece a los récords');
+  assert.ok($('#settings-tools'), 'falta el grupo de aplicación y datos');
+  assert.equal($('#settings-tools').open, false, 'aplicación y datos empiezan plegados');
+});
+
+test('la ayuda muestra controles táctiles en móvil y atajos en escritorio', () => {
+  const anterior = window.innerWidth;
+  try {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    window.dispatchEvent(new window.Event('resize'));
+    panels.openHelp();
+    assert.equal($('#panel-ayuda').dataset.dispositivo, 'movil');
+    assert.equal($('#help-mobile').hidden, false, 'en móvil se muestran los controles táctiles');
+    assert.equal($('#help-desktop').hidden, true, 'en móvil se ocultan los atajos');
+
+    Object.defineProperty(window, 'innerWidth', { value: 1280, configurable: true });
+    window.dispatchEvent(new window.Event('resize'));
+    panels.openHelp();
+    assert.equal($('#panel-ayuda').dataset.dispositivo, 'escritorio');
+    assert.equal($('#help-mobile').hidden, true, 'en escritorio se ocultan los controles táctiles');
+    assert.equal($('#help-desktop').hidden, false, 'en escritorio se muestran los atajos');
+  } finally {
+    Object.defineProperty(window, 'innerWidth', { value: anterior, configurable: true });
+    window.dispatchEvent(new window.Event('resize'));
+    $('#dlg-settings').close();
+  }
+});
+
 test('exportar, importar y borrar están en el panel, dentro de Ajustes', () => {
   panels.openSettings();
   for (const id of ['#btn-export', '#btn-import', '#btn-wipe', '#import-file']) {

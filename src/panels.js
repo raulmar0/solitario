@@ -12,6 +12,7 @@ import {
 import {
   claveDia, esFuturo, esJugable, fechaDeClave, rejillaDelMes, semillaDelDia,
 } from './reto.js';
+import { esMovil } from './device.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const MODES = [
@@ -87,7 +88,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     pintarErrorReparto(null);
   });
 
-  // ---------- las tres secciones ----------
+  // ---------- las cuatro secciones ----------
 
   const SECCIONES = ['reto', 'ajustes', 'records', 'ayuda'];
   let seccion = 'ajustes';
@@ -105,12 +106,25 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     }
     if (seccion === 'records') renderStats();
     if (seccion === 'ajustes') renderSettings();
+    if (seccion === 'ayuda') pintarAyudaDispositivo();
     // Entrar al reto centra el calendario, se llegue por donde se llegue: por la
     // pestaña también. Volver a la sección y encontrarse en el mes de la última
     // vez, con un día de hace tres semanas elegido, no lo espera nadie.
     if (seccion === 'reto') { centrarReto(); renderReto(); }
     if (foco) $(`#tab-${seccion}`).focus();
   }
+
+  /** La ayuda cambia con la orientación o el tamaño de la ventana. */
+  function pintarAyudaDispositivo() {
+    const panel = $('#panel-ayuda');
+    const movil = esMovil();
+    panel.dataset.dispositivo = movil ? 'movil' : 'escritorio';
+    $('#help-mobile').hidden = !movil;
+    $('#help-desktop').hidden = movil;
+  }
+
+  globalThis.addEventListener?.('resize', pintarAyudaDispositivo);
+  pintarAyudaDispositivo();
 
   $('#panel-tabs').addEventListener('click', (event) => {
     const pestana = event.target.closest('[role="tab"]');

@@ -896,6 +896,38 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .field-error { margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--danger); }
 .row { display: flex; gap: 8px; }
 
+.settings-group {
+  margin: 0 0 18px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--panel-line);
+}
+.settings-group > h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .65px; }
+.settings-group .field { margin: 14px 0; }
+.settings-group .field:first-of-type { margin-top: 8px; }
+.settings-details {
+  margin: 12px 0;
+  border-top: 1px solid var(--panel-line);
+  border-bottom: 1px solid var(--panel-line);
+}
+.settings-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 6px 0;
+  color: var(--panel-ink);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+.settings-details summary::-webkit-details-marker { display: none; }
+.settings-details summary::after { content: '+'; color: var(--panel-ink-soft); font-size: 20px; font-weight: 400; }
+.settings-details[open] summary::after { content: '−'; }
+.settings-details-body { padding: 0 0 10px; }
+.settings-details-body .switch:first-child { margin-top: 0; }
+.records-profile { max-width: 360px; margin-top: 0; }
+
 /* Envuelve: en francés «Automatique / Clair / Sombre» pide 275 px y en una
    pantalla de 320 el grupo se salía del diálogo y sacaba barra horizontal. */
 .seg { display: inline-flex; flex-wrap: wrap; background: var(--fill); border: 1px solid var(--panel-line); border-radius: 9px; padding: 3px; gap: 3px; }

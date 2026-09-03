@@ -274,7 +274,7 @@ function fragmento() {
   const caja = document.createElement('div');
   caja.innerHTML = `
     <h2 data-i18n="dlg.titulo.ajustes"></h2>
-    <p id="con-marcado" data-i18n-html="settings.contrarreloj"></p>
+    <p id="con-marcado" data-i18n-html="help.regla.orden"></p>
     <button id="boton" data-i18n-title="tool.pista" data-i18n-aria-label="tool.pista"></button>
     <input id="campo" data-i18n-placeholder="settings.nombre.placeholder">
     <span id="con-params" data-i18n="hud.fundaciones.valor" data-i18n-params='{"n":13}'></span>
@@ -291,7 +291,7 @@ test('traducirDom rellena texto, html, title, aria-label y placeholder del subá
     assert.equal(caja.querySelector('h2').textContent, 'Ajustes');
     // data-i18n-html es el único que puede meter etiquetas, y por eso solo se
     // usa con los textos que llevan énfasis en el diccionario.
-    assert.match(caja.querySelector('#con-marcado').innerHTML, /^Contrarreloj <em>.+<\/em>$/);
+    assert.match(caja.querySelector('#con-marcado').innerHTML, /<strong>/);
     assert.equal(caja.querySelector('#boton').getAttribute('title'), 'Pista (H)');
     assert.equal(caja.querySelector('#boton').getAttribute('aria-label'), 'Pista (H)');
     assert.equal(caja.querySelector('#campo').getAttribute('placeholder'), 'Anónimo');
