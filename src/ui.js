@@ -890,7 +890,11 @@ export function createBoard({
     clearHighlights();
     drag = null;
 
-    if (!moved) { tapCard(id, grab, event.clientX, event.clientY); paint(); return; }
+    if (!moved) {
+      const jugado = tapCard(id, grab, event.clientX, event.clientY);
+      if (!jugado) paint();
+      return;
+    }
 
     if (!sigueValida(grab)) { paint(); return; }   // el tablero cambió mientras arrastrábamos
 
@@ -970,7 +974,7 @@ export function createBoard({
     // El segundo clic de un doble clic cae en el mismo sitio, sobre la carta que
     // acaba de quedar al descubierto: se ignora. Un toque en otro punto, no.
     if (Date.now() - ultimoAuto.at < DOUBLE_TAP_MS
-      && Math.hypot(x - ultimoAuto.x, y - ultimoAuto.y) < 24) return;
+      && Math.hypot(x - ultimoAuto.x, y - ultimoAuto.y) < 24) return false;
 
     // Si la pista está señalando justo esta carta, se hace lo que la pista dice.
     // Es la regla que impide que señale un sitio y el dedo la lleve a otro: pasaba
@@ -981,28 +985,31 @@ export function createBoard({
       if (game.play(sugerida)) {
         ultimoAuto = { at: Date.now(), x, y };
         vibrar(8);
+        return true;
       }
-      return;
+      return false;
     }
 
     if (grab.from.pile === PILE.FOUNDATION) {
       onMessage('msg.fundacion.arrastrar');
-      return;
+      return false;
     }
 
     const ref = { ...grab, ids: grab.ids ?? idsOf(grab) };
-    if (!sigueValida(ref)) return;      // el tablero cambió entre el toque y el dedo levantado
+    if (!sigueValida(ref)) return false;      // el tablero cambió entre el toque y el dedo levantado
 
     const move = mejorDestino(ref);
     if (!move) {
       negar(id);
       onMessage(ref.count > 1 ? 'msg.sin.jugada.secuencia' : 'msg.sin.jugada');
-      return;
+      return false;
     }
     if (game.play(move)) {
       ultimoAuto = { at: Date.now(), x, y };
       vibrar(8);      // la carta ya va a su sitio: un golpecito y a otra cosa
+      return true;
     }
+    return false;
   }
 
   /** Los huecos ya no reciben cartas por toque; el único que hace algo es el mazo. */

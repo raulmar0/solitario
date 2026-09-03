@@ -226,6 +226,7 @@ test('picar una carta la sube sola a su fundación', () => {
 
   assert.equal(game.state.foundations[palo].length, 2, 'un solo toque y arriba');
   assert.equal(game.state.tableau[columna].length, 0);
+  assert.match(el.style.transitionDuration, /^\d+ms, 140ms$/, 'al picar la carta vuela con su transición intacta');
 });
 
 test('los botones de la barra responden', () => {

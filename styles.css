@@ -8,7 +8,7 @@
   --speed: 180ms;         /* transiciones de la interfaz */
   --card-speed: 324ms;    /* lo que tarda una carta como mucho en ir de un sitio a otro */
   --flip-speed: 280ms;    /* el volteo al destapar, un pelo más corto que el vuelo */
-  --vuelo: cubic-bezier(.2, .75, .25, 1);   /* arranca rápido, posa suave */
+  --vuelo: cubic-bezier(.22, .68, .28, 1);   /* arranque visible, vuelo trazable y posada suave */
   --volteo: cubic-bezier(.15, .45, .85, .55);  /* corre al salir y se frena en el canto */
 
   --felt-1: #14663f;
@@ -513,7 +513,7 @@ html[data-theme="light"] body::before {
   }
 }
 /* El transform sigue al dedo sin interpolar; el alzado sí entra suave. */
-.card.dragging { cursor: grabbing; transition: var(--quieto, translate 90ms var(--vuelo)); }
+.card.dragging { cursor: grabbing; transition: var(--quieto, transform var(--card-speed) var(--vuelo), translate 90ms var(--vuelo)); }
 
 /* Una carta que va de un sitio a otro no se desliza por la mesa: alguien la
    coge, la lleva por el aire y la posa. Eso son cuatro cosas a la vez, y las
