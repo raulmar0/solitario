@@ -8,7 +8,7 @@
   --speed: 180ms;         /* transiciones de la interfaz */
   --card-speed: 324ms;    /* lo que tarda una carta como mucho en ir de un sitio a otro */
   --flip-speed: 280ms;    /* el volteo al destapar, un pelo más corto que el vuelo */
-  --vuelo: cubic-bezier(.22, .68, .28, 1);   /* arranque visible, vuelo trazable y posada suave */
+  --vuelo: cubic-bezier(.35, .12, .65, .88); /* acelera y frena sin saltar al salir */
   --volteo: cubic-bezier(.15, .45, .85, .55);  /* corre al salir y se frena en el canto */
 
   --felt-1: #14663f;

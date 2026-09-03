@@ -934,6 +934,11 @@ test('el vuelo de las cartas acelera y frena; los controles van a velocidad fija
   }
 });
 
+test('el vuelo no sale disparado al despegar', () => {
+  assert.equal(variables(':root')['--vuelo'].replaceAll(' ', ''), 'cubic-bezier(.35,.12,.65,.88)',
+    'la carta no debe recorrer medio tablero en los primeros milisegundos');
+});
+
 test('la capa de composición se reserva al vuelo, no para siempre', () => {
   assert.equal(regla('.card').style.getPropertyValue('will-change'), '',
     'las 52 cartas en reposo no mantienen capa propia');
