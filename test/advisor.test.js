@@ -554,6 +554,11 @@ test('el toque prefiere apoyar la carta antes que subirla arriesgando', () => {
   assert.deepEqual(destino.move.to, T(0), 'se apoya en el 6H');
   assert.notEqual(destino.reason, RAZON.FUNDACION_RIESGO);
 
+  const subidaDirecta = mejorDestinoPara(s, T(1), 1, { preferFoundation: true });
+  assert.deepEqual(subidaDirecta.move.to, F(3),
+    'el toque directo puede escoger la fundación legal aunque sea arriesgada');
+  assert.equal(engine.isLegal(s, subidaDirecta.move), true);
+
   // Sin el 6H donde apoyarse, entonces sí sube: es lo único que se puede hacer.
   const sola = escenario({
     foundations: [picasHasta(5), [C(1, 'H'), C(2, 'H'), C(3, 'H'), C(4, 'H')], [],

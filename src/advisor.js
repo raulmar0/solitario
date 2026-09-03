@@ -329,27 +329,25 @@ export function recomendar(state, opts = {}) {
 }
 
 /**
- * El mismo ranking filtrado a un origen concreto: es lo que usa el toque, para
- * que pista y toque no se contradigan nunca. Aquí no se descarta nada por poco
- * que valga: si el jugador toca una carta que solo puede pasear, se pasea, y si
- * lo único que le queda es subirla arriesgando, sube —prohibirlo dejaba el toque
- * sin hacer nada y había que explicarle al jugador por qué—.
- *
- * La subida arriesgada va aparte y siempre la última, no por puntuación sino por
- * regla: el toque solo la elige cuando esa carta no tiene ningún otro sitio. Por
- * puntos no basta, porque un sitio en el tableau puede ser un paseo estéril
- * (−1000) y perder contra la subida arriesgada (−250); y ahí el jugador que toca
- * una carta espera que se apoye donde cabe, no que se vaya arriba para siempre.
+ * El ranking filtrado a un origen concreto. Por omisión conserva el criterio del
+ * consejero; `preferFoundation` lo usa el toque directo para respetar una subida
+ * legal aunque el consejero la considere estratégicamente arriesgada.
  */
-export function mejorDestinoPara(state, from, count = 1) {
+export function mejorDestinoPara(state, from, count = 1, { preferFoundation = false } = {}) {
   if (!state || !from) return null;
   const ctx = contexto(state);
   const n = count ?? 1;
   const propios = ctx.utiles.filter((m) => m.from.pile === from.pile
     && (m.from.index ?? null) === (from.index ?? null) && (m.count ?? 1) === n);
   const ordenados = ordenar(ctx, propios);
+  // El toque directo puede pedir una subida legal aunque no sea estratégicamente
+  // segura. La opción no cambia el ranking de las pistas: solo evita que el gesto
+  // del jugador convierta una jugada válida en otra columna distinta.
+  const fundacion = preferFoundation
+    ? ordenados.find((e) => e.move.to.pile === PILE.FOUNDATION)
+    : null;
   const conSitio = ordenados.filter((e) => e.reason !== RAZON.FUNDACION_RIESGO);
-  const mejor = (conSitio.length ? conSitio : ordenados)[0];
+  const mejor = fundacion ?? (conSitio.length ? conSitio : ordenados)[0];
   return mejor ? { move: mejor.move, reason: mejor.reason } : null;
 }
 

@@ -51,12 +51,11 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   mismo reparto. Con «solo manos con solución» se reparte de una lista de 1070
   semillas resueltas por el buscador de `scripts/gen-solvables.js` (el mismo del
   test `test/engine.test.js`).
-- **Picar una carta la mueve sola** a su mejor destino: primero la pila de arriba
-  —si sube sin riesgo— y, si no, la columna que mejor le venga (los huecos
-  vacíos se dejan para el final, que hacen falta para los reyes). Si lo único que
-  se puede hacer con esa carta es subirla arriesgando, sube: negarse y explicar
-  por qué dejaba el toque sin hacer nada. Elegir el sitio a mano —dos huecos
-  libres, dos columnas donde encaja— se sigue haciendo arrastrando.
+- **Picar una carta la mueve sola** a una fundación si la subida es legal, incluso
+  cuando sea estratégicamente arriesgada; si no puede subir, va a la columna que
+  mejor le venga (los huecos vacíos se dejan para el final, que hacen falta para
+  los reyes). Elegir el sitio a mano —dos huecos libres, dos columnas donde
+  encaja— se sigue haciendo arrastrando.
 - **Reparto animado**: las 28 cartas del tableau salen del mazo de una en una y
   se destapan al llegar con un volteo, como en la mesa. Dura un segundo y un toque
   se lo salta.
@@ -71,8 +70,9 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   la carta de encima del mazo. **Una pista es una**: pulsar otra vez enseña la
   misma, que si era la mejor lo sigue siendo. Antes iba pasando por las
   alternativas y el jugador acababa sin saber cuál de las cuatro le convenía.
-  **Picar una carta usa exactamente el mismo criterio**, así que la pista y el
-  toque nunca llevan la carta a sitios distintos.
+  La pista conserva ese criterio estratégico; el toque directo, cuando no hay una
+  pista activa, prioriza una fundación legal para respetar la intención de subir.
+  Con una pista activa, el toque ejecuta el destino señalado.
 - **Sonidos**: los clics de las cartas y los avisos están sintetizados con Web
   Audio, sin un solo fichero de audio ni una petición a la red. Se apagan desde
   Ajustes. El navegador no deja sonar nada hasta que tocas la página, así que el
@@ -157,7 +157,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.6.6`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.7.3`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 

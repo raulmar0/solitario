@@ -55,9 +55,11 @@ producirá una recomendación estructurada:
 
 El motor expondrá una huella estable del estado que no revele identidades
 ocultas al evaluador. `game.hint()` pasará las huellas del historial reciente.
-El toque automático de una carta filtrará el mismo ranking por origen, de modo
-que pista y toque nunca utilicen criterios contradictorios. Una subida insegura
-no se ejecutará automáticamente: requerirá arrastre explícito.
+El toque automático de una carta filtrará el ranking por origen. Para respetar la
+intención explícita de subir, una fundación legal tendrá prioridad en el toque
+directo aunque el recomendador la penalice por seguridad estratégica. Una pista
+activa conservará su destino señalado; el arrastre seguirá permitiendo elegir
+cualquier destino legal.
 
 La UI describirá la jugada completa con carta, origen, destino y razón. Solo
 existirá una pista visual activa. Se cancelará al pedir otra, jugar, deshacer,
@@ -200,7 +202,8 @@ encuentre ninguno legal.
 - Una fundación insegura pierde frente a una alternativa visible segura.
 - Una partida bloqueada recibe la bajada de fundación cuando es el único rescate.
 - Cuando solo quedan movimientos reversibles, la pista recomienda el mazo.
-- Pista y toque automático seleccionan el mismo destino para el mismo origen.
+- El toque automático prioriza una fundación legal para el mismo origen; una pista
+  activa conserva el destino estratégico que haya señalado.
 
 ### Idiomas
 

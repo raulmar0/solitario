@@ -973,13 +973,13 @@ export function createBoard({
   }
 
   /**
-   * A dónde va la carta que se pica. Lo decide el consejero, el mismo que da las
-   * pistas: así el toque nunca lleva la carta a un sitio distinto del que acaba
-   * de señalar la pista. Devuelve null solo cuando esa carta no tiene ninguna
-   * jugada, ni buena ni mala.
+   * A dónde va la carta que se pica cuando no hay una pista activa. Una fundación
+   * legal tiene prioridad aunque sea arriesgada; así el toque no convierte una
+   * jugada válida en otra columna distinta. Si hay una pista para esa carta,
+   * `jugadaSugerida` conserva el destino que acaba de señalar.
    */
   function mejorDestino(ref) {
-    return advisor.mejorDestinoPara(game.state, ref.from, ref.count)?.move ?? null;
+    return advisor.mejorDestinoPara(game.state, ref.from, ref.count, { preferFoundation: true })?.move ?? null;
   }
 
   /** Un toque en la palma, si el jugador lo quiere y el aparato sabe darlo. */

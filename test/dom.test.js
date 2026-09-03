@@ -1072,7 +1072,7 @@ test('pedir otra pista se lleva la anterior: no quedan marcas viejas', () => {
   assert.equal(cartaEl('7H').classList.contains('hint-destino'), true, 'que ahora es destino');
 });
 
-test('picar no sube una carta arriesgada: para eso está el arrastre', () => {
+test('picar sube una carta arriesgada cuando no hay otro destino', () => {
   escenario({
     foundations: [[{ id: '8S', rank: 8, suit: 'S', faceUp: true }], [], [], []],
     tableau: [[{ id: '9S', rank: 9, suit: 'S', faceUp: true }]],
@@ -1085,6 +1085,35 @@ test('picar no sube una carta arriesgada: para eso está el arrastre', () => {
   assert.equal(game.state.foundations[0].length, 2, 'sube: era lo único que se podía hacer con ella');
   assert.equal(game.state.tableau[0].length, 0);
   assert.equal(cartaEl('9S').classList.contains('nope'), false, 'nada de negarse ni de dar explicaciones');
+});
+
+test('picar sube una carta legal aunque la fundación aún no sea segura', () => {
+  escenario({
+    foundations: [
+      [{ id: '2S', rank: 2, suit: 'S', faceUp: true }],
+      [{ id: 'AH', rank: 1, suit: 'H', faceUp: true }],
+      [{ id: 'AD', rank: 1, suit: 'D', faceUp: true }],
+      [],
+    ],
+    tableau: [
+      [], [],
+      [
+        { id: '4H', rank: 4, suit: 'H', faceUp: true },
+        { id: '3S', rank: 3, suit: 'S', faceUp: true },
+      ],
+      [], [], [],
+      [{ id: '4D', rank: 4, suit: 'D', faceUp: true }],
+    ],
+    stock: [],
+  });
+
+  const p = centro(2, 1);
+  puntero('pointerdown', cartaEl('3S'), p.x, p.y);
+  puntero('pointerup', cartaEl('3S'), p.x, p.y);
+
+  assert.equal(game.state.foundations[0].at(-1)?.id, '3S',
+    'la subida legal debe ser el destino directo del toque');
+  assert.deepEqual(game.state.tableau[2].map((c) => c.id), ['4H']);
 });
 
 test('volver del tableau al descarte no es robar, aunque el mazo caiga en la misma columna', async () => {
