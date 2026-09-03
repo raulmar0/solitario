@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { esperarEstado, buscarWorkerNuevo, esIos, esStandalone, SIN_RED, registrarServiceWorker, crearInstalador } from '../src/pwa.js';
+import { esperarEstado, buscarWorkerNuevo, esIos, esStandalone, SIN_RED, DESCANSO_CONSULTA_MS, registrarServiceWorker, crearInstalador } from '../src/pwa.js';
 import { VERSION } from '../src/version.js';
 import { ficherosDelApp, huella } from '../scripts/version.js';
 
@@ -296,7 +296,15 @@ function navegadorFalso({ conControlador = true, alActualizar } = {}) {
 function conNavegador(sw, cuerpo) {
   const original = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   const ventana = globalThis.window;
+  const documentoPrevio = globalThis.document;
   let recargas = 0;
+  const oyentesDoc = new Map();
+  const documento = {
+    hidden: false,
+    addEventListener(t, fn) { oyentesDoc.set(t, fn); },
+    removeEventListener(t) { oyentesDoc.delete(t); },
+    emitir(t) { oyentesDoc.get(t)?.(); },
+  };
   Object.defineProperty(globalThis, 'navigator', {
     value: { serviceWorker: sw, userAgent: 'node' }, configurable: true, writable: true,
   });
@@ -306,11 +314,13 @@ function conNavegador(sw, cuerpo) {
     addEventListener() {},
     navigator: globalThis.navigator,
   };
+  globalThis.document = documento;
   const restaurar = () => {
     if (original) Object.defineProperty(globalThis, 'navigator', original);
     globalThis.window = ventana;
+    globalThis.document = documentoPrevio;
   };
-  return { cuenta: () => recargas, restaurar, resultado: cuerpo?.() };
+  return { cuenta: () => recargas, documento, restaurar, resultado: cuerpo?.() };
 }
 
 test('el worker se registra con la caché HTTP desactivada', async () => {
@@ -361,6 +371,74 @@ test('avisa cuando queda una versión nueva esperando', async () => {
 
     entrante.pasarA('installed');
     assert.deepEqual(avisos, [entrante], 'ya lista: se avisa al jugador');
+  } finally { ctx.restaurar(); }
+});
+
+test('si el navegador ya estaba instalando cuando arrancó la página, también se anuncia', async () => {
+  // Al navegar, el navegador comprueba el worker por su cuenta. Si esa vuelta va
+  // por delante del módulo, el `updatefound` suena antes de que exista nadie
+  // escuchando: mirar solo `waiting` —que aún no lo es, se está instalando— se
+  // pierde la versión nueva y la píldora no llega a aparecer nunca.
+  const enCurso = workerFalso('installing');
+  const { sw, registro } = navegadorFalso();
+  registro.installing = enCurso;
+  const ctx = conNavegador(sw);
+  try {
+    const avisos = [];
+    registrarServiceWorker({ onVersionNueva: (w) => avisos.push(w) });
+    await new Promise((r) => setImmediate(r));
+
+    enCurso.pasarA('installed');    // el trabajo ya estaba en marcha: no hay un segundo updatefound
+    assert.deepEqual(avisos, [enCurso], 'el aviso no puede depender de haber llegado a tiempo al updatefound');
+  } finally { ctx.restaurar(); }
+});
+
+test('un worker que ya estaba esperando al abrir se anuncia sin más trámite', async () => {
+  const esperando = workerFalso('installed');
+  const { sw, registro } = navegadorFalso();
+  registro.waiting = esperando;
+  const ctx = conNavegador(sw);
+  try {
+    const avisos = [];
+    registrarServiceWorker({ onVersionNueva: (w) => avisos.push(w) });
+    await new Promise((r) => setImmediate(r));
+    assert.deepEqual(avisos, [esperando]);
+  } finally { ctx.restaurar(); }
+});
+
+test('al volver a la aplicación se pregunta otra vez, pero con descanso', async (t) => {
+  // Una PWA instalada se queda abierta días: al volver del segundo plano no se
+  // recarga el módulo, así que sin esto la del arranque sería la única consulta
+  // de toda su vida y la versión nueva no se anunciaría jamás.
+  t.mock.timers.enable({ apis: ['Date'] });
+  const { sw, registro } = navegadorFalso();
+  const ctx = conNavegador(sw);
+  try {
+    registrarServiceWorker();
+    await new Promise((r) => setImmediate(r));
+    assert.equal(registro.actualizado, 1, 'la del arranque');
+
+    ctx.documento.emitir('visibilitychange');
+    await new Promise((r) => setImmediate(r));
+    assert.equal(registro.actualizado, 1, 'ir y venir de la partida no es martillear al servidor');
+
+    t.mock.timers.tick(DESCANSO_CONSULTA_MS);
+    ctx.documento.emitir('visibilitychange');
+    await new Promise((r) => setImmediate(r));
+    assert.equal(registro.actualizado, 2, 'pasado el descanso sí se vuelve a preguntar');
+  } finally { ctx.restaurar(); }
+});
+
+test('mientras la aplicación está tapada no se pregunta nada', async () => {
+  const { sw, registro } = navegadorFalso();
+  const ctx = conNavegador(sw);
+  try {
+    registrarServiceWorker();
+    await new Promise((r) => setImmediate(r));
+    ctx.documento.hidden = true;
+    ctx.documento.emitir('visibilitychange');
+    await new Promise((r) => setImmediate(r));
+    assert.equal(registro.actualizado, 1, 'se pregunta al volver a mirarla, no al dejarla');
   } finally { ctx.restaurar(); }
 });
 

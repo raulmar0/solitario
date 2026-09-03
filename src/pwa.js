@@ -4,6 +4,9 @@
 
 export const ESPERA_ACTIVACION_MS = 20_000;   // instalar precarga todo: en una red lenta tarda
 export const GRACIA_UPDATEFOUND_MS = 500;
+// Volver a la aplicación una y otra vez no puede ser preguntar al servidor una
+// y otra vez: entre consulta y consulta, un minuto de descanso.
+export const DESCANSO_CONSULTA_MS = 60_000;
 const ESTADOS_LISTOS = ['installed', 'activated', 'redundant'];
 
 /** No es lo mismo «estás al día» que «no he podido preguntar». */
@@ -86,28 +89,58 @@ export function registrarServiceWorker({ onVersionNueva = () => {} } = {}) {
 
   let registro = null;
   let recargaPedida = false;
+  let ultimaConsulta = -Infinity;
+  const vigilados = new WeakSet();
 
-  const avisarSiEspera = (reg) => { if (reg.waiting && navigator.serviceWorker.controller) onVersionNueva(reg.waiting); };
+  /**
+   * Avisa en cuanto ese worker queda instalado y esperando turno. El estado se
+   * mira además de escucharlo: al que ya está esperando no le queda ningún
+   * cambio por delante, y avisarlo solo desde `statechange` sería no avisarlo.
+   */
+  const vigilar = (worker) => {
+    if (!worker || vigilados.has(worker)) return;
+    vigilados.add(worker);
+    // Sin controlador es la primera instalación: no hay nada que avisar.
+    const avisar = () => { if (worker.state === 'installed' && navigator.serviceWorker.controller) onVersionNueva(worker); };
+    worker.addEventListener('statechange', avisar);
+    avisar();
+  };
+
+  /**
+   * Pregunta al servidor si hay versión nueva. No activa nada: si la hay, el
+   * worker se queda esperando y `vigilar` es quien lo anuncia.
+   */
+  const consultar = async () => {
+    if (!registro || !navigator.serviceWorker.controller) return;
+    if (Date.now() - ultimaConsulta < DESCANSO_CONSULTA_MS) return;
+    ultimaConsulta = Date.now();
+    try { await registro.update(); } catch { /* sin red: ya se preguntará al volver */ }
+  };
 
   const listo = navigator.serviceWorker.register(new URL('../sw.js', import.meta.url), { updateViaCache: 'none' })
     .then((reg) => {
       registro = reg;
-      reg.addEventListener('updatefound', () => {
-        const entrante = reg.installing;
-        if (!entrante) return;
-        entrante.addEventListener('statechange', () => {
-          // Sin controlador es la primera instalación: no hay nada que avisar.
-          if (entrante.state === 'installed' && navigator.serviceWorker.controller) onVersionNueva(entrante);
-        });
-      });
-      avisarSiEspera(reg);
+      reg.addEventListener('updatefound', () => vigilar(reg.installing));
+      // Al navegar, el navegador comprueba el worker por su cuenta. Si esa vuelta
+      // va por delante de este módulo, el `updatefound` ya ha sonado sin nadie
+      // escuchando: hay que recoger lo que haya en marcha. Y mirar solo `waiting`
+      // no basta, porque a medio instalar todavía no lo es.
+      vigilar(reg.waiting);
+      vigilar(reg.installing);
       // Una pestaña que ya estaba abierta no siempre provoca una comprobación
       // del navegador al publicarse una versión. Preguntamos una vez al arrancar
       // sin activar nada: el worker nuevo seguirá esperando al jugador.
-      if (navigator.serviceWorker.controller) void reg.update().catch(() => {});
+      void consultar();
       return reg;
     })
     .catch(() => null);
+
+  // Y una aplicación instalada se pasa días abierta: al volver del segundo plano
+  // no se recarga el módulo, así que la del arranque sería la única consulta de
+  // toda su vida. Se vuelve a preguntar cada vez que el jugador la mira.
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) void consultar(); });
+  }
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!recargaPedida) return;      // clients.claim() de la primera visita: no se recarga
