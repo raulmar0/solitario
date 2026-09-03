@@ -30,6 +30,7 @@ export const DEFAULT_PREFS = {
   lang: 'auto',         // 'auto' mira el idioma del navegador
   fourColor: false,     // baraja de cuatro colores: un palo, un color
   haptics: true,        // el pequeño golpe al colocar y al negar (Android)
+  penalizeHints: false, // usar pistas resta puntos
 };
 
 export const IDIOMAS_VALIDOS = ['es', 'en', 'fr', 'pt', 'ko'];
@@ -109,6 +110,7 @@ export function createStore(backend) {
       if (prefs.lang !== 'auto' && !IDIOMAS_VALIDOS.includes(prefs.lang)) prefs.lang = 'auto';
       prefs.fourColor = !!prefs.fourColor;
       prefs.haptics = prefs.haptics !== false;
+      prefs.penalizeHints = !!prefs.penalizeHints;
       return prefs;
     },
     setPrefs(patch) {
@@ -132,6 +134,7 @@ export function createStore(backend) {
       const filtered = rows.filter((r) => {
         if (filter.scoring && r.scoring !== filter.scoring) return false;
         if (filter.drawCount && r.drawCount !== filter.drawCount) return false;
+        if (typeof filter.penalizeHints === 'boolean' && !!r.penalizeHints !== filter.penalizeHints) return false;
         if (filter.wonOnly && !r.won) return false;
         return true;
       });
@@ -210,6 +213,9 @@ export function createStore(backend) {
         moves: result.moves ?? 0,
         scoring: result.scoring,
         drawCount: result.drawCount,
+        timed: !!result.timed,
+        penalizeHints: !!result.penalizeHints,
+        hints: result.hints ?? 0,
         at: result.at ?? new Date().toISOString(),
       });
       todos[dia] = guardado;

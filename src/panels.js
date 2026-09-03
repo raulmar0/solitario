@@ -252,6 +252,13 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     bankRow.hidden = scoring !== 'vegas';
     if (scoring === 'vegas') $('#bank-value').textContent = formatScore('vegas', store.getBank(drawCount));
 
+    const formatearModoFila = (r) => {
+      const partes = [];
+      if (r.penalizeHints) partes.push(t('modo.pistasPenalizadas'));
+      if (r.timed) partes.push(t('modo.crono'));
+      return partes.length > 0 ? partes.join(' · ') : t('modo.normal');
+    };
+
     const filas = store.getScores({ scoring, drawCount, limit: 25 });
     const tbody = $('#scores-table tbody');
     tbody.replaceChildren(...filas.map((r, i) => {
@@ -261,6 +268,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       const celdas = [
         String(i + 1),
         formatScore(scoring, r.score ?? 0),
+        formatearModoFila(r),
         t(r.won ? 'stats.ganada' : 'stats.perdida'),
         formatTime(r.timeMs ?? 0),
         String(r.moves ?? 0),
@@ -270,7 +278,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       celdas.forEach((texto, col) => {
         const td = document.createElement('td');
         td.textContent = texto;
-        if (col === 2) td.className = r.won ? 'win' : 'loss';
+        if (col === 3) td.className = r.won ? 'win' : 'loss';
         tr.appendChild(td);
       });
       return tr;
@@ -379,6 +387,9 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (pref === 'timed' && game.status !== 'idle' && game.moves > 0) {
       avisoPanel('msg.contrarreloj', {}, 'warn');
     }
+    if (pref === 'penalizeHints' && game.status !== 'idle' && game.moves > 0) {
+      avisoPanel('msg.penalizarPistas', {}, 'warn');
+    }
     // El idioma se cambia en caliente: recargar costaría la partida a medias, y
     // quien acaba de elegirlo quiere verlo ya, sin cerrar el panel.
     if (pref === 'lang') fijarIdioma(resolverIdioma(valor));
@@ -463,6 +474,18 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (boton?.disabled) $('#cal .cal-dia.elegido')?.focus();
   }
 
+  function modoRetoTexto(r) {
+    const scoring = r.scoring ?? 'standard';
+    const drawCount = r.drawCount === 3 ? 3 : 1;
+    const partes = [
+      t(`modo.${scoring}`),
+      t(`modo.robo.${drawCount}`),
+    ];
+    if (r.timed) partes.push(t('modo.crono'));
+    if (r.penalizeHints) partes.push(t('modo.pistasPenalizadas'));
+    return partes.join(' · ');
+  }
+
   /**
    * Cómo quedó ese día: lo que se enseña bajo el calendario y en cada casilla.
    * La libreta entera se pasa por parámetro: pintar un mes son treinta y una
@@ -474,6 +497,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     // esos no están por llegar: están sin jugar y ya fuera de la ventana.
     if (!r) return t(esFuturo(clave) ? 'reto.futuro' : 'reto.sin.jugar');
     return t(r.won ? 'reto.hecho.ganada' : 'reto.hecho.perdida', {
+      modo: modoRetoTexto(r),
       puntos: formatScore(r.scoring ?? 'standard', r.score ?? 0),
       tiempo: formatTime(r.timeMs ?? 0),
       jugadas: r.moves ?? 0,

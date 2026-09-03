@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyEvents, initialScore, timePenalty, winBonus, formatScore, getMode } from '../src/scoring.js';
+import { applyEvents, initialScore, timePenalty, winBonus, hintPenalty, formatScore, getMode } from '../src/scoring.js';
 
 const ctx1 = { drawCount: 1 };
 const ctx3 = { drawCount: 3 };
@@ -82,4 +82,9 @@ test('formatScore', () => {
 
 test('modo desconocido, error claro', () => {
   assert.throws(() => getMode('poker'), /desconocido/);
+});
+
+test('penalización por pista según la modalidad', () => {
+  assert.equal(hintPenalty('standard'), -10);
+  assert.equal(hintPenalty('vegas'), -5);
 });

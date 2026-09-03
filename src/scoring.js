@@ -30,6 +30,7 @@ const STANDARD = {
     if (seconds < 30) return 0;
     return Math.floor(700000 / seconds);
   },
+  hintPenalty: -10,
 };
 
 const VEGAS = {
@@ -43,6 +44,7 @@ const VEGAS = {
   },
   timePenalty() { return 0; },
   winBonus() { return 0; },
+  hintPenalty: -5,
 };
 
 const MODES = { standard: STANDARD, vegas: VEGAS };
@@ -72,6 +74,10 @@ export function timePenalty(name, seconds) {
 
 export function winBonus(name, seconds) {
   return getMode(name).winBonus(seconds);
+}
+
+export function hintPenalty(name) {
+  return getMode(name).hintPenalty;
 }
 
 export function formatScore(name, score) {

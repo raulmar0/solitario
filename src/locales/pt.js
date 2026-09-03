@@ -65,6 +65,8 @@ export default {
   'modo.robo.3': '3 cartas',
   'modo.crono': 'com tempo',
   'modo.sincrono': 'sem tempo',
+  'modo.pistasPenalizadas': 'dicas penalizadas',
+  'modo.normal': 'Normal',
 
   // msg — avisos del tablero y del diálogo
   'msg.retomada': 'Voltamos à partida que ficou por terminar.',
@@ -102,6 +104,7 @@ export default {
   'msg.datos.borrados': 'Dados apagados.',
   'msg.datos.error': 'Não foi possível ler o arquivo: {error}',
   'msg.contrarreloj': 'O contrarrelógio começa na próxima distribuição.',
+  'msg.penalizarPistas': 'A penalização por dicas será aplicada na próxima distribuição.',
 
   // pista — una por cada RAZON del recomendador
   'pista.destapar': 'Leve {carta} desde {origen} para {destino}: assim vira a carta que está debaixo.',
@@ -161,8 +164,8 @@ export default {
   'reto.mes.siguiente': 'Mês seguinte',
   'reto.sin.jugar': 'por jogar',
   'reto.futuro': 'esse dia ainda não chegou',
-  'reto.hecho.ganada': 'ganha · {puntos} · {tiempo} · {jugadas} jogadas',
-  'reto.hecho.perdida': 'jogada sem ganhar · {puntos} · {tiempo} · {jugadas} jogadas',
+  'reto.hecho.ganada': 'ganha · {modo} · {puntos} · {tiempo} · {jugadas} jogadas',
+  'reto.hecho.perdida': 'jogada sem ganhar · {modo} · {puntos} · {tiempo} · {jugadas} jogadas',
 
   // settings — sección de ajustes
   'settings.robo': 'Cartas por vez',
@@ -173,6 +176,7 @@ export default {
   'settings.puntuacion.nota.standard': 'Padrão: pontos por cada carta que coloca, com pontos extra se jogar contra o relógio.',
   'settings.puntuacion.nota.vegas': 'Vegas: paga 52 $ para entrar e recebe 5 $ por carta subida. O saldo acumula-se de partida em partida.',
   'settings.contrarreloj': 'Contrarrelógio <em>(−2 pontos a cada 10 s e pontos extra por ganhar depressa)</em>',
+  'settings.penalizarPistas': 'Penalizar dicas <em>(−10 pontos por dica)</em>',
   'settings.autosubir': 'Subir sozinhas as cartas que já não atrapalham',
   'settings.solucionables': 'Distribuir só mãos com solução comprovada',
   'settings.animaciones': 'Animações',
@@ -215,6 +219,7 @@ export default {
   'stats.mejores': 'Melhores partidas',
   'stats.col.pos': '#',
   'stats.col.puntos': 'Pontos',
+  'stats.col.modo': 'Modo',
   'stats.col.resultado': 'Resultado',
   'stats.col.tiempo': 'Tempo',
   'stats.col.jugadas': 'Jogadas',

@@ -66,6 +66,8 @@ export default {
   'modo.robo.3': '3장',
   'modo.crono': '타이머',
   'modo.sincrono': '타이머 없음',
+  'modo.pistasPenalizadas': '힌트 감점',
+  'modo.normal': '일반',
 
   // msg — avisos del tablero y del diálogo
   'msg.retomada': '하다 만 게임을 이어서 할게요.',
@@ -103,6 +105,7 @@ export default {
   'msg.datos.borrados': '데이터를 지웠어요.',
   'msg.datos.error': '파일을 읽지 못했어요: {error}',
   'msg.contrarreloj': '타이머는 다음 판부터 적용돼요.',
+  'msg.penalizarPistas': '힌트 감점은 다음 판부터 적용돼요.',
 
   // pista — una por cada RAZON del recomendador
   'pista.destapar': '{origen}의 {carta} 카드를 {destino}에 놓으세요. 밑에 있는 카드가 뒤집혀요.',
@@ -162,8 +165,8 @@ export default {
   'reto.mes.siguiente': '다음 달',
   'reto.sin.jugar': '아직 안 함',
   'reto.futuro': '아직 오지 않은 날',
-  'reto.hecho.ganada': '승리 · {puntos} · {tiempo} · {jugadas}번 이동',
-  'reto.hecho.perdida': '해봤지만 못 이김 · {puntos} · {tiempo} · {jugadas}번 이동',
+  'reto.hecho.ganada': '승리 · {modo} · {puntos} · {tiempo} · {jugadas}번 이동',
+  'reto.hecho.perdida': '해봤지만 못 이김 · {modo} · {puntos} · {tiempo} · {jugadas}번 이동',
 
   // settings — sección de ajustes
   'settings.robo': '한 번에 뽑는 카드',
@@ -174,6 +177,7 @@ export default {
   'settings.puntuacion.nota.standard': '표준: 카드를 놓을 때마다 점수가 오르고, 타이머를 켜면 보너스가 붙어요.',
   'settings.puntuacion.nota.vegas': '베가스: 시작할 때 $52를 내고 카드를 올릴 때마다 $5를 받아요. 잔고는 판이 바뀌어도 쌓여요.',
   'settings.contrarreloj': '타이머 <em>(10초마다 −2점, 빨리 이기면 보너스)</em>',
+  'settings.penalizarPistas': '힌트 감점 <em>(힌트당 −10점)</em>',
   'settings.autosubir': '더 쓸 일 없는 카드는 알아서 올리기',
   'settings.solucionables': '해답이 확인된 판만 나누기',
   'settings.animaciones': '애니메이션',
@@ -216,6 +220,7 @@ export default {
   'stats.mejores': '최고 기록',
   'stats.col.pos': '#',
   'stats.col.puntos': '점수',
+  'stats.col.modo': '모드',
   'stats.col.resultado': '결과',
   'stats.col.tiempo': '시간',
   'stats.col.jugadas': '이동',

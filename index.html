@@ -8,11 +8,10 @@
 <!-- GitHub Pages no deja poner cabeceras: la misma política que sirve nginx, aquí en meta.
      El juego no pide nada a ningún servidor, así que puede ser así de cerrada. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' blob:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
-<!-- El color que el sistema pinta alrededor de la ventana. Es el del tapete, no
-     el de la barra: arriba y abajo las zonas seguras enseñan el fieltro, y si
-     aquí hubiera otro color se vería la costura. Lo reajusta `applyPrefs()` al
-     cambiar de tema. -->
-<meta name="theme-color" content="#105031">
+<!-- El color que el sistema pinta alrededor de la ventana. Es el del header:
+     arriba y abajo las zonas seguras continúan la misma superficie, sin costuras.
+     Lo reajusta `applyPrefs()` al cambiar de tema. -->
+<meta name="theme-color" content="#0b673b">
 <title data-i18n="app.titulo">Solitario</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -198,6 +197,7 @@
     </div>
 
     <label class="switch"><input type="checkbox" data-pref="timed"><span data-i18n-html="settings.contrarreloj">Contrarreloj <em>(−2 puntos cada 10 s y bonificación por ganar rápido)</em></span></label>
+    <label class="switch"><input type="checkbox" data-pref="penalizeHints"><span data-i18n-html="settings.penalizarPistas">Penalizar pistas <em>(−10 puntos por cada pista)</em></span></label>
     <label class="switch"><input type="checkbox" data-pref="autoSafe"><span data-i18n="settings.autosubir">Subir solas las cartas que ya no estorban</span></label>
     <label class="switch"><input type="checkbox" data-pref="solvableOnly"><span data-i18n="settings.solucionables">Repartir solo manos con solución comprobada</span></label>
     <label class="switch"><input type="checkbox" data-pref="animations"><span data-i18n="settings.animaciones">Animaciones</span></label>
@@ -297,7 +297,7 @@
       <h3 data-i18n="stats.mejores">Mejores partidas</h3>
       <div class="table-wrap">
         <table class="scores" id="scores-table">
-          <thead><tr><th data-i18n="stats.col.pos">#</th><th data-i18n="stats.col.puntos">Puntos</th><th data-i18n="stats.col.resultado">Resultado</th><th data-i18n="stats.col.tiempo">Tiempo</th><th data-i18n="stats.col.jugadas">Jugadas</th><th data-i18n="stats.col.reparto">Reparto</th><th data-i18n="stats.col.fecha">Fecha</th></tr></thead>
+          <thead><tr><th data-i18n="stats.col.pos">#</th><th data-i18n="stats.col.puntos">Puntos</th><th data-i18n="stats.col.modo">Modo</th><th data-i18n="stats.col.resultado">Resultado</th><th data-i18n="stats.col.tiempo">Tiempo</th><th data-i18n="stats.col.jugadas">Jugadas</th><th data-i18n="stats.col.reparto">Reparto</th><th data-i18n="stats.col.fecha">Fecha</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>

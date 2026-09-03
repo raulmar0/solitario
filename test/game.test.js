@@ -572,3 +572,55 @@ test('formatTime', () => {
   assert.equal(formatTime(3600000), '60:00');
   assert.equal(formatTime(-500), '00:00');
 });
+
+test('modo de pistas penalizadas: usar pistas resta puntos y se guarda en el resultado', () => {
+  const { game, store } = crear({ penalizeHints: true });
+  game.newGame(42);
+  assert.equal(game.penalizeHints, true);
+  assert.equal(game.hints, 0);
+  assert.equal(game.score, 0);
+
+  // Pedir pista en posición con jugada
+  const h1 = game.hint();
+  assert.ok(h1, 'debe haber jugada recomendada');
+  assert.equal(game.hints, 1);
+  assert.equal(game.score, 0, 'no baja de cero en estándar');
+
+  // Repetir pista en la misma posición no vuelve a cobrar
+  const h1bis = game.hint();
+  assert.equal(game.hints, 1);
+
+  // Hacer una jugada
+  game.play(h1.move);
+  const puntosTrasJugada = game.score;
+
+  // Pedir otra pista en la nueva posición cobra otra vez
+  const h2 = game.hint();
+  if (h2) {
+    assert.equal(game.hints, 2);
+    assert.equal(game.score, Math.max(0, puntosTrasJugada - 10));
+  }
+
+  // Deshacer no devuelve los puntos de la pista
+  const hintsAntes = game.hints;
+  game.undo();
+  assert.equal(game.hints, hintsAntes, 'deshacer la jugada no borra el uso de la pista');
+
+  // Terminar la partida guarda penalizeHints y hints en lastResult
+  game.draw();
+  game.newGame(7); // abandonar la partida anterior la registra
+  const scores = store.getScores({ penalizeHints: true });
+  assert.ok(scores.length >= 1);
+  assert.equal(scores[0].penalizeHints, true);
+  assert.equal(scores[0].hints, hintsAntes);
+});
+
+test('modo de pistas penalizadas: en Vegas descuenta 5 $ y puede ser negativo', () => {
+  const { game } = crear({ scoring: 'vegas', penalizeHints: true });
+  game.newGame(42);
+  assert.equal(game.score, -52);
+  const h = game.hint();
+  assert.ok(h);
+  assert.equal(game.hints, 1);
+  assert.equal(game.score, -57, '-52 $ menos 5 $ por la pista');
+});

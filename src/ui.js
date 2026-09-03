@@ -10,7 +10,7 @@ import { PILE } from './engine.js';
 
 const DRAG_THRESHOLD = 5;     // px antes de considerar que se está arrastrando
 const DOUBLE_TAP_MS = 320;
-const REPARTO_PASO = 25;      // ms entre carta y carta al repartir
+const REPARTO_PASO = 60;      // ms entre carta y carta al repartir: 3–5 vuelos a la vez
 // Y al robar. Aquí son tres cartas, no veintiocho, así que el hueco entre una y
 // otra tiene que verse: por debajo de esto parece que salen las tres a la vez.
 // Por arriba tampoco puede pasarse, que robando de tres se roba mucho.
@@ -92,6 +92,8 @@ export function createBoard({
   let enMazo = null;           // ids que aún no se han repartido: se dibujan sobre el mazo
   let tapadas = null;          // ids que siguen boca abajo mientras vuelan a su sitio
   let relojes = [];            // temporizadores del reparto
+  let repartoFrame = null;     // frame pendiente de pintar la siguiente salida
+  let repartoVersion = 0;      // invalida callbacks de repartos ya cancelados
   let volando = new Map();     // id -> temporizador; mientras vuela, la carta va arriba del todo
   let posiciones = new Map();  // id -> {x, y} del último pintado, para saber qué se ha movido
   let snapbacks = new Map();   // id -> {dur, dist, dx} para retorno proporcional tras arrastre
@@ -602,7 +604,40 @@ export function createBoard({
     return orden;
   }
 
+  function cancelarFrameReparto() {
+    const frame = repartoFrame;
+    if (!frame) return;
+    repartoFrame = null;
+    if (frame.raf && typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(frame.id);
+    } else {
+      clearTimeout(frame.id);
+    }
+  }
+
+  function programarFrameReparto(epoca, version) {
+    if (repartoFrame) return;
+
+    const frame = { id: null, raf: typeof window.requestAnimationFrame === 'function' };
+    repartoFrame = frame;
+    const pintar = () => {
+      // `cancelAnimationFrame` no garantiza que no llegue un callback que ya
+      // estaba encolado: la identidad del frame lo vuelve inocuo si aparece.
+      if (repartoFrame !== frame) return;
+      repartoFrame = null;
+      if (repartoVersion !== version) return;
+      if (game.epoch !== epoca) { cortarReparto(); return; }
+      paint();
+    };
+
+    frame.id = frame.raf
+      ? window.requestAnimationFrame(pintar)
+      : setTimeout(pintar, 0);
+  }
+
   function cortarReparto({ pintar = true } = {}) {
+    repartoVersion += 1;
+    cancelarFrameReparto();
     if (!relojes.length && !enMazo && !tapadas) return;
     relojes.forEach(clearTimeout);
     relojes = [];
@@ -650,11 +685,13 @@ export function createBoard({
     root.classList.add('anim');
 
     const epoca = game.epoch;
+    const version = repartoVersion;
     const vuelo = vueloMs();
     const programar = (ms, fn) => relojes.push(setTimeout(() => {
+      if (repartoVersion !== version) return;
       if (game.epoch !== epoca) { cortarReparto(); return; }   // el jugador se adelantó
       fn();
-      paint();
+      programarFrameReparto(epoca, version);
     }, ms));
 
     // Cada carta se destapa cuando aterriza, no cuando aterrizaría la que más

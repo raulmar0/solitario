@@ -6,7 +6,7 @@ import { PILE } from './engine.js';
 import * as advisor from './advisor.js';
 import { randomSeed, SUITS } from './cards.js';
 import { randomSolvableSeed } from './solvable-seeds.js';
-import { applyEvents, initialScore, timePenalty, winBonus } from './scoring.js';
+import { applyEvents, initialScore, timePenalty, winBonus, hintPenalty } from './scoring.js';
 
 const MAX_HISTORY = 400;      // tope de deshacer en memoria
 const SAVED_HISTORY = 25;     // cuántos pasos se guardan en localStorage
@@ -27,6 +27,8 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
   let baseScore = 0;
   let moves = 0;
   let undos = 0;
+  let hints = 0;
+  let lastHintEpoch = -1;
   let history = [];
   let status = 'idle';        // idle | playing | won | stuck
   let startedAt = null;       // instante del primer movimiento
@@ -68,11 +70,15 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
 
   /** Modalidad con la que se repartió: las preferencias pueden haber cambiado después. */
   function modo() {
-    return {
+    const base = {
       scoring: state?.scoring ?? prefs.scoring,
       drawCount: state?.drawCount ?? prefs.drawCount,
       timed: state?.timed ?? prefs.timed,
     };
+    if (state?.penalizeHints ?? prefs.penalizeHints) {
+      base.penalizeHints = true;
+    }
+    return base;
   }
 
   function elapsed() {
@@ -94,8 +100,12 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
 
   function currentScore() {
     const { scoring, timed } = modo();
+    const penalizeHints = api.penalizeHints;
     const seconds = Math.floor(elapsed() / 1000);
     let score = baseScore;
+    if (penalizeHints) {
+      score += hints * hintPenalty(scoring);
+    }
     if (timed) {
       score += timePenalty(scoring, seconds);
       if (status === 'won') score += winBonus(scoring, Math.max(1, seconds));
@@ -118,11 +128,13 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
   function finish(won) {
     if (recorded) return;
     recorded = true;
-    const { scoring, drawCount, timed } = modo();
+    const { scoring, drawCount, timed, penalizeHints } = modo();
     lastResult = {
       scoring,
       drawCount,
       timed,
+      penalizeHints,
+      hints,
       score: currentScore(),
       won,
       timeMs: elapsed(),
@@ -166,9 +178,10 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       baseScore,
       moves,
       undos,
+      hints,
       dia,
       elapsedMs: elapsed(),
-      prefs: { drawCount: state.drawCount, scoring: state.scoring, timed: state.timed },
+      prefs: { drawCount: state.drawCount, scoring: state.scoring, timed: state.timed, penalizeHints: state.penalizeHints },
       history: history.slice(-SAVED_HISTORY),
       savedAt: new Date().toISOString(),
     });
@@ -185,6 +198,7 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       ...s,
       scoring,
       drawCount,
+      penalizeHints: !!s.penalizeHints,
       recycles: Number.isFinite(s.recycles) ? s.recycles : 0,
       maxRecycles: engine.maxRecyclesFor(scoring, drawCount),
     };
@@ -198,6 +212,8 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
     get status() { return status; },
     get moves() { return moves; },
     get undos() { return undos; },
+    get hints() { return hints; },
+    get penalizeHints() { return modo().penalizeHints; },
     get score() { return currentScore(); },
     get baseScore() { return baseScore; },
     get elapsedMs() { return elapsed(); },
@@ -241,9 +257,12 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       state = engine.newGame({ seed, drawCount: prefs.drawCount, scoring: prefs.scoring });
       dealId += 1;
       state.timed = prefs.timed;         // la modalidad se fija al repartir, no al puntuar
+      state.penalizeHints = !!prefs.penalizeHints;
       baseScore = initialScore(prefs.scoring);
       moves = 0;
       undos = 0;
+      hints = 0;
+      lastHintEpoch = -1;
       autoPasosSinProgreso = 0;
       history = [];
       status = 'playing';
@@ -277,6 +296,8 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       baseScore = Number.isFinite(saved.baseScore) ? saved.baseScore : 0;
       moves = saved.moves ?? 0;
       undos = saved.undos ?? 0;
+      hints = saved.hints ?? 0;
+      lastHintEpoch = -1;
       dia = typeof saved.dia === 'string' ? saved.dia : null;
       history = (Array.isArray(saved.history) ? saved.history : [])
         .filter((h) => h && h.state)
@@ -431,13 +452,18 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       return true;
     },
 
-    /**
-     * La jugada recomendada, con su razón y las alternativas que la seguían de
-     * cerca: { move, reason, alternatives } o null si de verdad no hay nada.
-     */
     hint() {
       if (status !== 'playing' && status !== 'stuck') return null;
-      return advisor.recomendar(state, { historial: historialReciente() });
+      const rec = advisor.recomendar(state, { historial: historialReciente() });
+      if (rec && modo().penalizeHints) {
+        if (lastHintEpoch !== selectionEpoch) {
+          lastHintEpoch = selectionEpoch;
+          hints += 1;
+          persist();
+          emit();
+        }
+      }
+      return rec;
     },
 
     /**

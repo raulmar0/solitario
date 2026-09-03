@@ -128,6 +128,12 @@ test('el mejor intento no compara puntuaciones de modalidades distintas', () => 
   const detres = { won: true, score: 5, scoring: 'vegas', drawCount: 3 };
   assert.equal(mejorResultado(vegas, detres), detres);
 
+  // Tampoco se comparan puntuaciones con pistas penalizadas frente a sin penalizar.
+  const conPistas = { won: true, score: 500, scoring: 'standard', drawCount: 1, penalizeHints: true };
+  const sinPistas = { won: true, score: 600, scoring: 'standard', drawCount: 1, penalizeHints: false };
+  assert.equal(mejorResultado(sinPistas, conPistas), conPistas, 'jugar con penalización de pistas es otra modalidad');
+  assert.equal(mejorResultado(conPistas, sinPistas), sinPistas);
+
   // Ganar sigue mandando sobre todo lo demás, sea cual sea la modalidad.
   assert.equal(mejorResultado(vegas, { won: false, score: 9999, scoring: 'standard', drawCount: 1 }), vegas);
 });

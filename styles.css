@@ -55,7 +55,7 @@
   --card-diamond: #1553a8;
   --card-club: #1a7a3c;
   --card-line: rgba(0, 0, 0, .16);
-  --header-bg: #105031;               /* el verde de fondo del header y barras */
+  --header-bg: #0b673b;               /* el verde reforzado del header y barras */
   --topbar-veil: rgba(0, 0, 0, .22);  /* el velo de la barra: en claro hace falta más cuerpo */
   --shadow: 0 2px 5px rgba(0, 0, 0, .3);
   --shadow-lift: 0 6px 14px rgba(0, 0, 0, .26), 0 18px 36px rgba(0, 0, 0, .42);
@@ -89,7 +89,7 @@ html[data-theme="light"] {
   --warn: #7d4f05;                    /* el acento se queda en 4,3:1 sobre panel blanco */
   --danger: #a4241c;
   --ok: #12734a;
-  --header-bg: #1e5a39;
+  --header-bg: #177043;
   --topbar-veil: rgba(0, 0, 0, .44);
   --shadow: 0 2px 5px rgba(0, 0, 0, .18);
   --shadow-lift: 0 6px 14px rgba(0, 0, 0, .14), 0 16px 36px rgba(0, 0, 0, .26);

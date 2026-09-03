@@ -65,6 +65,8 @@ export default {
   'modo.robo.3': '3 cards',
   'modo.crono': 'timed',
   'modo.sincrono': 'untimed',
+  'modo.pistasPenalizadas': 'penalized hints',
+  'modo.normal': 'Normal',
 
   // msg — avisos del tablero y del diálogo
   'msg.retomada': 'Back to the game you left half-finished.',
@@ -102,6 +104,7 @@ export default {
   'msg.datos.borrados': 'Data deleted.',
   'msg.datos.error': 'Couldn’t read the file: {error}',
   'msg.contrarreloj': 'Timed play will start with the next deal.',
+  'msg.penalizarPistas': 'Hint penalties will apply to the next deal.',
 
   // pista — una por cada RAZON del recomendador
   'pista.destapar': 'Take the {carta} from {origen} to {destino}: that flips the card underneath.',
@@ -161,8 +164,8 @@ export default {
   'reto.mes.siguiente': 'Next month',
   'reto.sin.jugar': 'not played yet',
   'reto.futuro': 'that day hasn’t come round yet',
-  'reto.hecho.ganada': 'won · {puntos} · {tiempo} · {jugadas} moves',
-  'reto.hecho.perdida': 'played, not won · {puntos} · {tiempo} · {jugadas} moves',
+  'reto.hecho.ganada': 'won · {modo} · {puntos} · {tiempo} · {jugadas} moves',
+  'reto.hecho.perdida': 'played, not won · {modo} · {puntos} · {tiempo} · {jugadas} moves',
 
   // settings — sección de ajustes
   'settings.robo': 'Cards per draw',
@@ -173,6 +176,7 @@ export default {
   'settings.puntuacion.nota.standard': 'Standard: points for every card you place, with a bonus if you play against the clock.',
   'settings.puntuacion.nota.vegas': 'Vegas: you pay $52 to sit down and earn $5 per card sent up. The balance carries over from game to game.',
   'settings.contrarreloj': 'Against the clock <em>(−2 points every 10 s and a bonus for winning fast)</em>',
+  'settings.penalizarPistas': 'Penalize hints <em>(−10 points per hint)</em>',
   'settings.autosubir': 'Auto-send cards that are no longer in the way',
   'settings.solucionables': 'Only deal hands known to be solvable',
   'settings.animaciones': 'Animations',
@@ -215,6 +219,7 @@ export default {
   'stats.mejores': 'Best games',
   'stats.col.pos': '#',
   'stats.col.puntos': 'Score',
+  'stats.col.modo': 'Mode',
   'stats.col.resultado': 'Result',
   'stats.col.tiempo': 'Time',
   'stats.col.jugadas': 'Moves',

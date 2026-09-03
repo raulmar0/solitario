@@ -670,6 +670,15 @@ test('las zonas seguras se apartan por margen, y las pinta el tapete', () => {
     'body también para que las franjas de margen sean del mismo verde que la cabecera');
 });
 
+test('las barras y las zonas seguras usan el verde reforzado de cada tema', () => {
+  assert.equal(variables(':root')['--header-bg'], '#0b673b', 'el tema oscuro usa el verde reforzado');
+  assert.equal(variables('html[data-theme="light"]')['--header-bg'], '#177043', 'el tema claro usa el verde reforzado');
+  assert.equal(regla('.topbar').style.getPropertyValue('background'), 'var(--header-bg)');
+  assert.equal(regla('.tools').style.getPropertyValue('background'), 'var(--header-bg)');
+  assert.equal(window.document.querySelector('meta[name="theme-color"]').content, '#0b673b',
+    'el color del sistema sigue el verde de la cabecera oscura');
+});
+
 test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', () => {
   const barra = $('#tools');
   assert.ok(barra, 'hay barra de acciones');
@@ -1227,6 +1236,57 @@ const posicion = (id) => {
   return { x: parseFloat(m[1]), y: parseFloat(m[2]) };
 };
 const cartasDelTableau = () => game.state.tableau.flat();
+const ordenDelReparto = () => {
+  const orden = [];
+  for (let fila = 0; fila < 7; fila++) {
+    for (let col = fila; col < 7; col++) {
+      const carta = game.state.tableau[col][fila];
+      if (carta) orden.push(carta.id);
+    }
+  }
+  return orden;
+};
+
+test('el reparto deja una separación visible entre cartas', async () => {
+  board.cancel();
+  game.newGame(82);
+  const segunda = ordenDelReparto()[1];
+
+  await new Promise((r) => setTimeout(r, 40));
+  assert.equal(Math.round(posicion(segunda).x), Math.round(mazoX()),
+    'la segunda carta todavía espera su turno en el mazo');
+  board.cancel();
+});
+
+test('un frame atrasado no repinta después de cancelar el reparto', async () => {
+  board.cancel();
+  const rafOriginal = window.requestAnimationFrame;
+  const cancelarOriginal = window.cancelAnimationFrame;
+  const pendientes = [];
+  const cancelados = [];
+  window.requestAnimationFrame = (callback) => {
+    pendientes.push(callback);
+    return pendientes.length;
+  };
+  window.cancelAnimationFrame = (id) => cancelados.push(id);
+
+  try {
+    game.newGame(83);
+    await new Promise((r) => setTimeout(r, 5));
+    assert.equal(pendientes.length, 1, 'la primera salida espera al siguiente frame');
+
+    board.cancel();
+    assert.deepEqual(cancelados, [1], 'el frame pendiente se cancela');
+    const antes = posicion(ordenDelReparto()[1]);
+    pendientes[0]();
+    assert.deepEqual(posicion(ordenDelReparto()[1]), antes,
+      'un callback que llega tarde no mueve la segunda carta');
+  } finally {
+    board.cancel();
+    window.requestAnimationFrame = rafOriginal;
+    window.cancelAnimationFrame = cancelarOriginal;
+  }
+});
 
 test('al repartir, las 28 cartas arrancan apiladas sobre el mazo y boca abajo', () => {
   board.cancel();

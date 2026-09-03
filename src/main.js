@@ -199,7 +199,7 @@ function avisar(clave, params = {}, tipo = '') {
 }
 
 // Color de la cabecera y barras, que es lo que se ve en las zonas seguras.
-const COLOR_TAPETE = { dark: '#105031', light: '#1e5a39' };
+const COLOR_TAPETE = { dark: '#0b673b', light: '#177043' };
 
 function applyPrefs() {
   const prefs = game.prefs;
@@ -222,11 +222,12 @@ function applyPrefs() {
  * de cualquier otra— y el reloj se cae del chip para que quepa.
  */
 function textoModo() {
-  const { scoring, drawCount, timed } = game.mode;
+  const { scoring, drawCount, timed, penalizeHints } = game.mode;
   const puntuacion = t(`modo.${scoring}`);
   const robo = t(`modo.robo.${drawCount}`);
-  if (game.dia) return t('modo.chip.reto', { fecha: fechaCorta(fechaDeClave(game.dia)), puntuacion, robo });
-  return t('modo.chip', { puntuacion, robo, reloj: t(timed ? 'modo.crono' : 'modo.sincrono') });
+  const sufijo = penalizeHints ? ` · ${t('modo.pistasPenalizadas')}` : '';
+  if (game.dia) return t('modo.chip.reto', { fecha: fechaCorta(fechaDeClave(game.dia)), puntuacion, robo }) + sufijo;
+  return t('modo.chip', { puntuacion, robo, reloj: t(timed ? 'modo.crono' : 'modo.sincrono') }) + sufijo;
 }
 
 function refreshHeader() {

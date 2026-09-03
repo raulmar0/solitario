@@ -15,10 +15,15 @@ test('preferencias: valores por defecto, guardado y saneado', () => {
   assert.equal(store.getPrefs().drawCount, 3);
   assert.equal(store.getPrefs().timed, false);
   assert.equal(store.getPrefs().scoring, 'standard', 'lo no tocado se mantiene');
+  assert.equal(store.getPrefs().penalizeHints, false);
 
-  store.setPrefs({ drawCount: 7, scoring: 'ruleta' });
+  store.setPrefs({ penalizeHints: true });
+  assert.equal(store.getPrefs().penalizeHints, true);
+
+  store.setPrefs({ drawCount: 7, scoring: 'ruleta', penalizeHints: 1 });
   assert.equal(store.getPrefs().drawCount, 1, 'un valor imposible vuelve al de fábrica');
   assert.equal(store.getPrefs().scoring, 'standard');
+  assert.equal(store.getPrefs().penalizeHints, true);
 });
 
 test('preferencias corruptas no rompen nada', () => {
@@ -210,6 +215,13 @@ test('el reto diario lleva su propia libreta, con el mejor intento de cada día'
   // Una fecha inventada no entra en la libreta.
   assert.equal(store.recordReto('mañana', { won: true, score: 1 }), null);
   assert.equal(Object.keys(store.getRetos()).length, 2);
+
+  // Guarda timed, penalizeHints y hints
+  store.recordReto('2026-08-27', { won: true, score: 350, timed: true, penalizeHints: true, hints: 2, scoring: 'standard', drawCount: 1 });
+  const retoGuardado = store.getReto('2026-08-27');
+  assert.equal(retoGuardado.timed, true);
+  assert.equal(retoGuardado.penalizeHints, true);
+  assert.equal(retoGuardado.hints, 2);
 });
 
 test('los retos se exportan y se importan con el resto de los datos', () => {

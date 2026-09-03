@@ -108,7 +108,9 @@ export function rejillaDelMes(anio, mes, primerDia = 1) {
  * el calendario acabaría enseñando la de otra modalidad. Cuando no coinciden se
  * queda la última, que es la que el jugador acaba de hacer.
  */
-const mismaModalidad = (a, b) => a.scoring === b.scoring && a.drawCount === b.drawCount;
+const mismaModalidad = (a, b) => a.scoring === b.scoring
+  && a.drawCount === b.drawCount
+  && !!a.penalizeHints === !!b.penalizeHints;
 
 export function mejorResultado(a, b) {
   if (!a) return b ?? null;

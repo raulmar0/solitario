@@ -65,6 +65,8 @@ export default {
   'modo.robo.3': '3 cartes',
   'modo.crono': 'chrono',
   'modo.sincrono': 'sans chrono',
+  'modo.pistasPenalizadas': 'indices pénalisés',
+  'modo.normal': 'Normal',
 
   // msg — avisos del tablero y del diálogo
   'msg.retomada': 'On reprend la partie laissée en cours.',
@@ -102,6 +104,7 @@ export default {
   'msg.datos.borrados': 'Données effacées.',
   'msg.datos.error': 'Impossible de lire le fichier : {error}',
   'msg.contrarreloj': 'Le chrono s’appliquera à la prochaine donne.',
+  'msg.penalizarPistas': 'La pénalité d’indice s’appliquera à la prochaine donne.',
 
   // pista — una por cada RAZON del recomendador
   'pista.destapar': 'Déplacez {carta} depuis {origen} vers {destino} : vous retournez la carte du dessous.',
@@ -161,8 +164,8 @@ export default {
   'reto.mes.siguiente': 'Mois suivant',
   'reto.sin.jugar': 'pas encore jouée',
   'reto.futuro': 'ce jour n’est pas encore arrivé',
-  'reto.hecho.ganada': 'gagnée · {puntos} · {tiempo} · {jugadas} coups',
-  'reto.hecho.perdida': 'jouée sans la gagner · {puntos} · {tiempo} · {jugadas} coups',
+  'reto.hecho.ganada': 'gagnée · {modo} · {puntos} · {tiempo} · {jugadas} coups',
+  'reto.hecho.perdida': 'jouée sans la gagner · {modo} · {puntos} · {tiempo} · {jugadas} coups',
 
   // settings — sección de ajustes
   'settings.robo': 'Cartes piochées',
@@ -173,6 +176,7 @@ export default {
   'settings.puntuacion.nota.standard': 'Standard : des points pour chaque carte posée, avec un bonus si vous jouez contre la montre.',
   'settings.puntuacion.nota.vegas': 'Vegas : vous payez 52 $ pour vous asseoir et touchez 5 $ par carte montée. Le solde se cumule d’une partie à l’autre.',
   'settings.contrarreloj': 'Contre la montre <em>(−2 points toutes les 10 s et un bonus si vous gagnez vite)</em>',
+  'settings.penalizarPistas': 'Pénaliser les indices <em>(−10 points par indice)</em>',
   'settings.autosubir': 'Faire monter toutes seules les cartes qui ne gênent plus',
   'settings.solucionables': 'Ne donner que des mains à solution vérifiée',
   'settings.animaciones': 'Animations',
@@ -215,6 +219,7 @@ export default {
   'stats.mejores': 'Meilleures parties',
   'stats.col.pos': '#',
   'stats.col.puntos': 'Points',
+  'stats.col.modo': 'Mode',
   'stats.col.resultado': 'Résultat',
   'stats.col.tiempo': 'Temps',
   'stats.col.jugadas': 'Coups',
