@@ -271,7 +271,7 @@ test('el servidor de desarrollo sabe servir el manifiesto', () => {
 
 // --- registro y actualización de punta a punta, con un navigator de mentira ---
 
-function navegadorFalso({ conControlador = true } = {}) {
+function navegadorFalso({ conControlador = true, alActualizar } = {}) {
   const oyentes = new Map();
   const registro = {
     installing: null,
@@ -281,7 +281,7 @@ function navegadorFalso({ conControlador = true } = {}) {
     oyentesReg: new Map(),
     addEventListener(t, fn) { registro.oyentesReg.set(t, fn); },
     removeEventListener(t) { registro.oyentesReg.delete(t); },
-    async update() { registro.actualizado = (registro.actualizado ?? 0) + 1; },
+    async update() { registro.actualizado = (registro.actualizado ?? 0) + 1; return alActualizar?.(registro); },
     emitir(t) { registro.oyentesReg.get(t)?.(); },
   };
   const sw = {
@@ -322,6 +322,27 @@ test('el worker se registra con la caché HTTP desactivada', async () => {
     await new Promise((r) => setImmediate(r));
     assert.equal(registro.opciones.updateViaCache, 'none', 'si no, el navegador podría servir un sw.js viejo');
     assert.match(registro.scriptURL, /sw\.js$/);
+  } finally { ctx.restaurar(); }
+});
+
+test('al abrir comprueba si hay una versión nueva y la anuncia cuando queda instalada', async () => {
+  const nuevo = workerFalso('installing');
+  const { sw, registro } = navegadorFalso({
+    alActualizar: (r) => {
+      r.installing = nuevo;
+      r.emitir('updatefound');
+    },
+  });
+  const ctx = conNavegador(sw);
+  try {
+    const avisos = [];
+    registrarServiceWorker({ onVersionNueva: (w) => avisos.push(w) });
+    await new Promise((r) => setImmediate(r));
+
+    assert.equal(registro.actualizado, 1, 'la pestaña pregunta al servidor al arrancar');
+    assert.deepEqual(avisos, [], 'mientras se instala todavía no se avisa');
+    nuevo.pasarA('installed');
+    assert.deepEqual(avisos, [nuevo], 'cuando queda lista aparece el aviso');
   } finally { ctx.restaurar(); }
 });
 

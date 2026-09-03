@@ -92,7 +92,6 @@ export function registrarServiceWorker({ onVersionNueva = () => {} } = {}) {
   const listo = navigator.serviceWorker.register(new URL('../sw.js', import.meta.url), { updateViaCache: 'none' })
     .then((reg) => {
       registro = reg;
-      avisarSiEspera(reg);
       reg.addEventListener('updatefound', () => {
         const entrante = reg.installing;
         if (!entrante) return;
@@ -101,6 +100,11 @@ export function registrarServiceWorker({ onVersionNueva = () => {} } = {}) {
           if (entrante.state === 'installed' && navigator.serviceWorker.controller) onVersionNueva(entrante);
         });
       });
+      avisarSiEspera(reg);
+      // Una pestaña que ya estaba abierta no siempre provoca una comprobación
+      // del navegador al publicarse una versión. Preguntamos una vez al arrancar
+      // sin activar nada: el worker nuevo seguirá esperando al jugador.
+      if (navigator.serviceWorker.controller) void reg.update().catch(() => {});
       return reg;
     })
     .catch(() => null);
