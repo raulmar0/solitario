@@ -41,7 +41,6 @@ const board = createBoard({
   game,
   onMessage: message,
   onNegar: () => sonidos.nada(),
-  onDropIlegal: explicarIlegal,
 });
 
 /** Cada cosa que pasa en el tablero suena distinta. */
@@ -154,7 +153,6 @@ let winShownFor = null;
 let ultimaPuntuacion = null;
 let atascadoAvisado = false;
 let ultimoReparto = null;      // se fija al arrancar: el primer reparto no suena
-let mazoTocado = null;         // el toque que iba al mazo, a la espera de saber si hizo algo
 
 // Lo que se dice cuando la partida se queda sin jugadas. Se queda fijo en el
 // tablero: no es un aviso de paso, es el estado en el que está la partida. Y se
@@ -384,39 +382,7 @@ const partesDe = (move) => ({
   destino: nombrePila(move?.to, game.state),
 });
 
-/**
- * Por qué esa carta no cabía ahí. Se dice la regla, no un «no puede ser»: quien
- * suelta en un sitio ilegal casi siempre es que no la sabe todavía.
- */
-function explicarIlegal({ from, to, count = 1 } = {}) {
-  const carta = nombreCarta(cartaDelMovimiento({ from, count }));
-  if (to?.pile === PILE.FOUNDATION) { message('msg.ilegal.fundacion', { carta }); return; }
-  if (to?.pile === PILE.TABLEAU) {
-    const columna = game.state?.tableau[to.index] ?? [];
-    if (!columna.length) message('msg.ilegal.hueco');
-    else message('msg.ilegal.tableau', { carta, destino: nombreCarta(columna.at(-1)) });
-    return;
-  }
-  message('msg.ilegal.sitio', { carta });
-}
 
-/**
- * Por qué el mazo no da más. Solo habla cuando de verdad no queda nada: si el
- * toque robó o recicló, esta función no llega a decidir nada.
- */
-function explicarMazo() {
-  const st = game.state;
-  if (!st || st.stock.length) return;
-  if (game.status !== 'playing' && game.status !== 'stuck') return;
-  if (!st.waste.length) { message('msg.mazo.vacio'); return; }
-  // El motor cuenta reciclados y el texto habla de pasadas al mazo, que son una
-  // más: en Vegas de una carta no se recicla nunca y aun así se pasa el mazo una vez.
-  const tope = st.maxRecycles;
-  if (Number.isFinite(tope) && st.recycles >= tope) {
-    const pasadas = tope + 1;
-    message('msg.mazo.pasadas', { count: pasadas, n: pasadas });
-  }
-}
 
 // ---------- botones ----------
 const confirmarSiEnJuego = (clave) =>
@@ -438,7 +404,7 @@ $('#btn-restart').addEventListener('click', () => {
 
 function deshacer() {
   detenerAuto();
-  if (game.undo()) sonidos.deshacer(); else message('msg.nada.deshacer');
+  if (game.undo()) sonidos.deshacer(); else sonidos.nada();
 }
 
 $('#btn-undo').addEventListener('click', deshacer);
@@ -525,19 +491,19 @@ addEventListener('keydown', (event) => {
     // pulsaba «Deshacer» y robaba una carta —o reciclaba, −100 puntos—.
     if (event.target.closest?.('button, select')) return;
     event.preventDefault();
-    if (!game.stockClick()) explicarMazo();
+    if (!game.stockClick()) sonidos.nada();
     return;
   }
   if (tecla >= '1' && tecla <= '7') {
     event.preventDefault();
     if (!game.sendToFoundation({ pile: PILE.TABLEAU, index: Number(tecla) - 1 })) {
-      message('msg.columna.sin.subida', { n: tecla });
+      sonidos.nada();
     }
     return;
   }
   if (tecla === '0') {
     event.preventDefault();
-    if (!game.sendToFoundation({ pile: PILE.WASTE })) message('msg.descarte.sin.subida');
+    if (!game.sendToFoundation({ pile: PILE.WASTE })) sonidos.nada();
     return;
   }
 
@@ -554,27 +520,6 @@ addEventListener('keydown', (event) => {
     case '?': panels.openHelp(); break;
     default: break;
   }
-});
-
-// ---------- el mazo, cuando ya no da más ----------
-// Quien recibe el toque del mazo es el tablero, que no habla. Se apunta antes de
-// que lo atienda si el toque iba al mazo, y se juzga después: si el estado no se
-// movió, es que no quedaba nada que robar ni que reciclar, y eso hay que decirlo.
-const vaAlMazo = (target) => {
-  if (target?.closest?.('.slot-stock')) return true;
-  const id = target?.closest?.('.card')?.dataset.id;
-  return !!id && !!game.state?.stock.some((c) => c.id === id);
-};
-
-document.addEventListener('pointerdown', (event) => {
-  const primario = event.button == null || event.button === 0;
-  mazoTocado = primario && !board.repartiendo && vaAlMazo(event.target) ? { epoch: game.epoch } : null;
-}, true);
-
-document.addEventListener('pointerdown', () => {
-  const toque = mazoTocado;
-  mazoTocado = null;
-  if (toque && game.epoch === toque.epoch) explicarMazo();
 });
 
 // ---------- nada de zoom ----------

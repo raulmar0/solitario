@@ -962,6 +962,7 @@ export function createBoard({
         const colada = subeCarta && zone.to.pile === PILE.FOUNDATION
           && game.sendToFoundation(grab.from, ids[0]);
         if (!colada) {
+          onNegar();
           onDropIlegal({ from: grab.from, to: zone.to, count: grab.count });
         } else {
           exito = true;
@@ -1033,7 +1034,7 @@ export function createBoard({
     }
 
     if (grab.from.pile === PILE.FOUNDATION) {
-      onMessage('msg.fundacion.arrastrar');
+      negar(id);
       return false;
     }
 
@@ -1043,7 +1044,6 @@ export function createBoard({
     const move = mejorDestino(ref);
     if (!move) {
       negar(id);
-      onMessage(ref.count > 1 ? 'msg.sin.jugada.secuencia' : 'msg.sin.jugada');
       return false;
     }
     if (game.play(move)) {

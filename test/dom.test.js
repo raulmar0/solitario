@@ -246,6 +246,37 @@ test('arrastrar mueve el transform de la carta inmediatamente con el puntero', (
   puntero('pointerup', el, desde.x + 30, desde.y + 40);
 });
 
+test('soltar en un sitio ilegal no saca anuncios en el cartel', () => {
+  board.cancel();
+  $('#banner').textContent = '';
+  const col = game.state.tableau.findIndex((p) => p.at(-1)?.faceUp && p.at(-1).rank !== 1);
+  const carta = game.state.tableau[col].at(-1);
+  const el = cartaEl(carta.id);
+  const desde = centro(col, 1);
+  const hasta = centro(COLUMNA.foundation(0), 0);
+
+  puntero('pointerdown', el, desde.x, desde.y);
+  puntero('pointermove', el, hasta.x, hasta.y);
+  puntero('pointerup', el, hasta.x, hasta.y);
+
+  assert.equal($('#banner').textContent, '', 'no debe haber anuncios sobre jugadas ilegales');
+});
+
+test('picar una carta sin jugada no saca anuncios en el cartel', () => {
+  board.cancel();
+  $('#banner').textContent = '';
+  const col = game.state.tableau.findIndex((p) => p.at(-1)?.faceUp);
+  const carta = game.state.tableau[col].at(-1);
+  const el = cartaEl(carta.id);
+  const desde = centro(col, 1);
+
+  puntero('pointerdown', el, desde.x, desde.y);
+  puntero('pointerup', el, desde.x, desde.y);
+
+  assert.equal($('#banner').textContent.includes('En las columnas'), false);
+  assert.equal($('#banner').textContent.includes('no tiene jugada'), false);
+});
+
 test('picar una carta la sube sola a su fundación', () => {
   board.cancel();
   const palo = game.state.foundations.findIndex((f) => f.length === 1);
