@@ -858,6 +858,8 @@ export function createBoard({
       aterrizar(cid);                 // en la mano ya no vuela: manda el arrastre
       const el = els.get(cid);
       el.classList.add('dragging');
+      el.style.transitionDuration = '';
+      el.style.transitionDelay = '';
       el.style.zIndex = String(Z_ARRASTRE + i);
     });
     resaltada = null;       // a partir de aquí las marcas son del arrastre
@@ -872,14 +874,17 @@ export function createBoard({
 
     // Balanceo dinámico según la velocidad del arrastre (inercia y resistencia física)
     const now = performance.now();
-    const dt = Math.max(16, now - (drag.lastTime || now));
-    const vx = (event.clientX - (drag.lastX ?? event.clientX)) / dt;
-    drag.lastX = event.clientX;
-    drag.lastY = event.clientY;
-    drag.lastTime = now;
+    const elapsed = now - (drag.lastTime || now);
+    if (elapsed > 0) {
+      const dt = Math.max(4, elapsed);
+      const vx = (event.clientX - (drag.lastX ?? event.clientX)) / dt;
+      drag.lastX = event.clientX;
+      drag.lastY = event.clientY;
+      drag.lastTime = now;
 
-    const targetTilt = Math.max(-5, Math.min(5, vx * 12));
-    drag.tilt = drag.tilt * 0.65 + targetTilt * 0.35;
+      const targetTilt = Math.max(-5, Math.min(5, vx * 12));
+      drag.tilt = drag.tilt * 0.65 + targetTilt * 0.35;
+    }
     const baseGiro = animando() ? Math.round(drag.tilt * 10) / 10 : 0;
 
     for (let i = 0; i < drag.bases.length; i++) {
@@ -1102,7 +1107,10 @@ export function createBoard({
   });
 
   root.addEventListener('pointermove', (event) => {
-    if (drag && event.pointerId === drag.pointerId) moveDrag(event);
+    if (drag && event.pointerId === drag.pointerId) {
+      if (event.cancelable) event.preventDefault();
+      moveDrag(event);
+    }
   });
 
   root.addEventListener('pointerup', (event) => {

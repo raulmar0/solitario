@@ -210,6 +210,42 @@ test('soltar en un sitio ilegal devuelve la carta a su columna', () => {
   }
 });
 
+test('el arrastre no interpola el transform con transiciones CSS para seguir al dedo sin lag', () => {
+  const trDragging = regla('.card.dragging')?.style.getPropertyValue('transition') ?? '';
+  assert.equal(trDragging.includes('transform'), false, 'la regla .card.dragging no debe transicionar transform');
+  const trAnimDragging = regla('.anim .card.dragging')?.style.getPropertyValue('transition') ?? '';
+  assert.equal(trAnimDragging.includes('transform'), false, 'la regla .anim .card.dragging no debe transicionar transform');
+});
+
+test('las cartas tienen touch-action: none para responder al dedo al instante', () => {
+  assert.equal(regla('.card')?.style.getPropertyValue('touch-action'), 'none',
+    'las cartas deben declarar touch-action: none para anular retardos por gestos nativos');
+});
+
+test('coger una carta limpia cualquier transitionDuration residual del vuelo', () => {
+  board.cancel();
+  const el = cartaEl('AD');
+  el.style.transitionDuration = '324ms, 140ms';
+  el.style.transitionDelay = '50ms, 50ms';
+  puntero('pointerdown', el, 100, 100);
+  assert.equal(el.style.transitionDuration, '', 'al empezar arrastre se limpia la duración residual');
+  assert.equal(el.style.transitionDelay, '', 'al empezar arrastre se limpia el retardo residual');
+  puntero('pointerup', el, 100, 100);
+});
+
+test('arrastrar mueve el transform de la carta inmediatamente con el puntero', () => {
+  board.cancel();
+  const col = game.state.tableau.findIndex((p) => p.at(-1)?.faceUp);
+  const carta = game.state.tableau[col].at(-1);
+  const el = cartaEl(carta.id);
+  const desde = centro(col, 1);
+  puntero('pointerdown', el, desde.x, desde.y);
+  puntero('pointermove', el, desde.x + 30, desde.y + 40);
+  assert.match(el.style.transform, /translate3d\(/, 'el transform se actualiza con la posición');
+  assert.equal(el.classList.contains('dragging'), true);
+  puntero('pointerup', el, desde.x + 30, desde.y + 40);
+});
+
 test('picar una carta la sube sola a su fundación', () => {
   board.cancel();
   const palo = game.state.foundations.findIndex((f) => f.length === 1);

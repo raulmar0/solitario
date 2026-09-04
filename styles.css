@@ -482,6 +482,7 @@ html[data-theme="light"] body::before {
 .card {
   position: absolute;
   pointer-events: auto;
+  touch-action: none;
   top: 0; left: 0;
   width: var(--cw);
   height: var(--ch);
@@ -521,7 +522,7 @@ html[data-theme="light"] body::before {
   }
 }
 /* El transform sigue al dedo sin interpolar; el alzado sí entra suave. */
-.card.dragging { cursor: grabbing; transition: var(--quieto, transform var(--card-speed) var(--vuelo), translate 90ms var(--vuelo)); }
+.card.dragging { cursor: grabbing; transition: var(--quieto, translate 90ms var(--vuelo)); }
 
 /* Una carta que va de un sitio a otro no se desliza por la mesa: alguien la
    coge, la lleva por el aire y la posa. Eso son cuatro cosas a la vez, y las
@@ -574,7 +575,7 @@ html[data-theme="light"] body::before {
 /* La que llevas en la mano se queda levantada mientras la lleves: ahí no hay
    trayecto que acompañar, hay una carta en el aire hasta que la sueltes. */
 .card.dragging::after { opacity: 1; translate: var(--quieto, 0 16px); filter: blur(2.5px); }
-.anim .card.dragging { translate: var(--quieto, 0 -10px); }
+.anim .card.dragging { translate: var(--quieto, 0 -10px); transition: var(--quieto, translate 90ms var(--vuelo)); }
 .card.dragging .face, .card.dragging .back { scale: var(--quieto, 1.04); }
 .card.volando, .card.dragging { will-change: transform, translate; }
 
