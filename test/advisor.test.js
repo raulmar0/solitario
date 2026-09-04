@@ -189,6 +189,26 @@ test('sin mazo pero con descarte de sobra, reciclar gana al paseo estéril', () 
   assert.deepEqual(r.alternatives, []);
 });
 
+test('si el mazo no tiene jugadas, una visible gana a reciclar aunque sea arriesgada', () => {
+  // Reciclar no descubre información nueva en este caso: ninguna carta del mazo
+  // cabe en ningún sitio. Incluso cuando la única jugada del tableau es una
+  // subida arriesgada, debe ir antes que repetir una pasada estéril.
+  const s = escenario({
+    foundations: [picasHasta(2)],
+    tableau: [[C(3, 'S')]],
+    waste: [C(10, 'S'), C(9, 'C')],
+  });
+  const subida = { type: 'move', from: T(0), to: F(0), count: 1 };
+
+  assert.equal(engine.isLegal(s, subida), true);
+  assert.equal(engine.isSafeToFoundation(s, C(3, 'S')), false);
+  assert.equal(engine.quedaJuegoEnElMazo(s), false);
+
+  const r = recomendar(s);
+  assert.ok(mismoMovimiento(r.move, subida), 'la subida visible debe ser la pista principal');
+  assert.equal(r.reason, RAZON.FUNDACION_RIESGO);
+});
+
 test('un descarte que cabe en un solo robo no se recicla: sería dar vueltas sobre uno mismo', () => {
   // Reciclar una carta y volver a robarla deja el tablero exactamente igual.
   // Es legal —el jugador puede hacerlo— pero recomendarlo es marearlo.

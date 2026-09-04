@@ -65,7 +65,7 @@ export default {
   'modo.crono': 'com tempo',
   'modo.sincrono': 'sem tempo',
   'modo.pistasPenalizadas': 'dicas penalizadas',
-  'modo.normal': 'Normal',
+  'modo.pistasSinPenalizar': 'dicas sem penalização',
 
   // msg — avisos del tablero y del diálogo
   'msg.retomada': 'Voltamos à partida que ficou por terminar.',
@@ -166,7 +166,11 @@ export default {
   'settings.contrarreloj': 'Contrarrelógio',
   'settings.penalizarPistas': 'Penalizar dicas',
   'settings.autosubir': 'Subir automaticamente',
-  'settings.solucionables': 'Só mãos com solução comprovada',
+  'settings.reparto': 'Mãos resolúveis',
+  'settings.reparto.azar': 'Ao acaso',
+  'settings.reparto.equilibrado': 'Equilibrado',
+  'settings.reparto.solubles': 'Só resolúveis',
+  'settings.reparto.nota': '«Equilibrado» distribui a maioria das mãos com solução comprovada e deixa algumas ao acaso.',
   'settings.animaciones': 'Animações',
   'settings.sonidos': 'Sons',
   'settings.vibracion': 'Vibração',

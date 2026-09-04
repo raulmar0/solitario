@@ -1150,13 +1150,16 @@ test('la tabla de récords y el reto diario enseñan el modo en que se jugó', (
   assert.ok(filas.length >= 2);
   const primera = Array.from(filas[0].children).map((td) => td.textContent.trim());
   assert.equal(primera[1], '650');
+  assert.match(primera[2], /Estándar/);
+  assert.match(primera[2], /1 carta/);
   assert.match(primera[2], /pistas penalizadas/i);
   assert.match(primera[2], /crono/i);
   assert.equal(primera[3], 'Ganada');
 
   const segunda = Array.from(filas[1].children).map((td) => td.textContent.trim());
   assert.equal(segunda[1], '500');
-  assert.equal(segunda[2], 'Normal');
+  assert.match(segunda[2], /Estándar/);
+  assert.match(segunda[2], /pistas sin penalizar/i);
   assert.equal(segunda[3], 'Perdida');
 
   // Reto diario con pistas penalizadas

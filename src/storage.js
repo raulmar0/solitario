@@ -24,7 +24,7 @@ export const DEFAULT_PREFS = {
   animations: true,
   sound: true,
   autoSafe: false,      // subir automáticamente las cartas que no estorban
-  solvableOnly: false,  // repartir solo manos con solución comprobada
+  dealBias: 'random',   // 'random' | 'balanced' | 'solvable': sesgo del reparto
   theme: 'auto',
   playerName: '',
   lang: 'auto',         // 'auto' mira el idioma del navegador
@@ -104,6 +104,11 @@ export function createStore(backend) {
       if (prefs.drawCount !== 1 && prefs.drawCount !== 3) prefs.drawCount = DEFAULT_PREFS.drawCount;
       if (prefs.scoring !== 'standard' && prefs.scoring !== 'vegas') prefs.scoring = DEFAULT_PREFS.scoring;
       if (!['auto', 'light', 'dark'].includes(prefs.theme)) prefs.theme = DEFAULT_PREFS.theme;
+      // El reparto va del azar puro a solo manos con solución. Quien tenía marcado
+      // el antiguo «solo manos con solución comprobada» pasa a «solvable».
+      if (!['random', 'balanced', 'solvable'].includes(prefs.dealBias)) {
+        prefs.dealBias = prefs.solvableOnly ? 'solvable' : DEFAULT_PREFS.dealBias;
+      }
       if (typeof prefs.playerName !== 'string') prefs.playerName = '';
       // Un idioma que no conocemos vuelve a la detección automática: peor que
       // acertar es plantarle a alguien media interfaz en un idioma vacío.

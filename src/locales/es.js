@@ -66,7 +66,7 @@ export default {
   'modo.crono': 'crono',
   'modo.sincrono': 'sin crono',
   'modo.pistasPenalizadas': 'pistas penalizadas',
-  'modo.normal': 'Normal',
+  'modo.pistasSinPenalizar': 'pistas sin penalizar',
 
   // msg — avisos del tablero y del diálogo
   'msg.retomada': 'Retomamos la partida que dejaste a medias.',
@@ -167,7 +167,11 @@ export default {
   'settings.contrarreloj': 'Contrarreloj',
   'settings.penalizarPistas': 'Penalizar pistas',
   'settings.autosubir': 'Subir automáticamente',
-  'settings.solucionables': 'Solo manos con solución comprobada',
+  'settings.reparto': 'Manos resolubles',
+  'settings.reparto.azar': 'Al azar',
+  'settings.reparto.equilibrado': 'Equilibrado',
+  'settings.reparto.solubles': 'Solo resolubles',
+  'settings.reparto.nota': '«Equilibrado» reparte la mayoría de manos con solución comprobada y deja alguna al azar.',
   'settings.animaciones': 'Animaciones',
   'settings.sonidos': 'Sonidos',
   'settings.vibracion': 'Vibración',

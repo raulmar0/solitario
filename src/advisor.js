@@ -66,6 +66,11 @@ const MOD = {
 /** Por debajo de esto una jugada no se ofrece: es ruido, no una recomendación. */
 const UMBRAL = -600;
 
+// Una pasada que no contiene ninguna carta jugable no debe ganar a la última
+// salida visible. El margen cubre la corrección de movilidad de una subida
+// arriesgada; la penalización del historial sigue pudiendo apartarla.
+const RECICLAR_SIN_JUEGO = -300;
+
 const acotar = (v, tope) => Math.max(-tope, Math.min(tope, v));
 
 function pilaDe(state, ref) {
@@ -175,16 +180,18 @@ function razonDe(ctx, m) {
 function contexto(state) {
   const salida = buscarSalida(state);
   const utiles = usefulMoves(state);
+  const juegoEnElMazo = quedaJuegoEnElMazo(state);
   return {
     state,
     salida,
     utiles,
     movilidad: utiles.length,
     huecos: columnasVacias(state),
+    juegoEnElMazo,
     // Es isStuck, pero repetirlo aquí evita lanzar la búsqueda por segunda vez.
     // Un mazo con cartas ya no basta para darla por viva: si ninguna de las que
     // pueden salir cabe en ningún sitio, robar es dar vueltas.
-    atascado: !isWon(state) && !salida.hay && !quedaJuegoEnElMazo(state),
+    atascado: !isWon(state) && !salida.hay && !juegoEnElMazo,
   };
 }
 
@@ -254,6 +261,11 @@ function valorar(ctx, m) {
   let esteril = false;
   let score = VALOR[reason]
     + acotar(MOD.movilidad * (utiles.length - ctx.movilidad), MOD.movilidadTope);
+
+  // Si el mazo no puede aportar una sola carta jugable, reciclar no es una
+  // alternativa estratégica: es una pasada estéril. Se coloca justo por debajo
+  // de una subida arriesgada, que puede ser la única salida visible.
+  if (m.type === 'recycle' && !ctx.juegoEnElMazo) score = RECICLAR_SIN_JUEGO;
 
   if (m.type === 'move') {
     if (levanta && reason !== RAZON.DESTAPAR) score += MOD.destapaAdemas;

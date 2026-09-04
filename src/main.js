@@ -281,7 +281,10 @@ function refresh() {
   refreshHeader();
   board.paint();
 
-  if (ultimoReparto !== null && game.dealId !== ultimoReparto) sonidos.barajar();
+  if (ultimoReparto !== null && game.dealId !== ultimoReparto) {
+    sonidos.barajar();
+    panels.detenerCascada?.();
+  }
   ultimoReparto = game.dealId;      // en la primera vuelta solo se apunta: el reparto de bienvenida no suena
 
   if (game.status === 'won' && winShownFor !== game.lastResult?.at) {
@@ -471,6 +474,15 @@ addEventListener('keydown', (event) => {
   const enTexto = event.target.matches?.('input, textarea');
   if (enTexto) return;
   if (panels.anyOpen && event.key !== 'Escape') return;
+
+  // Atajo clásico de Windows Solitaire: Alt+Mayús+2 lanza la animación de victoria
+  if (event.altKey && event.shiftKey && (event.key === '2' || event.code === 'Digit2' || event.key === '@')) {
+    event.preventDefault();
+    panels.cascadaVictoria?.(() => {
+      if (game.status === 'won') panels.showWin();
+    });
+    return;
+  }
 
   const ctrl = event.ctrlKey || event.metaKey;
   // Ctrl+Z deshace; Ctrl+Mayús+Z era rehacer y ya no existe, así que se traga sin

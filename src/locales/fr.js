@@ -65,7 +65,7 @@ export default {
   'modo.crono': 'chrono',
   'modo.sincrono': 'sans chrono',
   'modo.pistasPenalizadas': 'indices pénalisés',
-  'modo.normal': 'Normal',
+  'modo.pistasSinPenalizar': 'indices non pénalisés',
 
   // msg — avisos del tablero y del diálogo
   'msg.retomada': 'On reprend la partie laissée en cours.',
@@ -166,7 +166,11 @@ export default {
   'settings.contrarreloj': 'Contre la montre',
   'settings.penalizarPistas': 'Pénaliser les indices',
   'settings.autosubir': 'Monter automatiquement',
-  'settings.solucionables': 'Seulement les donnes dont la solution est vérifiée',
+  'settings.reparto': 'Donnes résolubles',
+  'settings.reparto.azar': 'Aléatoire',
+  'settings.reparto.equilibrado': 'Équilibré',
+  'settings.reparto.solubles': 'Résolubles seulement',
+  'settings.reparto.nota': '« Équilibré » distribue surtout des donnes à solution vérifiée et en laisse quelques-unes au hasard.',
   'settings.animaciones': 'Animations',
   'settings.sonidos': 'Sons',
   'settings.vibracion': 'Vibration',

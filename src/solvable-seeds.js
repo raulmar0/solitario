@@ -11,6 +11,8 @@
 // congelado para siempre: es lo que hace que dos fechas seguidas caigan en
 // repartos que no se parecen, y que el reparto de cada día no cambie con el
 // tiempo.
+import { randomSeed } from './cards.js';
+
 export const SOLVABLE_SEEDS = [
    245, 1841, 3606, 3514, 1861,  808, 2244,  251, 1481,  524,  393,  255,  665, 1415,
   1408, 2539, 3472, 3511, 3794,   65, 3180,  273, 3256,  405,  160, 2506,   19,  145,
@@ -98,3 +100,21 @@ export function randomSolvableSeed(exclude) {
 }
 
 export const isKnownSolvable = (seed) => SOLVABLE_SEEDS.includes(seed);
+
+// Con el sesgo «equilibrado», cuántas manos salen de la lista de resolubles (y
+// no del azar puro). El resto sigue siendo un reparto cualquiera: así la mayoría
+// de partidas tienen solución comprobada, pero de vez en cuando cae una cerrada,
+// y la variedad del mazo no se pierde.
+const BALANCED_RATE = 0.8;
+
+/**
+ * Semilla para el modo normal según el sesgo de reparto elegido:
+ *   - 'random':   azar puro, como siempre (1..999999).
+ *   - 'solvable': siempre una de la lista de manos con solución comprobada.
+ *   - 'balanced': la mayoría de la lista, el resto azar puro.
+ */
+export function randomSeedFor(bias, exclude) {
+  if (bias === 'solvable') return randomSolvableSeed(exclude);
+  if (bias === 'balanced' && Math.random() < BALANCED_RATE) return randomSolvableSeed(exclude);
+  return randomSeed();
+}

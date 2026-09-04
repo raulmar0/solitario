@@ -65,7 +65,7 @@ export default {
   'modo.crono': 'timed',
   'modo.sincrono': 'untimed',
   'modo.pistasPenalizadas': 'penalized hints',
-  'modo.normal': 'Normal',
+  'modo.pistasSinPenalizar': 'hints not penalized',
 
   // msg — avisos del tablero y del diálogo
   'msg.retomada': 'Back to the game you left half-finished.',
@@ -166,7 +166,11 @@ export default {
   'settings.contrarreloj': 'Against the clock',
   'settings.penalizarPistas': 'Penalize hints',
   'settings.autosubir': 'Auto-send cards',
-  'settings.solucionables': 'Only known-solvable hands',
+  'settings.reparto': 'Solvable hands',
+  'settings.reparto.azar': 'Random',
+  'settings.reparto.equilibrado': 'Balanced',
+  'settings.reparto.solubles': 'Only solvable',
+  'settings.reparto.nota': '“Balanced” deals mostly known-solvable hands and leaves a few fully random.',
   'settings.animaciones': 'Animations',
   'settings.sonidos': 'Sounds',
   'settings.vibracion': 'Vibration',

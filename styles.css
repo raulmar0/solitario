@@ -1179,7 +1179,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   position: fixed; inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 60;
+  z-index: 130;
   transition: opacity 400ms ease-out;
 }
 .confetti.fading { opacity: 0; }
@@ -1188,7 +1188,11 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   position: fixed; inset: 0;
   width: 100vw; height: 100vh;
   pointer-events: none;
-  z-index: 55;
+  z-index: 120;
+}
+.win-canvas.activa {
+  pointer-events: auto;
+  cursor: pointer;
 }
 .confetti i {
   position: absolute; top: -14px;

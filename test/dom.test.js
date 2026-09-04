@@ -373,7 +373,7 @@ test('los ajustes están agrupados y las acciones ocasionales viven fuera de Aju
   assert.ok($('#settings-advanced'), 'falta el grupo de opciones avanzadas');
   assert.equal($('#settings-advanced').open, false, 'las opciones avanzadas empiezan plegadas');
   assert.equal($('#settings-advanced input[data-pref="penalizeHints"]') != null, true);
-  assert.equal($('#settings-advanced input[data-pref="solvableOnly"]') != null, true);
+  assert.equal($('#settings-group-partida .seg-btn[data-pref="dealBias"]') != null, true);
   assert.equal($('#settings-group-partida input[data-pref="timed"]') != null, true);
   assert.equal($('#settings-group-partida input[data-pref="autoSafe"]') != null, true);
   assert.equal($('#seed-input').closest('#panel-reto') != null, true,
@@ -1784,4 +1784,22 @@ test('la fila de instalar se oculta cuando la app ya está instalada', () => {
 
 test('el aviso de versión nueva empieza escondido', () => {
   assert.equal($('#btn-update-pill').hidden, true);
+});
+
+test('la cascada de victoria se puede detener y limpia el lienzo', () => {
+  let finalizado = false;
+  panels.cascadaVictoria(() => { finalizado = true; });
+  assert.equal(finalizado, true);
+  panels.detenerCascada();
+  assert.equal($('#win-canvas').hidden, true);
+  assert.equal($('#win-canvas').classList.contains('activa'), false);
+});
+
+test('el atajo Alt+Mayús+2 dispara la cascada de victoria', () => {
+  let llamado = false;
+  const original = panels.cascadaVictoria;
+  panels.cascadaVictoria = (cb) => { llamado = true; cb?.(); };
+  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: '2', altKey: true, shiftKey: true, bubbles: true }));
+  assert.equal(llamado, true, 'Alt+Mayús+2 lanza la cascada');
+  panels.cascadaVictoria = original;
 });

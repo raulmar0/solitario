@@ -5,7 +5,7 @@ import * as engine from './engine.js';
 import { PILE } from './engine.js';
 import * as advisor from './advisor.js';
 import { randomSeed, SUITS } from './cards.js';
-import { randomSolvableSeed } from './solvable-seeds.js';
+import { randomSeedFor } from './solvable-seeds.js';
 import { applyEvents, initialScore, timePenalty, winBonus, hintPenalty } from './scoring.js';
 
 const MAX_HISTORY = 400;      // tope de deshacer en memoria
@@ -251,7 +251,7 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
      * Sin él, la partida es una normal y corriente.
      */
     newGame(seed, { dia: diaReto = null } = {}) {
-      if (seed == null) seed = prefs.solvableOnly ? randomSolvableSeed(state?.seed) : randomSeed();
+      if (seed == null) seed = randomSeedFor(prefs.dealBias, state?.seed);
       abandonIfInProgress();
       dia = diaReto;
       state = engine.newGame({ seed, drawCount: prefs.drawCount, scoring: prefs.scoring });

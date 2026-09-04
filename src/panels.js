@@ -5,6 +5,8 @@
 import { formatTime } from './game.js';
 import { formatScore } from './scoring.js';
 import { isKnownSolvable } from './solvable-seeds.js';
+import { SUITS, SUIT_GLYPH, RANK_LABEL } from './cards.js';
+import { hayMovimiento } from './motion.js';
 import {
   t, fecha, fechaCorta, fechaLarga, nombreMes, diasDeLaSemana, primerDiaSemana,
   fijarIdioma, resolverIdioma,
@@ -15,6 +17,7 @@ import {
 import { esMovil } from './device.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const MODES = [
   { scoring: 'standard', drawCount: 1 },
   { scoring: 'standard', drawCount: 3 },
@@ -267,10 +270,15 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (scoring === 'vegas') $('#bank-value').textContent = formatScore('vegas', store.getBank(drawCount));
 
     const formatearModoFila = (r) => {
-      const partes = [];
-      if (r.penalizeHints) partes.push(t('modo.pistasPenalizadas'));
+      const partes = [
+        t('modo.nombre', {
+          puntuacion: t(`modo.${r.scoring}`),
+          robo: t(`modo.robo.${r.drawCount === 3 ? 3 : 1}`),
+        }),
+        r.penalizeHints ? t('modo.pistasPenalizadas') : t('modo.pistasSinPenalizar'),
+      ];
       if (r.timed) partes.push(t('modo.crono'));
-      return partes.length > 0 ? partes.join(' · ') : t('modo.normal');
+      return partes.join(' · ');
     };
 
     const filas = store.getScores({ scoring, drawCount, limit: 25 });
@@ -658,142 +666,288 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   // ---------- final de partida y celebración ----------
 
   let cascadaRaf = null;
+  let cartasOcultas = [];
+  let limpiarInteraccion = null;
 
   function detenerCascada() {
     if (cascadaRaf) {
       cancelAnimationFrame(cascadaRaf);
       cascadaRaf = null;
     }
+    if (limpiarInteraccion) {
+      limpiarInteraccion();
+      limpiarInteraccion = null;
+    }
+    for (const el of cartasOcultas) {
+      el.style.visibility = '';
+    }
+    cartasOcultas = [];
+
     if (globalThis.navigator?.userAgent?.includes('jsdom')) return;
     const canvas = $('#win-canvas');
     if (canvas) {
       canvas.hidden = true;
+      canvas.classList.remove('activa');
       const ctx = canvas.getContext?.('2d');
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   }
 
-  function cascadaVictoria() {
-    if (globalThis.navigator?.userAgent?.includes('jsdom')) return;
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches || game.prefs.animations === false) return;
+  function crearSpriteCarta(rank, suit, cw, ch, radius, deck4) {
+    const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
+    const sprite = document.createElement('canvas');
+    sprite.width = Math.round(cw * dpr);
+    sprite.height = Math.round(ch * dpr);
+    const sctx = sprite.getContext?.('2d');
+    if (!sctx) return null;
+    sctx.scale(dpr, dpr);
+
+    // Fondo de la carta con borde fino
+    sctx.fillStyle = '#fdfcf8';
+    sctx.beginPath();
+    if (typeof sctx.roundRect === 'function') {
+      sctx.roundRect(0.5, 0.5, cw - 1, ch - 1, radius);
+    } else {
+      sctx.rect(0.5, 0.5, cw - 1, ch - 1);
+    }
+    sctx.fill();
+    sctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+    sctx.lineWidth = 1;
+    sctx.stroke();
+
+    // Color del palo según la baraja (normal o 4 colores)
+    let cardColor;
+    if (deck4) {
+      if (suit === 'H') cardColor = '#c0392b';
+      else if (suit === 'D') cardColor = '#1553a8';
+      else if (suit === 'C') cardColor = '#1a7a3c';
+      else cardColor = '#1b1b1b';
+    } else {
+      cardColor = (suit === 'H' || suit === 'D') ? '#c0392b' : '#1b1b1b';
+    }
+
+    const glyph = SUIT_GLYPH[suit] || suit;
+    const label = RANK_LABEL[rank] || String(rank);
+
+    sctx.fillStyle = cardColor;
+    sctx.strokeStyle = cardColor;
+
+    const fontRank = Math.max(9, Math.round(cw * 0.23));
+    const fontSuit = Math.max(8, Math.round(cw * 0.20));
+
+    // Esquina superior izquierda
+    sctx.textAlign = 'left';
+    sctx.textBaseline = 'top';
+    sctx.font = `700 ${fontRank}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    sctx.fillText(label, cw * 0.08, ch * 0.06);
+    sctx.font = `${fontSuit}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    sctx.fillText(glyph, cw * 0.08, ch * 0.06 + fontRank * 0.95);
+
+    // Esquina inferior derecha (girada 180º)
+    sctx.save();
+    sctx.translate(cw * 0.92, ch * 0.94);
+    sctx.rotate(Math.PI);
+    sctx.textAlign = 'left';
+    sctx.textBaseline = 'top';
+    sctx.font = `700 ${fontRank}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    sctx.fillText(label, 0, 0);
+    sctx.font = `${fontSuit}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    sctx.fillText(glyph, 0, fontRank * 0.95);
+    sctx.restore();
+
+    // Símbolo central (pip)
+    sctx.textAlign = 'center';
+    sctx.textBaseline = 'middle';
+    if (rank > 10) {
+      // Figuras: J, Q, K en recuadro redondeado
+      const fontCourt = Math.max(14, Math.round(cw * 0.36));
+      sctx.font = `700 ${fontCourt}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      sctx.fillText(label, cw * 0.5, ch * 0.51);
+
+      const boxW = Math.round(cw * 0.42);
+      const boxH = Math.round(ch * 0.36);
+      const boxR = Math.max(3, Math.round(cw * 0.07));
+      sctx.lineWidth = 1.5;
+      sctx.beginPath();
+      if (typeof sctx.roundRect === 'function') {
+        sctx.roundRect(Math.round(cw * 0.5 - boxW / 2), Math.round(ch * 0.5 - boxH / 2), boxW, boxH, boxR);
+      } else {
+        sctx.rect(Math.round(cw * 0.5 - boxW / 2), Math.round(ch * 0.5 - boxH / 2), boxW, boxH);
+      }
+      sctx.stroke();
+    } else {
+      // As y números: símbolo del palo
+      const fontPip = Math.max(16, Math.round(cw * (rank === 1 ? 0.54 : 0.46)));
+      sctx.font = `${fontPip}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      sctx.fillText(glyph, cw * 0.5, ch * 0.51);
+    }
+
+    return sprite;
+  }
+
+  function cascadaVictoria(onFinish) {
+    if (globalThis.navigator?.userAgent?.includes('jsdom') || !hayMovimiento(game.prefs)) {
+      onFinish?.();
+      return;
+    }
     const canvas = $('#win-canvas');
-    if (!canvas) return;
+    if (!canvas) {
+      onFinish?.();
+      return;
+    }
     const ctx = canvas.getContext?.('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      onFinish?.();
+      return;
+    }
 
     detenerCascada();
+
+    const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
     const w = window.innerWidth || 800;
     const h = window.innerHeight || 600;
-    canvas.width = w;
-    canvas.height = h;
+
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
     canvas.hidden = false;
+    canvas.classList.add('activa');
 
-    const cw = Math.max(50, Math.min(90, Math.round(w * 0.075)));
-    const ch = Math.round(cw * 1.4);
-    const radius = Math.round(cw * 0.1);
-
-    const palos = [
-      { simbolo: '♠', color: '#1b1b1b' },
-      { simbolo: '♥', color: '#c0392b' },
-      { simbolo: '♣', color: '#1a7a3c' },
-      { simbolo: '♦', color: '#1553a8' },
-    ];
-    const rangos = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    ctx.scale(dpr, dpr);
 
     const slotsFound = $$('#board .slot[data-pile="foundation"]');
-    const origenes = slotsFound.map((slot) => {
-      const rect = slot.getBoundingClientRect();
-      return { x: rect.left, y: rect.top };
-    });
+    const firstSlot = slotsFound[0];
+    const rect0 = firstSlot?.getBoundingClientRect();
+    const cw = (rect0 && rect0.width > 25) ? Math.round(rect0.width) : Math.max(50, Math.min(90, Math.round(w * 0.075)));
+    const ch = (rect0 && rect0.height > 35) ? Math.round(rect0.height) : Math.round(cw * 1.4);
+    const radius = Math.round(cw * 0.09);
+
+    const deck4 = document.documentElement.dataset.deck === '4';
+
+    const sprites = new Map();
+    for (const suit of SUITS) {
+      for (let r = 1; r <= 13; r++) {
+        const sprite = crearSpriteCarta(r, suit, cw, ch, radius, deck4);
+        if (sprite) sprites.set(`${RANK_LABEL[r]}${suit}`, sprite);
+      }
+    }
+
+    const origenes = [];
+    for (let f = 0; f < 4; f++) {
+      const slot = slotsFound[f];
+      if (slot) {
+        const r = slot.getBoundingClientRect();
+        origenes.push({ x: r.left, y: r.top });
+      } else {
+        origenes.push({ x: (w * 0.5) + (f - 1.5) * (cw + 12), y: 60 });
+      }
+    }
 
     const cartas = [];
-    for (let f = 0; f < 4; f++) {
-      const orig = origenes[f] || { x: (f + 1) * (w / 6), y: 60 };
-      const palo = palos[f];
-      for (let r = 12; r >= 0; r--) {
+    let orden = 0;
+    const staggerMs = 150;
+
+    for (let r = 13; r >= 1; r--) {
+      for (let f = 3; f >= 0; f--) {
+        const suit = SUITS[f];
+        const id = `${RANK_LABEL[r]}${suit}`;
+        const orig = origenes[f];
+        const sprite = sprites.get(id);
+        if (!sprite) continue;
+
+        // Trayectoria horizontal: desde la derecha saltan a la izquierda; desde la izquierda, a la derecha
+        const vaIzquierda = orig.x > w * 0.45 ? (Math.random() > 0.15) : (Math.random() < 0.25);
+        const velH = Math.random() * 3.6 + 3.2; // 3.2 a 6.8 px/frame
+        const vx = vaIzquierda ? -velH : velH;
+        const vy = -(Math.random() * 3.5 + 1.8);
+
         cartas.push({
-          palo,
-          rango: rangos[r],
+          id,
+          sprite,
           x: orig.x,
           y: orig.y,
-          vx: (Math.random() - 0.5) * 11 + (f < 2 ? -2.8 : 2.8),
-          vy: -Math.random() * 4 - 2,
-          gravity: 0.62,
-          rebote: 0.81,
-          salida: (12 - r) * 110 + f * 25,
+          vx,
+          vy,
+          gravity: Math.max(0.60, Math.min(0.85, h * 0.0009)),
+          rebote: 0.82 + (Math.random() * 0.04 - 0.02),
+          salida: orden * staggerMs,
           activa: false,
+          terminada: false,
         });
+        orden++;
       }
     }
+
+    let terminado = false;
+    function finalizar() {
+      if (terminado) return;
+      terminado = true;
+      detenerCascada();
+      onFinish?.();
+    }
+
+    function alInteractuar(ev) {
+      if (ev.type === 'keydown' && !['Escape', ' ', 'Enter'].includes(ev.key)) return;
+      finalizar();
+    }
+
+    canvas.addEventListener('click', alInteractuar);
+    window.addEventListener('keydown', alInteractuar);
+    limpiarInteraccion = () => {
+      canvas.removeEventListener('click', alInteractuar);
+      window.removeEventListener('keydown', alInteractuar);
+    };
 
     const t0 = performance.now();
-    function dibujarCarta(c) {
-      ctx.save();
-      ctx.translate(c.x, c.y);
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-      ctx.shadowBlur = 5;
-      ctx.shadowOffsetY = 2;
-      ctx.fillStyle = '#fdfcf8';
-      ctx.beginPath();
-      if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(0, 0, cw, ch, radius);
-      } else {
-        ctx.rect(0, 0, cw, ch);
-      }
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.shadowColor = 'transparent';
-      ctx.fillStyle = c.palo.color;
-      ctx.font = `bold ${Math.round(cw * 0.22)}px sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText(c.rango, cw * 0.1, ch * 0.08);
-
-      ctx.font = `${Math.round(cw * 0.2)}px sans-serif`;
-      ctx.fillText(c.palo.simbolo, cw * 0.1, ch * 0.26);
-
-      ctx.font = `${Math.round(cw * 0.44)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(c.palo.simbolo, cw * 0.5, ch * 0.56);
-      ctx.restore();
-    }
 
     function animar(t) {
       const transcurrido = t - t0;
       let vivas = 0;
+      const suelo = (window.innerHeight || h) - ch;
+      const anchoActual = window.innerWidth || w;
 
       for (const c of cartas) {
-        if (!c.activa && transcurrido >= c.salida) c.activa = true;
-        if (!c.activa) continue;
+        if (!c.activa && transcurrido >= c.salida) {
+          c.activa = true;
+          const domCard = $(`#cards .card[data-id="${c.id}"]`);
+          if (domCard) {
+            domCard.style.visibility = 'hidden';
+            cartasOcultas.push(domCard);
+          }
+        }
+        if (!c.activa || c.terminada) continue;
 
-        c.vy += c.gravity;
         c.x += c.vx;
+        c.vy += c.gravity;
         c.y += c.vy;
 
-        if (c.y + ch >= h) {
-          c.y = h - ch;
+        if (c.y >= suelo) {
+          c.y = suelo;
           c.vy = -c.vy * c.rebote;
-          c.vx *= 0.96;
+          if (Math.abs(c.vy) < c.gravity) {
+            c.vy = 0;
+          }
         }
-        if (c.x <= 0) { c.x = 0; c.vx = -c.vx * 0.8; }
-        else if (c.x + cw >= w) { c.x = w - cw; c.vx = -c.vx * 0.8; }
 
-        if (c.x > -cw && c.x < w + cw && Math.abs(c.vy) > 0.35) {
-          vivas++;
+        if (c.x < -cw - 40 || c.x > anchoActual + 40) {
+          c.terminada = true;
+          continue;
         }
-        dibujarCarta(c);
+
+        vivas++;
+        // Estampar la carta en cada frame sin limpiar el lienzo: el clásico rastro del solitario
+        ctx.drawImage(c.sprite, Math.floor(c.x), Math.floor(c.y), cw, ch);
       }
 
-      if (transcurrido < 8500 && vivas > 0) {
+      const quedanPorSalir = transcurrido < orden * staggerMs;
+      if ((quedanPorSalir || vivas > 0) && transcurrido < 12000) {
         cascadaRaf = requestAnimationFrame(animar);
       } else {
-        setTimeout(detenerCascada, 2000);
+        finalizar();
       }
     }
+
     cascadaRaf = requestAnimationFrame(animar);
   }
 
@@ -848,9 +1002,16 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     $('#win-moves').textContent = String(r.moves);
     pintarNotasVictoria();
 
-    cascadaVictoria();
-    confeti();
-    dlgWin.showModal();
+    const esJsdom = typeof navigator !== 'undefined' && navigator.userAgent?.includes('jsdom');
+    if (esJsdom || !hayMovimiento(game.prefs)) {
+      dlgWin.showModal();
+      return;
+    }
+
+    cascadaVictoria(() => {
+      confeti();
+      dlgWin.showModal();
+    });
   }
 
   dlgWin.addEventListener('click', (event) => {
@@ -913,6 +1074,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     openReto() { abrir('reto'); },
     showWin,
     showStuck,
+    cascadaVictoria,
+    detenerCascada,
     renderSettings,
     retraducir,
     /** Avisar dentro del panel; `main.js` la usa para actualizar e instalar. */

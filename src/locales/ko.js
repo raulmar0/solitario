@@ -66,7 +66,7 @@ export default {
   'modo.crono': '타이머',
   'modo.sincrono': '타이머 없음',
   'modo.pistasPenalizadas': '힌트 감점',
-  'modo.normal': '일반',
+  'modo.pistasSinPenalizar': '힌트 감점 없음',
 
   // msg — avisos del tablero y del diálogo
   'msg.retomada': '하다 만 게임을 이어서 할게요.',
@@ -167,7 +167,11 @@ export default {
   'settings.contrarreloj': '타이머',
   'settings.penalizarPistas': '힌트 감점',
   'settings.autosubir': '자동으로 올리기',
-  'settings.solucionables': '해답이 확인된 판만',
+  'settings.reparto': '해답이 되는 판',
+  'settings.reparto.azar': '무작위',
+  'settings.reparto.equilibrado': '균형',
+  'settings.reparto.solubles': '해답 확인된 판만',
+  'settings.reparto.nota': '«균형»은 대부분 해답이 확인된 판을 나눠 주고 가끔 완전히 무작위로 돌려요.',
   'settings.animaciones': '애니메이션',
   'settings.sonidos': '소리',
   'settings.vibracion': '진동',

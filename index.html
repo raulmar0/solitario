@@ -218,6 +218,16 @@
         <p class="hint-text" id="scoring-hint"></p>
       </div>
 
+      <div class="field">
+        <span class="field-label" data-i18n="settings.reparto">Manos resolubles</span>
+        <div class="seg" role="radiogroup" aria-label="Manos resolubles" data-i18n-aria-label="settings.reparto">
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="random" data-i18n="settings.reparto.azar">Al azar</button>
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="balanced" data-i18n="settings.reparto.equilibrado">Equilibrado</button>
+          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="solvable" data-i18n="settings.reparto.solubles">Solo resolubles</button>
+        </div>
+        <p class="hint-text" data-i18n="settings.reparto.nota">«Equilibrado» reparte la mayoría de manos con solución comprobada y deja alguna al azar.</p>
+      </div>
+
       <label class="switch"><input type="checkbox" data-pref="timed"><span data-i18n="settings.contrarreloj">Contrarreloj</span></label>
       <label class="switch"><input type="checkbox" data-pref="autoSafe"><span data-i18n="settings.autosubir">Subir automáticamente</span></label>
     </div>
@@ -258,7 +268,6 @@
       <summary data-i18n="settings.grupo.avanzado">Opciones avanzadas</summary>
       <div class="settings-details-body">
         <label class="switch"><input type="checkbox" data-pref="penalizeHints"><span data-i18n="settings.penalizarPistas">Penalizar pistas</span></label>
-        <label class="switch"><input type="checkbox" data-pref="solvableOnly"><span data-i18n="settings.solucionables">Solo manos con solución comprobada</span></label>
       </div>
     </details>
 
