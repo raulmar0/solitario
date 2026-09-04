@@ -1795,6 +1795,15 @@ test('la cascada de victoria se puede detener y limpia el lienzo', () => {
   assert.equal($('#win-canvas').classList.contains('activa'), false);
 });
 
+test('el botón de omitir la cascada vive escondido y sale en su idioma', () => {
+  assert.equal($('#btn-skip-win').hidden, true, 'nace apagado: solo se enciende con la cascada');
+  assert.equal($('#btn-skip-win').getAttribute('data-i18n'), 'dlg.victoria.omitir');
+  // Aunque detenerCascada lo apaga una vez más, por si acaso: apagar dos veces no rompe.
+  panels.detenerCascada();
+  assert.equal($('#btn-skip-win').hidden, true);
+  assert.match($('#btn-skip-win').textContent, /Omitir|Skip|Passer|건너뛰기/, 'el rótulo salió traducido');
+});
+
 test('el atajo Alt+Mayús+2 dispara la cascada de victoria', () => {
   let llamado = false;
   const original = panels.cascadaVictoria;

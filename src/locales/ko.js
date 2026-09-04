@@ -111,6 +111,7 @@ export default {
   'dlg.victoria.jugadas': '이동',
   'dlg.victoria.otra': '한 판 더',
   'dlg.victoria.records': '기록 보기',
+  'dlg.victoria.omitir': '건너뛰기',
   'dlg.victoria.nota.puntuacion': '점수 신기록',
   'dlg.victoria.nota.tiempo': '시간 신기록',
   'dlg.victoria.nota.racha': { one: '{n}연승', other: '{n}연승' },

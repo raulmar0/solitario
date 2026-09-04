@@ -110,6 +110,7 @@ export default {
   'dlg.victoria.jugadas': 'Coups',
   'dlg.victoria.otra': 'Une autre partie',
   'dlg.victoria.records': 'Voir les records',
+  'dlg.victoria.omitir': 'Passer',
   'dlg.victoria.nota.puntuacion': 'Nouveau meilleur score',
   'dlg.victoria.nota.tiempo': 'Record de temps',
   'dlg.victoria.nota.racha': { one: '{n} victoire d’affilée', other: '{n} victoires d’affilée' },

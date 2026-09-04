@@ -111,6 +111,7 @@ export default {
   'dlg.victoria.jugadas': 'Jugadas',
   'dlg.victoria.otra': 'Otra partida',
   'dlg.victoria.records': 'Ver récords',
+  'dlg.victoria.omitir': 'Omitir',
   'dlg.victoria.nota.puntuacion': 'Nueva mejor puntuación',
   'dlg.victoria.nota.tiempo': 'Récord de tiempo',
   'dlg.victoria.nota.racha': { one: '{n} victoria seguida', other: '{n} victorias seguidas' },

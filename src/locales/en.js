@@ -110,6 +110,7 @@ export default {
   'dlg.victoria.jugadas': 'Moves',
   'dlg.victoria.otra': 'Another game',
   'dlg.victoria.records': 'See records',
+  'dlg.victoria.omitir': 'Skip',
   'dlg.victoria.nota.puntuacion': 'New best score',
   'dlg.victoria.nota.tiempo': 'Time record',
   'dlg.victoria.nota.racha': { one: '{n} win in a row', other: '{n} wins in a row' },

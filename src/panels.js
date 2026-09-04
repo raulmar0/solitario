@@ -668,6 +668,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   let cascadaRaf = null;
   let cartasOcultas = [];
   let limpiarInteraccion = null;
+  const btnOmitirCascada = $('#btn-skip-win');
 
   function detenerCascada() {
     if (cascadaRaf) {
@@ -678,6 +679,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       limpiarInteraccion();
       limpiarInteraccion = null;
     }
+    if (btnOmitirCascada) btnOmitirCascada.hidden = true;
     for (const el of cartasOcultas) {
       el.style.visibility = '';
     }
@@ -892,12 +894,17 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       finalizar();
     }
 
+    // La salida de emergencia: con el dedo (el botón vive por encima del lienzo)
+    // o con el teclado una vez que el foco cae en él, Enter y espacio ya bastan.
     canvas.addEventListener('click', alInteractuar);
     window.addEventListener('keydown', alInteractuar);
+    btnOmitirCascada?.addEventListener('click', alInteractuar);
     limpiarInteraccion = () => {
       canvas.removeEventListener('click', alInteractuar);
       window.removeEventListener('keydown', alInteractuar);
+      btnOmitirCascada?.removeEventListener('click', alInteractuar);
     };
+    if (btnOmitirCascada) btnOmitirCascada.hidden = false;
 
     const t0 = performance.now();
 

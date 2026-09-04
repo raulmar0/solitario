@@ -1194,6 +1194,25 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   pointer-events: auto;
   cursor: pointer;
 }
+/* Botón de omitir la fiesta de la cascada, en la esquina de abajo a la derecha:
+   quien ya vio la animación mil veces quiere llegar a la ventana de victoria.
+   Solo vive mientras la cascada corre; panels.js lo enciende y lo apaga. */
+.btn-skip-win {
+  position: fixed; right: 14px; bottom: 14px;
+  z-index: 125;
+  padding: 8px 16px;
+  border: 1px solid rgba(0, 0, 0, .25);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .5);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
+}
+.btn-skip-win:hover { background: rgba(0, 0, 0, .68); }
+.btn-skip-win[hidden] { display: none; }
 .confetti i {
   position: absolute; top: -14px;
   width: 9px; height: 14px; border-radius: 2px;
