@@ -72,19 +72,6 @@
 </header>
 
 <main class="table" id="table">
-  <!-- Invitación al reto del día: en el tapete y antes que las cartas, que es lo
-       primero que se mira al abrir. El reto vive detrás del menú y se pierde de
-       vista; este cartel lo pone delante mientras el día siga sin resolverse. Se
-       retira solo en cuanto se gana o mientras se está jugando. -->
-  <aside class="reto-banner" id="reto-banner" aria-labelledby="reto-banner-titulo" hidden>
-    <span class="reto-banner-art" aria-hidden="true">♠ ♥ ♦ ♣</span>
-    <div class="reto-banner-info">
-      <strong class="reto-banner-titulo" id="reto-banner-titulo" data-i18n="reto.banner.titulo">Reto del día</strong>
-      <p class="reto-banner-texto" id="reto-banner-texto" data-i18n="reto.banner.texto">Hoy todo el mundo reparte las mismas cartas. Resuélvelo y quedará guardado en tu calendario.</p>
-    </div>
-    <button type="button" class="btn primary" id="btn-reto-banner" data-i18n="reto.banner.jugar">Jugar el reto de hoy</button>
-  </aside>
-
   <div class="board" id="board">
     <!-- huecos de las pilas; las cartas se colocan encima -->
     <div class="slot slot-stock" data-pile="stock" title="Mazo (Espacio)" data-i18n-title="tool.mazo"><span class="slot-mark" aria-hidden="true">↻</span></div>
@@ -148,6 +135,21 @@
   </div>
 </dialog>
 
+
+<!-- Invitación al reto del día: un cartel aparte, no dentro del tapete. Sale al
+     abrir, una sola vez al día, y se quita de en medio con un clic —el reto vive
+     detrás del menú y si no se pone delante no lo encuentra nadie. -->
+<dialog id="dlg-reto-invita" class="dlg dlg-invita" aria-labelledby="invita-titulo">
+  <button class="icon-btn invita-cerrar" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar">✕</button>
+  <div class="invita-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
+  <h2 id="invita-titulo" data-i18n="reto.invita.titulo">Reto del día</h2>
+  <p class="invita-fecha" id="invita-fecha"></p>
+  <p class="invita-texto" id="invita-texto" data-i18n="reto.invita.texto">Hoy todo el mundo reparte las mismas cartas. Resuélvelo y quedará guardado en tu calendario.</p>
+  <div class="dlg-actions">
+    <button class="btn primary" data-action="jugar" id="btn-invita-jugar" autofocus data-i18n="reto.invita.jugar">Jugar el reto de hoy</button>
+    <button class="btn ghost" data-close data-i18n="reto.invita.ahora-no">Ahora no</button>
+  </div>
+</dialog>
 
 <dialog id="dlg-settings" class="dlg dlg-wide" aria-labelledby="panel-titulo">
   <header class="dlg-head">

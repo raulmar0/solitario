@@ -152,11 +152,12 @@ export default {
   'reto.futuro': '아직 오지 않은 날',
   'reto.hecho.ganada': '승리 · {modo} · {puntos} · {tiempo} · {jugadas}번 이동',
   'reto.hecho.perdida': '해봤지만 못 이김 · {modo} · {puntos} · {tiempo} · {jugadas}번 이동',
-  'reto.banner.titulo': '오늘의 도전',
-  'reto.banner.texto': '오늘은 모두가 같은 카드를 받아요. 풀어서 달력에 남겨 보세요.',
-  'reto.banner.texto.perdido': '오늘은 아쉽게 놓쳤네요. 카드는 바뀌지 않으니 다시 도전해 보세요.',
-  'reto.banner.jugar': '오늘의 도전 하기',
-  'reto.banner.reintentar': '다시 도전',
+  'reto.invita.titulo': '오늘의 도전',
+  'reto.invita.texto': '오늘은 모두가 같은 카드를 받아요. 풀어서 달력에 남겨 보세요.',
+  'reto.invita.texto.perdido': '오늘은 아쉽게 놓쳤네요. 카드는 바뀌지 않으니 다시 도전해 보세요.',
+  'reto.invita.jugar': '오늘의 도전 하기',
+  'reto.invita.reintentar': '다시 도전',
+  'reto.invita.ahora-no': '나중에',
 
   // settings — sección de ajustes
   'settings.grupo.partida': '게임',

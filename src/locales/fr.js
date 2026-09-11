@@ -151,11 +151,12 @@ export default {
   'reto.futuro': 'ce jour n’est pas encore arrivé',
   'reto.hecho.ganada': 'gagnée · {modo} · {puntos} · {tiempo} · {jugadas} coups',
   'reto.hecho.perdida': 'jouée sans la gagner · {modo} · {puntos} · {tiempo} · {jugadas} coups',
-  'reto.banner.titulo': 'Défi du jour',
-  'reto.banner.texto': 'Aujourd’hui, tout le monde reçoit la même donne. Résous-la et elle sera conservée dans ton calendrier.',
-  'reto.banner.texto.perdido': 'Tu n’as pas réussi aujourd’hui. La donne ne change pas : retente ta chance.',
-  'reto.banner.jugar': 'Jouer le défi du jour',
-  'reto.banner.reintentar': 'Réessayer',
+  'reto.invita.titulo': 'Défi du jour',
+  'reto.invita.texto': 'Aujourd’hui, tout le monde reçoit la même donne. Résous-la et elle sera conservée dans ton calendrier.',
+  'reto.invita.texto.perdido': 'Tu n’as pas réussi aujourd’hui. La donne ne change pas : retente ta chance.',
+  'reto.invita.jugar': 'Jouer le défi du jour',
+  'reto.invita.reintentar': 'Réessayer',
+  'reto.invita.ahora-no': 'Plus tard',
 
   // settings — sección de ajustes
   'settings.grupo.partida': 'Partie',

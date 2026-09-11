@@ -11,6 +11,7 @@ export const KEYS = {
   save: `${PREFIX}save`,
   bank: `${PREFIX}vegasBank`,
   retos: `${PREFIX}retos`,
+  invita: `${PREFIX}retoInvitado`,
 };
 
 export const MAX_SCORES = 25;   // por modalidad
@@ -226,6 +227,19 @@ export function createStore(backend) {
       todos[dia] = guardado;
       write(KEYS.retos, todos);
       return guardado;
+    },
+
+    /**
+     * Qué día se enseñó por última vez la invitación al reto. Una al día y basta:
+     * lo que insiste cada vez que abres deja de ser una invitación.
+     */
+    getRetoInvitado() {
+      const dia = read(KEYS.invita, null);
+      return typeof dia === 'string' ? dia : null;
+    },
+    setRetoInvitado(dia) {
+      if (!esClaveValida(dia)) return false;
+      return write(KEYS.invita, dia);
     },
 
     getBank(drawCount) {

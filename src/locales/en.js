@@ -151,11 +151,12 @@ export default {
   'reto.futuro': 'that day hasn’t come round yet',
   'reto.hecho.ganada': 'won · {modo} · {puntos} · {tiempo} · {jugadas} moves',
   'reto.hecho.perdida': 'played, not won · {modo} · {puntos} · {tiempo} · {jugadas} moves',
-  'reto.banner.titulo': 'Daily challenge',
-  'reto.banner.texto': 'Today everyone plays the same deal. Solve it and it will be saved to your calendar.',
-  'reto.banner.texto.perdido': 'You didn’t crack it today. The deal never changes: give it another go.',
-  'reto.banner.jugar': 'Play today’s challenge',
-  'reto.banner.reintentar': 'Try again',
+  'reto.invita.titulo': 'Daily challenge',
+  'reto.invita.texto': 'Today everyone plays the same deal. Solve it and it will be saved to your calendar.',
+  'reto.invita.texto.perdido': 'You didn’t crack it today. The deal never changes: give it another go.',
+  'reto.invita.jugar': 'Play today’s challenge',
+  'reto.invita.reintentar': 'Try again',
+  'reto.invita.ahora-no': 'Not now',
 
   // settings — sección de ajustes
   'settings.grupo.partida': 'Game',

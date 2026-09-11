@@ -151,11 +151,12 @@ export default {
   'reto.futuro': 'esse dia ainda não chegou',
   'reto.hecho.ganada': 'ganha · {modo} · {puntos} · {tiempo} · {jugadas} jogadas',
   'reto.hecho.perdida': 'jogada sem ganhar · {modo} · {puntos} · {tiempo} · {jugadas} jogadas',
-  'reto.banner.titulo': 'Desafio do dia',
-  'reto.banner.texto': 'Hoje toda a gente recebe o mesmo baralho. Resolve-o e fica guardado no teu calendário.',
-  'reto.banner.texto.perdido': 'Hoje não conseguiste. O baralho não muda: tenta outra vez.',
-  'reto.banner.jugar': 'Jogar o desafio do dia',
-  'reto.banner.reintentar': 'Tentar de novo',
+  'reto.invita.titulo': 'Desafio do dia',
+  'reto.invita.texto': 'Hoje toda a gente recebe o mesmo baralho. Resolve-o e fica guardado no teu calendário.',
+  'reto.invita.texto.perdido': 'Hoje não conseguiste. O baralho não muda: tenta outra vez.',
+  'reto.invita.jugar': 'Jogar o desafio do dia',
+  'reto.invita.reintentar': 'Tentar de novo',
+  'reto.invita.ahora-no': 'Agora não',
 
   // settings — sección de ajustes
   'settings.grupo.partida': 'Partida',

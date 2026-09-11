@@ -152,11 +152,12 @@ export default {
   'reto.futuro': 'ese día aún no ha llegado',
   'reto.hecho.ganada': 'ganada · {modo} · {puntos} · {tiempo} · {jugadas} jugadas',
   'reto.hecho.perdida': 'jugada sin ganarla · {modo} · {puntos} · {tiempo} · {jugadas} jugadas',
-  'reto.banner.titulo': 'Reto del día',
-  'reto.banner.texto': 'Hoy todo el mundo reparte las mismas cartas. Resuélvelo y quedará guardado en tu calendario.',
-  'reto.banner.texto.perdido': 'Hoy se te ha resistido. El reparto no cambia: vuelve a intentarlo y resuélvelo.',
-  'reto.banner.jugar': 'Jugar el reto de hoy',
-  'reto.banner.reintentar': 'Volver a intentarlo',
+  'reto.invita.titulo': 'Reto del día',
+  'reto.invita.texto': 'Hoy todo el mundo reparte las mismas cartas. Resuélvelo y quedará guardado en tu calendario.',
+  'reto.invita.texto.perdido': 'Hoy se te ha resistido. El reparto no cambia: vuelve a intentarlo y resuélvelo.',
+  'reto.invita.jugar': 'Jugar el reto de hoy',
+  'reto.invita.reintentar': 'Volver a intentarlo',
+  'reto.invita.ahora-no': 'Ahora no',
 
   // settings — sección de ajustes
   'settings.grupo.partida': 'Partida',

@@ -8,6 +8,7 @@ import { COLUMNA, VUELO_POR_DEFECTO, MARGEN_ANIM } from '../src/ui.js';
 // Los textos se comprueban leyendo su clave, no clavando la cadena: así la
 // prueba sigue valiendo aunque se retoque la redacción de un mensaje.
 import { t } from '../src/i18n.js';
+import { claveDia } from '../src/reto.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
@@ -57,6 +58,10 @@ globalThis.localStorage = window.localStorage;
 // panel que los ajustes se cruzaba con las pruebas a los 500 ms. Con una
 // partida ya apuntada, el juego entiende que no es un recién llegado.
 window.localStorage.setItem('solitario.v1.stats', JSON.stringify({ 'standard-1': { played: 1, won: 0 } }));
+// Por lo mismo, la invitación al reto del día: sale sola al arrancar y taparía
+// las pruebas. Se deja apuntada como ya enseñada hoy; las suyas la reactivan
+// borrando esta clave.
+window.localStorage.setItem('solitario.v1.retoInvitado', JSON.stringify(claveDia()));
 // Toda la interfaz está traducida y en jsdom el navegador dice hablar inglés, así
 // que la aplicación arrancaría en inglés. Aquí se comparan textos en español: el
 // idioma se deja escrito antes de importar main.js, que es quien lee las
@@ -1815,39 +1820,70 @@ test('el atajo Alt+Mayús+2 dispara la cascada de victoria', () => {
 
 // --- invitación al reto del día ---
 
-test('la invitación al reto del día empieza a la vista y reparte el reto de hoy', async () => {
-  const { claveDia } = await import('../src/reto.js');
+/** Deja el almacén como al abrir un día nuevo: sin reto jugado y sin invitar aún. */
+function dejarInvitablePendiente() {
   window.localStorage.removeItem('solitario.v1.retos');
+  window.localStorage.removeItem('solitario.v1.retoInvitado');
   game.newGame(1);             // partida normal: no es el reto diario
   board.cancel();
+}
 
-  const banner = $('#reto-banner');
-  assert.equal(banner.hidden, false, 'sin reto resuelto, la invitación se ve');
-  assert.equal($('#reto-banner-texto').textContent, t('reto.banner.texto'));
-  assert.equal($('#btn-reto-banner').textContent, t('reto.banner.jugar'));
+test('la invitación al reto del día sale como diálogo y reparte el reto de hoy', () => {
+  dejarInvitablePendiente();
 
-  $('#btn-reto-banner').click();
+  assert.equal(panels.invitarRetoHoy(), true, 'sin reto resuelto, se invita');
+  const dlg = $('#dlg-reto-invita');
+  assert.equal(dlg.open, true, 'la invitación es un diálogo, no un cartel del tablero');
+  assert.equal($('#invita-texto').textContent, t('reto.invita.texto'));
+  assert.equal($('#btn-invita-jugar').textContent, t('reto.invita.jugar'));
+
+  $('#btn-invita-jugar').click();
+  assert.equal(dlg.open, false, 'al jugar se cierra');
   assert.equal(game.dia, claveDia(), 'el botón reparte el reto de hoy');
-  assert.equal($('#reto-banner').hidden, true, 'y deja de invitar: ya se está jugando');
 });
 
-test('la invitación cambia de mensaje si el reto de hoy ya se intentó', async () => {
-  const { claveDia } = await import('../src/reto.js');
+test('la invitación se cierra sin jugar y no vuelve el mismo día', () => {
+  dejarInvitablePendiente();
+  assert.equal(panels.invitarRetoHoy(), true);
+
+  const dlg = $('#dlg-reto-invita');
+  $('#dlg-reto-invita [data-close]').click();
+  assert.equal(dlg.open, false, '«Ahora no» la cierra');
+  assert.notEqual(game.dia, claveDia(), 'y deja la partida como estaba');
+
+  assert.equal(panels.invitarRetoHoy(), false, 'ya se enseñó hoy: no insiste');
+  assert.equal(dlg.open, false);
+});
+
+test('la invitación cambia de mensaje si el reto de hoy ya se intentó', () => {
+  dejarInvitablePendiente();
   const { store } = globalThis.solitario;
   store.recordReto(claveDia(), { won: false, score: 10, scoring: 'standard', drawCount: 1, timeMs: 1000, moves: 5 });
-  game.newGame(1);
-  board.cancel();
 
-  assert.equal($('#reto-banner').hidden, false);
-  assert.equal($('#reto-banner-texto').textContent, t('reto.banner.texto.perdido'));
-  assert.equal($('#btn-reto-banner').textContent, t('reto.banner.reintentar'));
+  assert.equal(panels.invitarRetoHoy(), true);
+  assert.equal($('#invita-texto').textContent, t('reto.invita.texto.perdido'));
+  assert.equal($('#btn-invita-jugar').textContent, t('reto.invita.reintentar'));
+  $('#dlg-reto-invita [data-close]').click();
 });
 
-test('ganar el reto del día retira la invitación', async () => {
-  const { claveDia } = await import('../src/reto.js');
+test('ganar el reto del día deja sin motivo a la invitación', () => {
+  dejarInvitablePendiente();
   const { store } = globalThis.solitario;
   store.recordReto(claveDia(), { won: true, score: 500, scoring: 'standard', drawCount: 1, timeMs: 1000, moves: 5 });
+
+  assert.equal(panels.invitarRetoHoy(), false, 'el día está resuelto: no hay nada que invitar');
+  assert.equal($('#dlg-reto-invita').open, false);
+});
+
+test('no se invita a lo que ya se está jugando', () => {
+  window.localStorage.removeItem('solitario.v1.retos');
+  window.localStorage.removeItem('solitario.v1.retoInvitado');
+  panels.invitarRetoHoy();
+  $('#btn-invita-jugar').click();      // a partir de aquí se juega el reto de hoy
+  board.cancel();
+  window.localStorage.removeItem('solitario.v1.retoInvitado');
+
+  assert.equal(panels.invitarRetoHoy(), false, 'ya se está jugando el reto de hoy');
   game.newGame(1);
   board.cancel();
-  assert.equal($('#reto-banner').hidden, true, 'el día está resuelto: no hay nada que invitar');
 });

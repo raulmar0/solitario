@@ -39,9 +39,10 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   const dlgWin = $('#dlg-win');
   const dlgStuck = $('#dlg-stuck');
   const dlgSettings = $('#dlg-settings');
+  const dlgInvita = $('#dlg-reto-invita');
   let statsMode = null;
 
-  for (const dlg of [dlgWin, dlgStuck, dlgSettings]) {
+  for (const dlg of [dlgWin, dlgStuck, dlgSettings, dlgInvita]) {
     dlg.addEventListener('click', (event) => {
       if (event.target.closest('[data-close]')) dlg.close();
       else if (event.target === dlg) dlg.close();   // clic en el fondo
@@ -1056,6 +1057,52 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (accion === 'new') game.newGame();
   });
 
+  // ---------- invitación al reto del día ----------
+
+  /**
+   * A quien ya lo intentó hoy —el reparto es el mismo todo el día— se le anima a
+   * repetir en vez de a empezar de cero.
+   */
+  function pintarInvitacion() {
+    const hoy = claveDia();
+    const intentado = !!store.getReto(hoy);
+    $('#invita-fecha').textContent = fechaLarga(fechaDeClave(hoy));
+    const texto = $('#invita-texto');
+    const boton = $('#btn-invita-jugar');
+    // Se cambia la clave del diccionario, no solo el texto: así el cartel se
+    // retraduce solo si cambia el idioma con él delante.
+    texto.dataset.i18n = intentado ? 'reto.invita.texto.perdido' : 'reto.invita.texto';
+    texto.textContent = t(texto.dataset.i18n);
+    boton.dataset.i18n = intentado ? 'reto.invita.reintentar' : 'reto.invita.jugar';
+    boton.textContent = t(boton.dataset.i18n);
+  }
+
+  /**
+   * El reto vive detrás del menú y se pierde de vista: este cartel lo pone
+   * delante al abrir el juego. Se cierra con la ✕, con «Ahora no», con Escape o
+   * con un clic fuera, y no vuelve hasta el día siguiente. No llega a salir si el
+   * día ya está ganado, si es justo lo que se está jugando o si hay algo abierto
+   * por delante. Devuelve si se ha enseñado.
+   */
+  function invitarRetoHoy() {
+    const hoy = claveDia();
+    if (api.anyOpen || game.dia === hoy) return false;
+    if (store.getReto(hoy)?.won) return false;
+    if (store.getRetoInvitado() === hoy) return false;
+    pintarInvitacion();
+    // Se apunta al enseñarla, no al cerrarla: recargar la página no es pedir que
+    // te la vuelvan a poner.
+    store.setRetoInvitado(hoy);
+    dlgInvita.showModal();
+    return true;
+  }
+
+  dlgInvita.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-action="jugar"]')) return;
+    dlgInvita.close();
+    jugarReto(claveDia());
+  });
+
   /**
    * Cambio de idioma en caliente: lo estático lo repinta `traducirDom`, pero
    * todo lo que hemos escrito nosotros por JS hay que rehacerlo. Sin cerrar el
@@ -1070,6 +1117,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (mesVisto) renderReto();
     if (dlgWin.open) pintarNotasVictoria();
     if (dlgStuck.open) pintarNotaBloqueo();
+    if (dlgInvita.open) pintarInvitacion();
     pintarAviso();
     pintarErrorReparto();
   }
@@ -1079,8 +1127,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     openSettings() { abrir('ajustes'); },
     openHelp() { abrir('ayuda'); },
     openReto() { abrir('reto'); },
-    /** Reparte el reto de hoy; lo usa la invitación del tablero. */
-    jugarRetoHoy() { jugarReto(claveDia()); },
+    /** Invita al reto del día si toca; la llama `main.js` al arrancar. */
+    invitarRetoHoy,
     showWin,
     showStuck,
     cascadaVictoria,
@@ -1091,7 +1139,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     avisoPanel,
     /** Qué sección se está viendo; las pruebas y el teclado lo usan. */
     get section() { return seccion; },
-    get anyOpen() { return [dlgWin, dlgStuck, dlgSettings].some((d) => d.open); },
+    get anyOpen() { return [dlgWin, dlgStuck, dlgSettings, dlgInvita].some((d) => d.open); },
   };
   return api;
 }
