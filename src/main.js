@@ -280,6 +280,7 @@ function refreshHeader() {
 function refresh() {
   refreshHeader();
   board.paint();
+  pintarRetoBanner();
 
   if (ultimoReparto !== null && game.dealId !== ultimoReparto) {
     sonidos.barajar();
@@ -437,6 +438,37 @@ $('#btn-hint').addEventListener('click', pedirPista);
 $('#btn-finish').addEventListener('click', autoCompletar);
 $('#btn-settings').addEventListener('click', () => panels.openSettings());
 $('#mode-chip').addEventListener('click', () => panels.openSettings());
+
+// ---------- invitación al reto del día ----------
+
+/**
+ * El reto vive detrás del menú y se pierde de vista con facilidad. Este cartel lo
+ * pone delante mientras el día siga sin resolverse: se retira en cuanto se gana
+ * o mientras se está jugando. A quien ya lo intentó hoy —el reparto no cambia—
+ * se le anima a repetir en vez de a empezar de cero.
+ */
+function pintarRetoBanner() {
+  const banner = $('#reto-banner');
+  if (!banner) return;
+  const hoy = claveDia();
+  const reto = store.getReto(hoy);
+  const visible = !reto?.won && game.dia !== hoy;
+  banner.hidden = !visible;
+  if (!visible) return;
+  const intentado = !!reto;
+  const texto = $('#reto-banner-texto');
+  const boton = $('#btn-reto-banner');
+  // Se cambia la clave del diccionario, no solo el texto: así el cartel se
+  // retraduce solo al cambiar de idioma.
+  const claveTexto = intentado ? 'reto.banner.texto.perdido' : 'reto.banner.texto';
+  const claveBoton = intentado ? 'reto.banner.reintentar' : 'reto.banner.jugar';
+  texto.dataset.i18n = claveTexto;
+  texto.textContent = t(claveTexto);
+  boton.dataset.i18n = claveBoton;
+  boton.textContent = t(claveBoton);
+}
+
+$('#btn-reto-banner').addEventListener('click', () => panels.jugarRetoHoy());
 
 /**
  * Compartir una mano es dar su número, y el enlace ya lo lleva puesto. Si lo que

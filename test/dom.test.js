@@ -1812,3 +1812,42 @@ test('el atajo Alt+Mayús+2 dispara la cascada de victoria', () => {
   assert.equal(llamado, true, 'Alt+Mayús+2 lanza la cascada');
   panels.cascadaVictoria = original;
 });
+
+// --- invitación al reto del día ---
+
+test('la invitación al reto del día empieza a la vista y reparte el reto de hoy', async () => {
+  const { claveDia } = await import('../src/reto.js');
+  window.localStorage.removeItem('solitario.v1.retos');
+  game.newGame(1);             // partida normal: no es el reto diario
+  board.cancel();
+
+  const banner = $('#reto-banner');
+  assert.equal(banner.hidden, false, 'sin reto resuelto, la invitación se ve');
+  assert.equal($('#reto-banner-texto').textContent, t('reto.banner.texto'));
+  assert.equal($('#btn-reto-banner').textContent, t('reto.banner.jugar'));
+
+  $('#btn-reto-banner').click();
+  assert.equal(game.dia, claveDia(), 'el botón reparte el reto de hoy');
+  assert.equal($('#reto-banner').hidden, true, 'y deja de invitar: ya se está jugando');
+});
+
+test('la invitación cambia de mensaje si el reto de hoy ya se intentó', async () => {
+  const { claveDia } = await import('../src/reto.js');
+  const { store } = globalThis.solitario;
+  store.recordReto(claveDia(), { won: false, score: 10, scoring: 'standard', drawCount: 1, timeMs: 1000, moves: 5 });
+  game.newGame(1);
+  board.cancel();
+
+  assert.equal($('#reto-banner').hidden, false);
+  assert.equal($('#reto-banner-texto').textContent, t('reto.banner.texto.perdido'));
+  assert.equal($('#btn-reto-banner').textContent, t('reto.banner.reintentar'));
+});
+
+test('ganar el reto del día retira la invitación', async () => {
+  const { claveDia } = await import('../src/reto.js');
+  const { store } = globalThis.solitario;
+  store.recordReto(claveDia(), { won: true, score: 500, scoring: 'standard', drawCount: 1, timeMs: 1000, moves: 5 });
+  game.newGame(1);
+  board.cancel();
+  assert.equal($('#reto-banner').hidden, true, 'el día está resuelto: no hay nada que invitar');
+});

@@ -441,6 +441,34 @@ html[data-theme="light"] body::before {
   touch-action: none;
 }
 
+/* ---------- invitación al reto del día ---------- */
+/* Sobre el tapete y antes que las cartas. Ocupa el ancho del tablero para no
+   salirse de la mesa, y va con un borde dorado que lo separa del fieltro sin
+   meter una caja opaca que pese. */
+.reto-banner {
+  width: 100%;
+  max-width: calc(7 * var(--cw) + 6 * var(--gap));
+  margin: 0 0 12px;
+  padding: 9px 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  /* Algo más de cuerpo que el cartel de avisos: aquí el texto es la invitación
+     entera y tiene que leerse, no solo intuirse sobre el fieltro. */
+  background: rgba(0, 0, 0, .42);
+  border: 1px solid var(--felt-accent);
+  border-radius: 13px;
+  box-shadow: var(--shadow);
+}
+.reto-banner-art { font-size: 19px; line-height: 1; letter-spacing: 2px; color: var(--felt-accent); }
+/* El bloque de texto cede antes que el botón: en pantallas estrechas el botón se
+   va a su propia línea entera y ahí ya se toca cómodo. */
+.reto-banner-info { flex: 1 1 180px; min-width: 0; }
+.reto-banner-titulo { display: block; font-size: 13.5px; font-weight: 700; color: var(--felt-accent); }
+.reto-banner-texto { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-soft); }
+.reto-banner .btn { flex: 0 0 auto; }
+
 .slot {
   position: absolute;
   top: 0; left: 0;
@@ -1280,4 +1308,8 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .tools { gap: 3px; padding-left: max(4px, var(--safe-left)); padding-right: max(4px, var(--safe-right)); }
   .tool { min-height: 48px; padding: 5px 2px; }
   .rotulo { font-size: 10px; }
+  /* El botón se va a su propia línea entera: el texto manda y ahí se toca sin
+     apuntar, que es justo lo que se busca con una invitación. */
+  .reto-banner { flex-wrap: wrap; margin-bottom: 10px; }
+  .reto-banner .btn { flex: 1 1 100%; }
 }

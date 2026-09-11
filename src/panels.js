@@ -1079,6 +1079,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     openSettings() { abrir('ajustes'); },
     openHelp() { abrir('ayuda'); },
     openReto() { abrir('reto'); },
+    /** Reparte el reto de hoy; lo usa la invitación del tablero. */
+    jugarRetoHoy() { jugarReto(claveDia()); },
     showWin,
     showStuck,
     cascadaVictoria,

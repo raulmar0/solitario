@@ -72,6 +72,19 @@
 </header>
 
 <main class="table" id="table">
+  <!-- Invitación al reto del día: en el tapete y antes que las cartas, que es lo
+       primero que se mira al abrir. El reto vive detrás del menú y se pierde de
+       vista; este cartel lo pone delante mientras el día siga sin resolverse. Se
+       retira solo en cuanto se gana o mientras se está jugando. -->
+  <aside class="reto-banner" id="reto-banner" aria-labelledby="reto-banner-titulo" hidden>
+    <span class="reto-banner-art" aria-hidden="true">♠ ♥ ♦ ♣</span>
+    <div class="reto-banner-info">
+      <strong class="reto-banner-titulo" id="reto-banner-titulo" data-i18n="reto.banner.titulo">Reto del día</strong>
+      <p class="reto-banner-texto" id="reto-banner-texto" data-i18n="reto.banner.texto">Hoy todo el mundo reparte las mismas cartas. Resuélvelo y quedará guardado en tu calendario.</p>
+    </div>
+    <button type="button" class="btn primary" id="btn-reto-banner" data-i18n="reto.banner.jugar">Jugar el reto de hoy</button>
+  </aside>
+
   <div class="board" id="board">
     <!-- huecos de las pilas; las cartas se colocan encima -->
     <div class="slot slot-stock" data-pile="stock" title="Mazo (Espacio)" data-i18n-title="tool.mazo"><span class="slot-mark" aria-hidden="true">↻</span></div>
