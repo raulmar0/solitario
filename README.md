@@ -28,6 +28,15 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   jugado —verde si se ganó—, deja volver a cualquiera del último año y guarda tu
   mejor intento de cada uno. Del futuro no reparte. Se abre con **D** o desde el
   menú, y se puede compartir con `?reto=hoy` o `?reto=AAAA-MM-DD`.
+- **Compartir la victoria**: al ganar, «Compartir» manda una imagen con el
+  marcador —puntuación, tiempo, jugadas y las medallas— y un enlace que abre ese
+  mismo reparto. La tarjeta se dibuja en un lienzo (`src/tarjeta.js`), sin
+  dependencias ni capturas de pantalla. Si la partida era el reto del día, lo
+  lleva por delante: chapa dorada con la fecha y enlace con `?reto=AAAA-MM-DD`,
+  para que quien lo reciba juegue esa misma mano y pueda comparar. Se usa
+  `navigator.share` con fichero donde lo hay; donde solo se puede compartir
+  texto, va el texto; y donde no hay nada de eso, la imagen se descarga y el
+  mensaje se copia al portapapeles.
 - **Cinco idiomas**: español, inglés, francés, portugués y coreano, con la misma
   cobertura los cinco. Al entrar por primera vez se mira el idioma del navegador;
   desde Ajustes se cambia en caliente, sin recargar y sin perder la partida.
@@ -217,6 +226,8 @@ src/storage.js         localStorage con reserva en memoria
 src/game.js            partida: motor + puntos + reloj + guardado + deshacer
 src/ui.js              tablero: dibujo y gestos
 src/panels.js          diálogos (reto y calendario, récords, ajustes, ayuda, victoria)
+src/compartir.js       compartir la victoria: enlace, mensaje y los caminos según el navegador
+src/tarjeta.js         la tarjeta de la victoria, dibujada en un lienzo y servida en PNG
 src/main.js            arranque, cabecera y teclado
 src/i18n.js            traducción: detección, plural, interpolación y DOM
 src/locales/*.js       los cinco diccionarios (es, en, fr, pt, ko)

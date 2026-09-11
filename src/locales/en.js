@@ -83,6 +83,11 @@ export default {
   'msg.reparto.invalido': 'Enter a deal number between 1 and 999999.',
   'msg.reparto.copiado': 'Link to deal #{n} copied.',
   'msg.reparto.url': 'Copy this link to share the deal: {url}',
+  'msg.compartir.descargada': 'Image saved and text copied: just attach it.',
+  'msg.compartir.imagen': 'Image saved to your downloads.',
+  'msg.compartir.copiado': 'Text and link copied.',
+  'msg.compartir.enlace': 'Copy this link to share your game: {url}',
+  'msg.compartir.error': 'Could not share the game.',
   'msg.datos.exportados': 'Data exported.',
   'msg.datos.importados': 'Data imported.',
   'msg.datos.borrados': 'Data deleted.',
@@ -110,12 +115,13 @@ export default {
   'dlg.victoria.jugadas': 'Moves',
   'dlg.victoria.otra': 'Another game',
   'dlg.victoria.records': 'See records',
+  'dlg.victoria.compartir': 'Share',
   'dlg.victoria.omitir': 'Skip',
+  'dlg.victoria.reto': 'Daily challenge',
   'dlg.victoria.nota.puntuacion': 'New best score',
   'dlg.victoria.nota.tiempo': 'Time record',
   'dlg.victoria.nota.racha': { one: '{n} win in a row', other: '{n} wins in a row' },
   'dlg.victoria.nota.banca': 'Bank: {valor}',
-  'dlg.victoria.nota.reto': 'Daily challenge · {fecha}',
   'dlg.bloqueo.titulo': 'The game is a dead end',
   'dlg.bloqueo.deshacer': 'Undo the last move',
   'dlg.bloqueo.repetir': 'Replay deal',
@@ -157,6 +163,11 @@ export default {
   'reto.invita.jugar': 'Play today’s challenge',
   'reto.invita.reintentar': 'Try again',
   'reto.invita.ahora-no': 'Not now',
+
+  // compartir — la tarjeta de la victoria y el mensaje que la acompaña
+  'compartir.tarjeta.reto': 'Daily challenge',
+  'compartir.texto.reto': 'I solved the {fecha} challenge: {puntos} in {tiempo}. Everyone plays the same cards today — see how you do: {url}',
+  'compartir.texto': 'I won at solitaire: {puntos} in {tiempo} and {jugadas} moves. Here is the same deal: {url}',
 
   // settings — sección de ajustes
   'settings.grupo.partida': 'Game',

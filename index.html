@@ -108,6 +108,7 @@
 </nav>
 
 <dialog id="dlg-win" class="dlg dlg-win" aria-labelledby="win-titulo">
+  <p class="win-reto" id="win-reto" hidden><span class="win-reto-chapa" data-i18n="dlg.victoria.reto">Reto del día</span><span class="win-reto-fecha" id="win-reto-fecha"></span></p>
   <div class="win-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
   <h2 id="win-titulo" data-i18n="dlg.victoria.titulo">¡Ganaste!</h2>
   <dl class="win-stats">
@@ -118,9 +119,11 @@
   <p class="win-note" id="win-note"></p>
   <div class="dlg-actions">
     <button class="btn primary" data-action="new" data-i18n="dlg.victoria.otra">Otra partida</button>
+    <button class="btn" id="btn-win-share" data-action="share" data-i18n="dlg.victoria.compartir">Compartir</button>
     <button class="btn" data-action="stats" data-i18n="dlg.victoria.records">Ver récords</button>
     <button class="btn ghost" data-close data-i18n="dlg.cerrar">Cerrar</button>
   </div>
+  <p class="win-share-nota" id="win-share-nota" role="status" aria-live="polite"></p>
 </dialog>
 
 <dialog id="dlg-stuck" class="dlg dlg-stuck" aria-labelledby="stuck-titulo">

@@ -84,6 +84,11 @@ export default {
   'msg.reparto.invalido': 'Escribe un número de reparto entre 1 y 999999.',
   'msg.reparto.copiado': 'Enlace del reparto #{n} copiado.',
   'msg.reparto.url': 'Copia este enlace para compartir el reparto: {url}',
+  'msg.compartir.descargada': 'Imagen guardada y texto copiado: ya solo queda adjuntarla.',
+  'msg.compartir.imagen': 'Imagen guardada en tus descargas.',
+  'msg.compartir.copiado': 'Texto y enlace copiados.',
+  'msg.compartir.enlace': 'Copia este enlace para compartir tu partida: {url}',
+  'msg.compartir.error': 'No se pudo compartir la partida.',
   'msg.datos.exportados': 'Datos exportados.',
   'msg.datos.importados': 'Datos importados.',
   'msg.datos.borrados': 'Datos borrados.',
@@ -111,12 +116,13 @@ export default {
   'dlg.victoria.jugadas': 'Jugadas',
   'dlg.victoria.otra': 'Otra partida',
   'dlg.victoria.records': 'Ver récords',
+  'dlg.victoria.compartir': 'Compartir',
   'dlg.victoria.omitir': 'Omitir',
+  'dlg.victoria.reto': 'Reto del día',
   'dlg.victoria.nota.puntuacion': 'Nueva mejor puntuación',
   'dlg.victoria.nota.tiempo': 'Récord de tiempo',
   'dlg.victoria.nota.racha': { one: '{n} victoria seguida', other: '{n} victorias seguidas' },
   'dlg.victoria.nota.banca': 'Banca: {valor}',
-  'dlg.victoria.nota.reto': 'Reto del {fecha}',
   'dlg.bloqueo.titulo': 'La partida está cerrada',
   'dlg.bloqueo.deshacer': 'Deshacer la última',
   'dlg.bloqueo.repetir': 'Repetir reparto',
@@ -158,6 +164,11 @@ export default {
   'reto.invita.jugar': 'Jugar el reto de hoy',
   'reto.invita.reintentar': 'Volver a intentarlo',
   'reto.invita.ahora-no': 'Ahora no',
+
+  // compartir — la tarjeta de la victoria y el mensaje que la acompaña
+  'compartir.tarjeta.reto': 'Reto del día',
+  'compartir.texto.reto': 'He resuelto el reto del {fecha}: {puntos} en {tiempo}. Hoy todos jugamos las mismas cartas, a ver qué tal se te da: {url}',
+  'compartir.texto': 'He ganado al solitario: {puntos} en {tiempo} y {jugadas} jugadas. Este es el mismo reparto: {url}',
 
   // settings — sección de ajustes
   'settings.grupo.partida': 'Partida',

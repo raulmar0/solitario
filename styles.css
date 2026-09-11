@@ -1164,6 +1164,37 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .win-stats dd { margin: 2px 0 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .win-note { color: var(--accent); font-weight: 700; min-height: 20px; }
 
+/* El reto del día se anuncia arriba del todo y en dorado. Ganar el reto no es
+   ganar una partida cualquiera: es la mano que hoy juega todo el mundo, y es lo
+   primero que tiene que verse, tanto aquí como en la tarjeta que se comparte. */
+.win-reto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.win-reto-chapa {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.win-reto-fecha { color: var(--accent); font-weight: 700; font-size: 13px; }
+.win-reto-fecha::first-letter { text-transform: uppercase; }
+/* Los palos se tiñen del mismo dorado: el cartel entero cambia de tono. */
+.dlg-win[data-reto] .win-art { color: var(--accent); }
+
+/* Lo que pasa al compartir se cuenta aquí mismo: el banner del tablero queda
+   detrás del diálogo y no se lee. Sin texto no ocupa nada. */
+.win-share-nota { margin: 12px 0 0; font-size: 13px; color: var(--panel-ink-soft); }
+.win-share-nota:empty { display: none; }
+
 /* ---------- invitación al reto del día ---------- */
 /* Mismo aire que el cartel de victoria: centrado, con su palo arriba y estrecho,
    para que se lea de un vistazo y se cierre sin pensarlo. */

@@ -1893,3 +1893,65 @@ test('no se invita a lo que ya se está jugando', () => {
   game.newGame(1);
   board.cancel();
 });
+
+// ---------------------------------------------------- compartir la victoria
+
+/** Deja una partida ganada, del reto del día si se le pasa la fecha. */
+async function ganarLaPartida({ dia = null } = {}) {
+  const { store } = globalThis.solitario;
+  const engine = await import('../src/engine.js');
+  const estado = engine.cloneState(game.state);
+  estado.stock = [];
+  estado.waste = [];
+  estado.tableau = [[], [], [], [], [], [], []];
+  estado.foundations = ['S', 'H', 'D', 'C'].map((suit) => Array.from({ length: 13 }, (_, i) => ({
+    id: `${i + 1}${suit}`, rank: i + 1, suit, faceUp: true,
+  })));
+  estado.tableau[0] = [estado.foundations[0].pop()];
+  store.saveGame({
+    version: 1, state: estado, baseScore: 500, moves: 90, elapsedMs: 90000, prefs: game.prefs, history: [], dia,
+  });
+  game.resume();
+  $('#btn-finish').click();
+  const limite = Date.now() + 8000;
+  while (game.status !== 'won' && Date.now() < limite) await new Promise((r) => setTimeout(r, 60));
+  await new Promise((r) => setTimeout(r, 600));
+}
+
+test('ganar el reto del día lo anuncia con su chapa, y una partida suelta no', async () => {
+  await ganarLaPartida({ dia: claveDia() });
+  assert.equal($('#dlg-win').open, true);
+  assert.equal($('#win-reto').hidden, false, 'la chapa del reto va arriba del cartel');
+  assert.equal($('#dlg-win').hasAttribute('data-reto'), true, 'y el cartel entero se tiñe de dorado');
+  assert.ok($('#win-reto-fecha').textContent.length > 0, 'con la fecha del reto entera');
+  $('#dlg-win').close();
+
+  await ganarLaPartida();
+  assert.equal($('#win-reto').hidden, true, 'una partida suelta no se disfraza de reto');
+  assert.equal($('#dlg-win').hasAttribute('data-reto'), false);
+  $('#dlg-win').close();
+});
+
+test('el botón de compartir manda la puntuación y el enlace de vuelta al juego', async () => {
+  const compartido = [];
+  Object.defineProperty(globalThis.navigator, 'share', {
+    configurable: true,
+    value: (datos) => { compartido.push(datos); return Promise.resolve(); },
+  });
+  try {
+    await ganarLaPartida({ dia: claveDia() });
+    $('#btn-win-share').click();
+    await new Promise((r) => setTimeout(r, 50));
+
+    assert.equal(compartido.length, 1, 'el clic llega al compartir del sistema');
+    assert.match(compartido[0].text, /reto=\d{4}-\d{2}-\d{2}/, 'quien abra el enlace juega el reto de ese día');
+    assert.match(compartido[0].text, new RegExp(t('dlg.victoria.reto').split(' ')[0], 'i'),
+      'y el mensaje dice que era el reto, no una partida cualquiera');
+    assert.ok(compartido[0].text.includes($('#win-score').textContent), 'con la puntuación que se ve en el cartel');
+  } finally {
+    delete globalThis.navigator.share;
+    $('#dlg-win').close();
+    game.newGame(1);
+    board.cancel();
+  }
+});

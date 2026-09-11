@@ -9,7 +9,7 @@
  */
 
 /* === generado: versión === */
-const VERSION = '1.11.0';
+const VERSION = '1.12.0';
 /* === fin generado === */
 
 /* La huella del contenido de los ficheros. Va en el nombre de la caché para que
@@ -17,7 +17,7 @@ const VERSION = '1.11.0';
  * anterior, y (b) un cambio de código sin subir la versión también renueve la
  * caché en vez de dejar a los ya instalados atrapados en lo viejo. */
 /* === generado: huella === */
-const BUILD = 'a6900c9f';
+const BUILD = 'f7d3d3bc';
 /* === fin generado === */
 
 const CACHE = `solitario-v${VERSION}-${BUILD}`;
@@ -35,6 +35,7 @@ const FICHEROS = [
   'icons/maskable-512.png',
   'src/advisor.js',
   'src/cards.js',
+  'src/compartir.js',
   'src/device.js',
   'src/engine.js',
   'src/game.js',
@@ -48,6 +49,7 @@ const FICHEROS = [
   'src/solvable-seeds.js',
   'src/sonidos.js',
   'src/storage.js',
+  'src/tarjeta.js',
   'src/ui.js',
   'src/version.js',
   'src/locales/en.js',

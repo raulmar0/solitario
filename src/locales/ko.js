@@ -84,6 +84,11 @@ export default {
   'msg.reparto.invalido': '1부터 999999 사이의 판 번호를 적어 주세요.',
   'msg.reparto.copiado': '{n}번 판 링크를 복사했어요.',
   'msg.reparto.url': '이 링크를 복사해서 판을 공유하세요: {url}',
+  'msg.compartir.descargada': '이미지를 저장하고 문구를 복사했어요. 이제 첨부하기만 하면 돼요.',
+  'msg.compartir.imagen': '이미지를 다운로드에 저장했어요.',
+  'msg.compartir.copiado': '문구와 링크를 복사했어요.',
+  'msg.compartir.enlace': '이 링크를 복사해서 결과를 공유하세요: {url}',
+  'msg.compartir.error': '공유하지 못했어요.',
   'msg.datos.exportados': '데이터를 내보냈어요.',
   'msg.datos.importados': '데이터를 가져왔어요.',
   'msg.datos.borrados': '데이터를 지웠어요.',
@@ -111,12 +116,13 @@ export default {
   'dlg.victoria.jugadas': '이동',
   'dlg.victoria.otra': '한 판 더',
   'dlg.victoria.records': '기록 보기',
+  'dlg.victoria.compartir': '공유하기',
   'dlg.victoria.omitir': '건너뛰기',
+  'dlg.victoria.reto': '오늘의 도전',
   'dlg.victoria.nota.puntuacion': '점수 신기록',
   'dlg.victoria.nota.tiempo': '시간 신기록',
   'dlg.victoria.nota.racha': { one: '{n}연승', other: '{n}연승' },
   'dlg.victoria.nota.banca': '잔고: {valor}',
-  'dlg.victoria.nota.reto': '{fecha} 챌린지',
   'dlg.bloqueo.titulo': '이 판은 여기서 끝이에요',
   'dlg.bloqueo.deshacer': '마지막 수 되돌리기',
   'dlg.bloqueo.repetir': '같은 판 다시',
@@ -158,6 +164,11 @@ export default {
   'reto.invita.jugar': '오늘의 도전 하기',
   'reto.invita.reintentar': '다시 도전',
   'reto.invita.ahora-no': '나중에',
+
+  // compartir — la tarjeta de la victoria y el mensaje que la acompaña
+  'compartir.tarjeta.reto': '오늘의 도전',
+  'compartir.texto.reto': '{fecha} 오늘의 도전을 깼어요: {puntos} · {tiempo}. 오늘은 모두 같은 카드로 시작해요. 한번 해보세요: {url}',
+  'compartir.texto': '솔리테어에서 이겼어요: {puntos} · {tiempo} · {jugadas}수. 같은 판이에요: {url}',
 
   // settings — sección de ajustes
   'settings.grupo.partida': '게임',

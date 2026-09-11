@@ -15,6 +15,7 @@ import {
   claveDia, esFuturo, esJugable, fechaDeClave, rejillaDelMes, semillaDelDia,
 } from './reto.js';
 import { esMovil } from './device.js';
+import { compartirVictoria, datosDeTarjeta, prepararTarjeta } from './compartir.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1017,17 +1018,84 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   /** Las medallas de la victoria; se repintan solas si cambia el idioma. */
   function pintarNotasVictoria() {
     const r = game.lastResult;
-    if (!r) return;
+    if (!r) return '';
     const stats = store.getStats(r.scoring, r.drawCount);
     const notas = [];
     if (stats.bestScore === r.score) notas.push(t('dlg.victoria.nota.puntuacion'));
     if (stats.bestTimeMs === r.timeMs) notas.push(t('dlg.victoria.nota.tiempo'));
     if (stats.currentStreak > 1) notas.push(t('dlg.victoria.nota.racha', { count: stats.currentStreak }));
-    if (r.dia) notas.push(t('dlg.victoria.nota.reto', { fecha: fechaCorta(fechaDeClave(r.dia)) }));
     if (r.scoring === 'vegas') {
       notas.push(t('dlg.victoria.nota.banca', { valor: formatScore('vegas', store.getBank(r.drawCount)) }));
     }
-    $('#win-note').textContent = notas.join(t('app.union'));
+    const texto = notas.join(t('app.union'));
+    $('#win-note').textContent = texto;
+    return texto;
+  }
+
+  /**
+   * La chapa del reto del día, arriba del cartel. El reto no va con las demás
+   * medallas: ganar la mano que hoy juega todo el mundo es otra cosa que ganar
+   * una partida suelta, y se anuncia antes que la puntuación.
+   */
+  function pintarChapaReto() {
+    const esReto = !!game.lastResult?.dia;
+    $('#win-reto').hidden = !esReto;
+    dlgWin.toggleAttribute('data-reto', esReto);
+    $('#win-reto-fecha').textContent = esReto ? fechaLarga(fechaDeClave(game.lastResult.dia)) : '';
+  }
+
+  // ---------- compartir la victoria ----------
+
+  // La tarjeta en PNG, dibujándose desde que se abre el cartel. Se guarda también
+  // la clave del aviso, no el texto ya traducido: si cambia el idioma con el
+  // aviso en pantalla, hay que poder repintarlo.
+  let tarjeta = null;
+  let avisoCompartirTimer = null;
+  let avisoCompartirVivo = null;
+
+  const MENSAJE_COMPARTIR = {
+    descargada: 'msg.compartir.descargada',
+    imagen: 'msg.compartir.imagen',
+    copiado: 'msg.compartir.copiado',
+    enlace: 'msg.compartir.enlace',
+    error: 'msg.compartir.error',
+  };
+
+  function pintarAvisoCompartir() {
+    $('#win-share-nota').textContent = avisoCompartirVivo
+      ? t(avisoCompartirVivo.clave, avisoCompartirVivo.params)
+      : '';
+  }
+
+  /** Sin clave, borra el aviso que hubiera. */
+  function avisoCompartir(clave, params = {}) {
+    clearTimeout(avisoCompartirTimer);
+    avisoCompartirVivo = clave ? { clave, params } : null;
+    pintarAvisoCompartir();
+    if (clave) avisoCompartirTimer = setTimeout(() => avisoCompartir(null), AVISO_MS);
+  }
+
+  /** Deja la tarjeta lista para cuando se pulse «Compartir». */
+  function prepararCompartir(notas) {
+    const r = game.lastResult;
+    if (!r) return;
+    tarjeta = prepararTarjeta(datosDeTarjeta(r, { modo: modeName(r), notas }));
+  }
+
+  function compartir() {
+    const r = game.lastResult;
+    if (!r) return;
+    const boton = $('#btn-win-share');
+    boton.disabled = true;
+    avisoCompartir(null);
+    // Sin `await` por delante: `share()` tiene que salir en el mismo turno que el
+    // clic o Safari lo rechaza por haberse gastado el gesto.
+    compartirVictoria({ resultado: r, tarjeta })
+      .then(({ estado, enlace }) => {
+        const clave = MENSAJE_COMPARTIR[estado];
+        if (clave) avisoCompartir(clave, { url: enlace });
+      })
+      .finally(() => { boton.disabled = false; });
   }
 
   function showWin() {
@@ -1036,7 +1104,9 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     $('#win-score').textContent = formatScore(r.scoring, r.score);
     $('#win-time').textContent = formatTime(r.timeMs);
     $('#win-moves').textContent = String(r.moves);
-    pintarNotasVictoria();
+    pintarChapaReto();
+    avisoCompartir(null);
+    prepararCompartir(pintarNotasVictoria());
 
     const esJsdom = typeof navigator !== 'undefined' && navigator.userAgent?.includes('jsdom');
     if (esJsdom || !hayMovimiento(game.prefs)) {
@@ -1054,6 +1124,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     const accion = event.target.closest('[data-action]')?.dataset.action;
     if (accion === 'new') { detenerCascada(); dlgWin.close(); game.newGame(); }
     if (accion === 'stats') { detenerCascada(); dlgWin.close(); api.openStats(); }
+    if (accion === 'share') compartir();
   });
   dlgWin.addEventListener('close', detenerCascada);
 
@@ -1143,7 +1214,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     // El calendario se escribe entero desde JS —nombres de mes, de día y de
     // fecha—, así que hay que rehacerlo: `traducirDom` no lo alcanza.
     if (mesVisto) renderReto();
-    if (dlgWin.open) pintarNotasVictoria();
+    // La tarjeta lleva dentro las cadenas traducidas: hay que volver a dibujarla.
+    if (dlgWin.open) { pintarChapaReto(); prepararCompartir(pintarNotasVictoria()); pintarAvisoCompartir(); }
     if (dlgStuck.open) pintarNotaBloqueo();
     if (dlgInvita.open) pintarInvitacion();
     pintarAviso();
