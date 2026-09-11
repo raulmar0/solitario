@@ -765,11 +765,18 @@ test('las zonas seguras se apartan sin dejar franjas de otro color', () => {
   // Arriba, el hueco del reloj se aparta con MARGEN: esa franja la pinta el fondo
   // de la página, que es el mismo verde de la cabecera.
   assert.equal(regla('.topbar').style.getPropertyValue('margin-top'), 'var(--safe-top)');
-  // Abajo va de RELLENO, para que la barra de acciones llegue al borde de la
-  // pantalla en vez de flotar sobre una franja de tapete.
+  // Abajo el hueco lo guarda el RELLENO de cada botón, no la barra: así los
+  // botones bajan hasta el borde de la pantalla en vez de flotar sobre una
+  // franja verde, y la barra se queda sin relleno propio cuando hay zona segura.
   assert.equal(regla('.tools').style.getPropertyValue('margin-bottom'), '');
   assert.match(regla('.tools').style.getPropertyValue('padding'),
-    /calc\(5px \+ var\(--safe-bottom\)\)/);
+    /max\(0px, calc\(5px - var\(--safe-bottom\)\)\)/);
+  assert.match(regla('.tool').style.getPropertyValue('padding'),
+    /calc\(var\(--tool-pad\) \+ var\(--safe-bottom\)\)/);
+  // Con el botón pegado al canto, el anillo de foco se mete hacia dentro: por
+  // fuera se quedaría con el lado de abajo fuera de la pantalla.
+  assert.match(regla('.tool:focus-visible').style.getPropertyValue('outline-offset'),
+    /max\(-2px, calc\(2px - var\(--safe-bottom\)\)\)/);
 
   // A los lados sí es relleno: ahí la barra tiene que llegar al borde.
   const movil = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)[1];
@@ -819,11 +826,26 @@ test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', 
   assert.equal(/\.rotulo\s*\{[^}]*display:\s*none/.test(movil), false,
     'los rótulos se quedan a la vista');
 
-  // Y el hueco de la raya del iPhone lo guarda esta barra, con relleno: el fondo
-  // llega al borde y los botones se quedan por encima de la raya, donde se pueden
-  // tocar (ver la prueba de las zonas seguras).
-  assert.match(regla('.tools').style.getPropertyValue('padding'),
-    /calc\(5px \+ var\(--safe-bottom\)\)/);
+  // El hueco de la raya del iPhone lo guarda el relleno de abajo de cada botón:
+  // la caja llega al borde de la pantalla y el icono con su rótulo se quedan por
+  // encima de la raya, donde se pueden tocar (ver la prueba de las zonas seguras).
+  assert.match(regla('.tool').style.getPropertyValue('padding'),
+    /calc\(var\(--tool-pad\) \+ var\(--safe-bottom\)\)/);
+  // Y las pantallas apretadas recortan ese relleno por la variable, sin volver a
+  // escribir el de abajo —ni con el atajo ni con `padding-bottom` o
+  // `padding-block-end`—: si lo pisaran, la zona segura se perdería.
+  for (const consulta of ['(max-height: 520px)', '(max-width: 640px)']) {
+    // Se mira dentro del bloque de la consulta y de ningún otro sitio: así una
+    // regla `.tool` que se colara más adelante en la hoja no pasaría por esta.
+    const patron = new RegExp(`@media \\${consulta.slice(0, -1)}\\) \\{([\\s\\S]*?)\\n\\}`);
+    const bloque = patron.exec(css)?.[1];
+    assert.ok(bloque, `falta la consulta @media ${consulta}`);
+    const tool = /\n  \.tool \{([^}]*)\}/.exec(bloque)?.[1];
+    assert.ok(tool, `@media ${consulta} tiene que seguir apretando el botón`);
+    assert.equal(/(^|;|\s)padding(-bottom|-block(-end)?)?:/.test(tool), false,
+      `@media ${consulta} no puede pisar el relleno de abajo del botón, ahí va la zona segura`);
+    assert.match(tool, /--tool-pad:/);
+  }
 
   // Objetivo de dedo: Apple pide 44 px de lado como mínimo.
   assert.ok(parseFloat(regla('.tool').style.getPropertyValue('min-height')) >= 44);

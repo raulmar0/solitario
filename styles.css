@@ -363,14 +363,12 @@ html[data-theme="light"] body::before {
   display: flex;
   justify-content: center;
   gap: 3px;
-  /* El hueco del indicador de inicio va de relleno: la barra llega al borde de
-     la pantalla, como la cascada de victoria, en vez de quedarse flotando sobre
-     una franja de tapete. Cuando el velo de la barra era translúcido esa franja
-     se veía como una banda negra y por eso iba de margen; ahora el fondo es el
-     verde opaco de la cabecera y la franja sale del mismo color, sin costura.
-     El relleno se suma al de siempre para que los botones no se metan debajo de
-     la raya del sistema, que se los comería al tocarlos. */
-  padding: 5px max(6px, var(--safe-right)) calc(5px + var(--safe-bottom)) max(6px, var(--safe-left));
+  /* El hueco del indicador de inicio no lo guarda la barra sino cada botón: así
+     los botones llegan hasta el borde de la pantalla, como la cascada de
+     victoria, y no se quedan flotando sobre una franja verde. Cuando hay zona
+     segura el relleno de abajo desaparece —ya lo pone el botón— y cuando no la
+     hay vuelven los 5 px de siempre. */
+  padding: 5px max(6px, var(--safe-right)) max(0px, calc(5px - var(--safe-bottom))) max(6px, var(--safe-left));
   background: var(--header-bg);
   border-top: 1px solid var(--line);
 }
@@ -395,12 +393,20 @@ html[data-theme="light"] body::before {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 6px 2px;
+  /* El relleno de abajo se lleva la zona segura entera: la caja del botón baja
+     hasta el borde y el icono con su rótulo se quedan por encima de la raya del
+     sistema, que si no se comería el toque. La medida va por variable porque las
+     pantallas apretadas de más abajo la recortan. */
+  --tool-pad: 6px;
+  padding: var(--tool-pad) 2px calc(var(--tool-pad) + var(--safe-bottom));
   font: inherit;
   color: var(--ink);
   background: rgba(255, 255, 255, .07);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  /* Abajo las esquinas se cuadran cuando el botón toca el borde de la pantalla:
+     con la curva de siempre asomaban dos cuñas verdes en el canto. Sin zona
+     segura el botón se queda dentro de la barra y vuelven los 10 px. */
+  border-radius: 10px 10px max(0px, calc(10px - var(--safe-bottom))) max(0px, calc(10px - var(--safe-bottom)));
   cursor: pointer;
   transition: var(--quieto, background var(--speed) linear, transform var(--speed) linear, opacity var(--speed) linear);
 }
@@ -420,6 +426,10 @@ html[data-theme="light"] body::before {
 .tool:focus-visible, .btn:focus-visible, .seg-btn:focus-visible, .icon-btn:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
+/* Con zona segura el botón toca el canto de la pantalla y un anillo por fuera se
+   quedaría con el lado de abajo sin dibujar. Se mete hacia dentro en cuanto hay
+   hueco que guardar; sin él, los 2 px por fuera de todos los demás botones. */
+.tool:focus-visible { outline-offset: max(-2px, calc(2px - var(--safe-bottom))); }
 
 /* ---------- tablero ---------- */
 
@@ -1293,7 +1303,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .progress { position: absolute; left: 0; right: 0; bottom: 0; flex-basis: auto; border-radius: 0; }
   .table { padding-top: 6px; padding-bottom: 4px; }
   .banner { margin-top: 6px; }
-  .tool { min-height: 40px; padding: 3px 2px; }
+  .tool { min-height: 40px; --tool-pad: 3px; }
   .rotulo { font-size: 9.5px; }
 }
 
@@ -1324,7 +1334,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .update-pill { order: -1; }
   .table { padding: 8px max(4px, var(--safe-right)) 6px max(4px, var(--safe-left)); }
   .tools { gap: 3px; padding-left: max(4px, var(--safe-left)); padding-right: max(4px, var(--safe-right)); }
-  .tool { min-height: 48px; padding: 5px 2px; }
+  .tool { min-height: 48px; --tool-pad: 5px; }
   .rotulo { font-size: 10px; }
   /* En pantalla estrecha los dos botones de la invitación se apilan a lo ancho:
      el primario arriba, que es el que se busca. */
