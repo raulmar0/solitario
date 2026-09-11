@@ -479,7 +479,10 @@ addEventListener('keydown', (event) => {
   if (event.altKey && event.shiftKey && (event.key === '2' || event.code === 'Digit2' || event.key === '@')) {
     event.preventDefault();
     panels.cascadaVictoria?.(() => {
+      // Sin partida ganada no hay ventana que abrir, así que el rastro no se
+      // queda congelado tapando el tablero: se limpia aquí mismo.
       if (game.status === 'won') panels.showWin();
+      else panels.detenerCascada?.();
     });
     return;
   }

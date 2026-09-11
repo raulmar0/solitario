@@ -363,11 +363,14 @@ html[data-theme="light"] body::before {
   display: flex;
   justify-content: center;
   gap: 3px;
-  /* El hueco del indicador de inicio va de margen, como el de arriba: así lo
-     pinta el tapete. Con relleno, esa franja se quedaba con el velo encima y en
-     una pantalla oscura parecía una banda negra pegada al borde. */
-  margin-bottom: var(--safe-bottom);
-  padding: 5px max(6px, var(--safe-right)) 5px max(6px, var(--safe-left));
+  /* El hueco del indicador de inicio va de relleno: la barra llega al borde de
+     la pantalla, como la cascada de victoria, en vez de quedarse flotando sobre
+     una franja de tapete. Cuando el velo de la barra era translúcido esa franja
+     se veía como una banda negra y por eso iba de margen; ahora el fondo es el
+     verde opaco de la cabecera y la franja sale del mismo color, sin costura.
+     El relleno se suma al de siempre para que los botones no se metan debajo de
+     la raya del sistema, que se los comería al tocarlos. */
+  padding: 5px max(6px, var(--safe-right)) calc(5px + var(--safe-bottom)) max(6px, var(--safe-left));
   background: var(--header-bg);
   border-top: 1px solid var(--line);
 }

@@ -669,9 +669,15 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   let cascadaRaf = null;
   let cartasOcultas = [];
   let limpiarInteraccion = null;
+  let alRedimensionar = null;
   const btnOmitirCascada = $('#btn-skip-win');
 
-  function detenerCascada() {
+  /**
+   * Para el vuelo de las cartas y devuelve el lienzo a ser un adorno: sin
+   * clics ni botón de omitir, pero con el rastro pintado intacto. Es el
+   * telón de fondo sobre el que se abre la ventana de victoria.
+   */
+  function congelarCascada() {
     if (cascadaRaf) {
       cancelAnimationFrame(cascadaRaf);
       cascadaRaf = null;
@@ -681,6 +687,27 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       limpiarInteraccion = null;
     }
     if (btnOmitirCascada) btnOmitirCascada.hidden = true;
+
+    const canvas = $('#win-canvas');
+    if (canvas) canvas.classList.remove('activa');
+
+    // El rastro está pintado a la medida de la pantalla de entonces. Si se gira
+    // el móvil con la ventana de victoria abierta ya no encaja, así que se borra.
+    if (!alRedimensionar) {
+      alRedimensionar = () => detenerCascada();
+      window.addEventListener('resize', alRedimensionar);
+    }
+  }
+
+  /** Borra el rastro y devuelve al tablero las cartas que salieron volando. */
+  function detenerCascada() {
+    congelarCascada();
+
+    if (alRedimensionar) {
+      window.removeEventListener('resize', alRedimensionar);
+      alRedimensionar = null;
+    }
+
     for (const el of cartasOcultas) {
       el.style.visibility = '';
     }
@@ -690,7 +717,6 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     const canvas = $('#win-canvas');
     if (canvas) {
       canvas.hidden = true;
-      canvas.classList.remove('activa');
       const ctx = canvas.getContext?.('2d');
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
@@ -886,7 +912,9 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     function finalizar() {
       if (terminado) return;
       terminado = true;
-      detenerCascada();
+      // El rastro se queda en pantalla: la ventana de victoria se abre sobre él
+      // y no sobre un tablero a medio vaciar. Lo limpia el cierre del diálogo.
+      congelarCascada();
       onFinish?.();
     }
 

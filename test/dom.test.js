@@ -753,7 +753,7 @@ test('no se puede hacer zoom: ni pellizco ni doble toque', () => {
   assert.equal(dedos(1), false, 'con un dedo se sigue pudiendo desplazar');
 });
 
-test('las zonas seguras se apartan por margen, y las pinta el tapete', () => {
+test('las zonas seguras se apartan sin dejar franjas de otro color', () => {
   // jsdom no sabe leer `max()` ni `env()`, así que se mira la hoja tal cual.
   // Las cuatro zonas van por variable: se ven de un vistazo y se pueden simular.
   const raiz = regla(':root').style;
@@ -762,10 +762,14 @@ test('las zonas seguras se apartan por margen, y las pinta el tapete', () => {
       `--safe-${lado} tiene que salir de la zona segura del sistema`);
   }
 
-  // Arriba y abajo el hueco se aparta con MARGEN, no con relleno: así esa franja
-  // la pinta el fondo de la página y no el velo de la barra, que la dejaba negra.
+  // Arriba, el hueco del reloj se aparta con MARGEN: esa franja la pinta el fondo
+  // de la página, que es el mismo verde de la cabecera.
   assert.equal(regla('.topbar').style.getPropertyValue('margin-top'), 'var(--safe-top)');
-  assert.equal(regla('.tools').style.getPropertyValue('margin-bottom'), 'var(--safe-bottom)');
+  // Abajo va de RELLENO, para que la barra de acciones llegue al borde de la
+  // pantalla en vez de flotar sobre una franja de tapete.
+  assert.equal(regla('.tools').style.getPropertyValue('margin-bottom'), '');
+  assert.match(regla('.tools').style.getPropertyValue('padding'),
+    /calc\(5px \+ var\(--safe-bottom\)\)/);
 
   // A los lados sí es relleno: ahí la barra tiene que llegar al borde.
   const movil = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)[1];
@@ -815,9 +819,11 @@ test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', 
   assert.equal(/\.rotulo\s*\{[^}]*display:\s*none/.test(movil), false,
     'los rótulos se quedan a la vista');
 
-  // Y el hueco de la raya del iPhone lo guarda esta barra, con margen para que lo
-  // pinte el tapete en vez del velo (ver la prueba de las zonas seguras).
-  assert.equal(regla('.tools').style.getPropertyValue('margin-bottom'), 'var(--safe-bottom)');
+  // Y el hueco de la raya del iPhone lo guarda esta barra, con relleno: el fondo
+  // llega al borde y los botones se quedan por encima de la raya, donde se pueden
+  // tocar (ver la prueba de las zonas seguras).
+  assert.match(regla('.tools').style.getPropertyValue('padding'),
+    /calc\(5px \+ var\(--safe-bottom\)\)/);
 
   // Objetivo de dedo: Apple pide 44 px de lado como mínimo.
   assert.ok(parseFloat(regla('.tool').style.getPropertyValue('min-height')) >= 44);
