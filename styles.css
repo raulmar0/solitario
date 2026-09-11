@@ -56,7 +56,6 @@
   --card-club: #1a7a3c;
   --card-line: rgba(0, 0, 0, .16);
   --header-bg: #06452a;               /* el verde reforzado del header y barras */
-  --topbar-veil: rgba(0, 0, 0, .22);  /* el velo de la barra: en claro hace falta más cuerpo */
   --shadow: 0 2px 5px rgba(0, 0, 0, .3);
   --shadow-lift: 0 6px 14px rgba(0, 0, 0, .26), 0 18px 36px rgba(0, 0, 0, .42);
 
@@ -90,7 +89,6 @@ html[data-theme="light"] {
   --danger: #a4241c;
   --ok: #12734a;
   --header-bg: #0d5833;
-  --topbar-veil: rgba(0, 0, 0, .44);
   --shadow: 0 2px 5px rgba(0, 0, 0, .18);
   --shadow-lift: 0 6px 14px rgba(0, 0, 0, .14), 0 16px 36px rgba(0, 0, 0, .26);
 }
@@ -365,10 +363,12 @@ html[data-theme="light"] body::before {
   gap: 3px;
   /* El hueco del indicador de inicio no lo guarda la barra sino cada botón: así
      los botones llegan hasta el borde de la pantalla, como la cascada de
-     victoria, y no se quedan flotando sobre una franja verde. Cuando hay zona
-     segura el relleno de abajo desaparece —ya lo pone el botón— y cuando no la
-     hay vuelven los 5 px de siempre. */
-  padding: 5px max(6px, var(--safe-right)) max(0px, calc(5px - var(--safe-bottom))) max(6px, var(--safe-left));
+     victoria, y no se quedan flotando sobre una franja verde. Lo que queda aquí
+     es el aire que va debajo de los botones: 5 px cuando no hay zona segura y
+     nada cuando el botón ya toca el canto. De este mismo valor salen las
+     esquinas de abajo del botón, para que las dos cosas no se desacompasen. */
+  --hueco-abajo: max(0px, calc(5px - var(--safe-bottom)));
+  padding: 5px max(6px, var(--safe-right)) var(--hueco-abajo, 5px) max(6px, var(--safe-left));
   background: var(--header-bg);
   border-top: 1px solid var(--line);
 }
@@ -387,7 +387,12 @@ html[data-theme="light"] body::before {
   flex: 1 1 0;
   min-width: 0;
   max-width: 96px;
-  min-height: 48px;              /* objetivo de dedo, no de ratón */
+  /* El objetivo de dedo se mide por encima de la raya del sistema: como el
+     relleno de abajo se lleva la zona segura y las cajas son `border-box`, un
+     suelo fijo se la habría tragado. Va por variable porque las pantallas
+     apretadas de más abajo lo recortan. */
+  --tool-alto: 48px;             /* objetivo de dedo, no de ratón */
+  min-height: calc(var(--tool-alto, 48px) + var(--safe-bottom));
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -398,15 +403,17 @@ html[data-theme="light"] body::before {
      sistema, que si no se comería el toque. La medida va por variable porque las
      pantallas apretadas de más abajo la recortan. */
   --tool-pad: 6px;
-  padding: var(--tool-pad) 2px calc(var(--tool-pad) + var(--safe-bottom));
+  padding: var(--tool-pad, 6px) 2px calc(var(--tool-pad, 6px) + var(--safe-bottom));
   font: inherit;
   color: var(--ink);
   background: rgba(255, 255, 255, .07);
   border: 1px solid var(--line);
-  /* Abajo las esquinas se cuadran cuando el botón toca el borde de la pantalla:
-     con la curva de siempre asomaban dos cuñas verdes en el canto. Sin zona
-     segura el botón se queda dentro de la barra y vuelven los 10 px. */
-  border-radius: 10px 10px max(0px, calc(10px - var(--safe-bottom))) max(0px, calc(10px - var(--safe-bottom)));
+  /* Abajo las esquinas siguen al hueco que le queda a la barra: redondas
+     mientras el botón flote sobre ella, cuadradas en cuanto toca el canto de la
+     pantalla —con la curva de siempre asomaban dos cuñas verdes—. Al salir las
+     dos del mismo valor no hay forma de que una se adelante a la otra. */
+  --radio-abajo: min(10px, calc(var(--hueco-abajo, 5px) * 2));
+  border-radius: 10px 10px var(--radio-abajo, 10px) var(--radio-abajo, 10px);
   cursor: pointer;
   transition: var(--quieto, background var(--speed) linear, transform var(--speed) linear, opacity var(--speed) linear);
 }
@@ -1254,7 +1261,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    quien ya vio la animación mil veces quiere llegar a la ventana de victoria.
    Solo vive mientras la cascada corre; panels.js lo enciende y lo apaga. */
 .btn-skip-win {
-  position: fixed; right: 14px; bottom: 14px;
+  position: fixed; right: max(14px, var(--safe-right)); bottom: calc(14px + var(--safe-bottom));
   z-index: 125;
   padding: 8px 16px;
   border: 1px solid rgba(0, 0, 0, .25);
@@ -1303,7 +1310,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .progress { position: absolute; left: 0; right: 0; bottom: 0; flex-basis: auto; border-radius: 0; }
   .table { padding-top: 6px; padding-bottom: 4px; }
   .banner { margin-top: 6px; }
-  .tool { min-height: 40px; --tool-pad: 3px; }
+  .tool { --tool-alto: 40px; --tool-pad: 3px; }
   .rotulo { font-size: 9.5px; }
 }
 
@@ -1319,10 +1326,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
      donde notar que el tapete se queda quieto. */
   body { background-attachment: scroll; }
   /* Y por lo mismo, fuera el desenfoque: es el efecto más caro de la pantalla y
-     el que peor lleva un móvil justo de fuelle. El velo carga solo con separar
-     la barra del tapete, así que se le da más cuerpo. */
-  .topbar, .tools { --topbar-veil: rgba(0, 0, 0, .34); backdrop-filter: none; -webkit-backdrop-filter: none; }
-  html[data-theme="light"] .topbar, html[data-theme="light"] .tools { --topbar-veil: rgba(0, 0, 0, .52); }
+     el que peor lleva un móvil justo de fuelle. Las dos barras se pintan con el
+     verde opaco de la cabecera, así que quitarlo no cambia lo que se ve. */
+  .topbar, .tools { backdrop-filter: none; -webkit-backdrop-filter: none; }
   .brand h1 { display: none; }
   /* Sin el título, la primera línea de la barra se queda con el escudo y medio
      ancho de aire, mientras el chip de modalidad se iba solo a una tercera fila.
@@ -1334,7 +1340,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .update-pill { order: -1; }
   .table { padding: 8px max(4px, var(--safe-right)) 6px max(4px, var(--safe-left)); }
   .tools { gap: 3px; padding-left: max(4px, var(--safe-left)); padding-right: max(4px, var(--safe-right)); }
-  .tool { min-height: 48px; --tool-pad: 5px; }
+  .tool { --tool-alto: 48px; --tool-pad: 5px; }
   .rotulo { font-size: 10px; }
   /* En pantalla estrecha los dos botones de la invitación se apilan a lo ancho:
      el primario arriba, que es el que se busca. */

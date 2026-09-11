@@ -151,22 +151,24 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   zoom por accidente (ni pellizco ni doble toque), con las cartas nunca por
   debajo de los 44 px que pide un objetivo táctil y sin que el tablero llegue a
   hacer scroll. Las cuatro zonas seguras del sistema van por variable
-  (`--safe-top` y compañía) y arriba y abajo se apartan con **margen**, no con
-  relleno: así esas dos franjas las pinta el tapete y no el velo de las barras,
-  que abajo dejaba una banda negra pegada al borde. El `theme-color` se mueve con
-  el tema para que el navegador pinte alrededor del mismo verde.
+  (`--safe-top` y compañía). Arriba el hueco del reloj se aparta con **margen**,
+  para que esa franja la pinte el fondo de la página; abajo lo guarda el relleno
+  de cada botón de la barra de acciones, así que los botones llegan al canto de
+  la pantalla y el icono con su rótulo se quedan por encima de la raya del
+  sistema. El `theme-color` se mueve con el tema para que el navegador pinte
+  alrededor del mismo verde.
 
 ## Aplicación instalable (PWA)
 
 Se instala en el móvil o en el escritorio y funciona **sin conexión**: el service
-worker precarga los 30 ficheros que necesita la aplicación, así que después del
+worker precarga los 33 ficheros que necesita la aplicación, así que después del
 primer arranque no hace falta internet para nada. Tampoco lo hacía antes: el
 juego nunca ha hablado con ningún servidor.
 
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.8.1`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.12.2`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -251,7 +253,7 @@ Lo que está decidido y aún no está hecho vive en [`docs/TODO.md`](docs/TODO.m
 npm test
 ```
 
-400 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+428 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, el recomendador (que ninguna partida entre en
 bucle siguiendo sus consejos, que no mire cartas tapadas y que pista y toque no se

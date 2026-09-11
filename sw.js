@@ -9,7 +9,7 @@
  */
 
 /* === generado: versión === */
-const VERSION = '1.12.1';
+const VERSION = '1.12.2';
 /* === fin generado === */
 
 /* La huella del contenido de los ficheros. Va en el nombre de la caché para que
@@ -17,7 +17,7 @@ const VERSION = '1.12.1';
  * anterior, y (b) un cambio de código sin subir la versión también renueve la
  * caché en vez de dejar a los ya instalados atrapados en lo viejo. */
 /* === generado: huella === */
-const BUILD = '035825d1';
+const BUILD = 'd6a80e4c';
 /* === fin generado === */
 
 const CACHE = `solitario-v${VERSION}-${BUILD}`;

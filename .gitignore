@@ -1,3 +1,9 @@
 node_modules/
 *.log
 .worktrees/
+
+# Capturas sueltas de la raíz: se usan para mirar un cambio, no se publican.
+# (Los iconos sí van al repo, pero viven en icons/ y los genera scripts/iconos.py.)
+/*.png
+# Borrador de la auditoría de iconos: aún no es documentación del proyecto.
+docs/auditoria-iconos/
