@@ -10,16 +10,9 @@
   --flip-speed: 280ms;    /* el volteo al destapar, un pelo más corto que el vuelo */
   --vuelo: cubic-bezier(.35, .12, .65, .88); /* acelera y frena sin saltar al salir */
   --volteo: cubic-bezier(.15, .45, .85, .55);  /* corre al salir y se frena en el canto */
-  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
 
-  --felt-1: #1c634b;
-  --felt-2: #103e30;
+  --felt-1: #14663f;
+  --felt-2: #0b3f28;
   --ink: #f2f7f4;
   --ink-soft: rgba(242, 247, 244, .8);
   --panel: #10261d;
@@ -47,9 +40,7 @@
   --felt-filo: rgba(24, 12, 0, .72);   /* el filo oscuro que envuelve al anillo */
   --felt-ok: #8ff0bd;
   --hueco-marca: var(--ink);          /* la «K» del hueco vacío */
-  --card-face: #fffdf5;
-  --card-back: #20466c;
-  --card-back-line: rgba(222, 234, 246, .18);
+  --card-face: #fdfcf8;
   --card-ink: #1b1b1b;
   --card-red: #c0392b;
   /* Baraja de cuatro colores. La cara de la carta es la misma en los dos temas,
@@ -80,12 +71,12 @@
 /* En claro solo cambian el fieltro y los paneles: sobre el tapete la tinta sigue
    siendo blanca, dentro de los diálogos pasa a ser oscura. */
 html[data-theme="light"] {
-  --felt-1: #358661;
-  --felt-2: #246044;
+  --felt-1: #35a066;
+  --felt-2: #1d7146;
   --ink: #ffffff;
   --ink-soft: rgba(255, 255, 255, .95);
-  --panel: #fafbf7;
-  --panel-2: #eef2eb;
+  --panel: #ffffff;
+  --panel-2: #eef2ef;
   --panel-ink: #15251d;
   --panel-ink-soft: rgba(21, 37, 29, .68);
   --line: rgba(255, 255, 255, .24);
@@ -158,29 +149,30 @@ body {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-3) var(--space-6);
+  gap: 10px 16px;
   flex-wrap: wrap;
   /* Instalada en iPhone la barra de estado se superpone (black-translucent +
      viewport-fit=cover), así que hay que dejarle su hueco. Va de margen y no de
      relleno para que ese hueco lo pinte el tapete y no el velo de la barra:
      arriba y abajo, las dos franjas del sistema son del color del fondo. */
   margin-top: var(--safe-top);
-  padding: 14px max(24px, var(--safe-right)) 14px max(24px, var(--safe-left));
+  padding: 10px max(12px, var(--safe-right)) 10px max(12px, var(--safe-left));
   background: var(--header-bg);
   border-bottom: 1px solid var(--line);
 }
 
-.brand { display: flex; align-items: center; gap: var(--space-2); }
-.brand h1 { font: 600 28px/1.1 var(--font-display); margin: 0; letter-spacing: -.7px; }
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand h1 { font-size: 17px; margin: 0; letter-spacing: .3px; font-weight: 650; }
 .brand-mark {
-  display: block;
-  width: 36px; height: 36px;
-  flex-shrink: 0;
+  display: grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 7px;
+  background: var(--accent); color: var(--accent-ink);
+  font-size: 15px;
 }
 
 /* Envuelve porque en una pantalla de 280 px las cuatro cajas no caben en fila
    y se salían del ancho: antes dos líneas que barra horizontal. */
-.scoreboard { display: flex; flex-wrap: wrap; justify-content: center; gap: 0; margin: 0; flex: 1 1 auto; }
+.scoreboard { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; flex: 1 1 auto; }
 
 /* Aviso de versión nueva: solo aparece cuando hay un worker esperando.
    Va del alto del chip de modalidad y con el rótulo corto porque tiene que
@@ -219,30 +211,14 @@ body {
    línea entera. El corte está donde deja de caber con rótulo, medido: a 744 px
    —un iPad de pie— la cabecera crecía 44 px al aparecer el aviso. */
 @media (max-width: 899px) {
-  .topbar {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: var(--space-2) var(--space-3);
-  }
-  .brand { grid-column: 1; grid-row: 1; }
-  .topbar .mode-chip {
-    grid-column: 2; grid-row: 1;
-    justify-self: end;
-    min-width: 0;
-    min-height: 44px;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .update-pill { grid-column: 3; grid-row: 1; }
-  .scoreboard { grid-column: 1 / -1; grid-row: 2; }
-  .scoreboard .stat { flex: 1 1 auto; }
   .update-texto { display: none; }
   .update-pill { padding: 4px 9px; }
 }
 
-/* Con actualización disponible el marcador deja sitio en la fila de escritorio. */
+/* Y cuando el aviso está puesto, el marcador se aprieta un punto para hacerle
+   sitio en la fila que ya hay. Son treinta píxeles repartidos entre cuatro
+   cajas; lo que se evita es que la cabecera gane una fila entera de golpe, con
+   la partida a medias, y el tapete pierda cuarenta píxeles. */
 .topbar:has(#btn-update-pill:not([hidden])) .stat { min-width: 48px; padding-left: 7px; padding-right: 7px; }
 
 /* Lo que solo tiene que oírse. El texto sigue en el árbol —un lector de
@@ -259,14 +235,16 @@ body {
 
 .stat {
   position: relative;
-  min-width: 78px;
-  padding: 0 var(--space-4);
+  min-width: 62px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid var(--line);
   text-align: center;
 }
-.stat + .stat { border-left: 1px solid var(--line); }
-.stat dt { font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--ink-soft); }
-.stat dd { margin: 2px 0 0; font-size: 20px; line-height: 1.2; font-weight: 600; font-variant-numeric: tabular-nums; }
-.stat-wide dd { font-size: 14px; padding-top: 5px; }
+.stat dt { font-size: 10px; text-transform: uppercase; letter-spacing: .7px; color: var(--ink-soft); }
+.stat dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.stat-wide dd { font-size: 13px; padding-top: 2px; }
 .stat.bump dd { animation: var(--quieto, bump 320ms linear); }
 .stat.bump-down dd { animation: var(--quieto, bump-down 320ms linear); }
 /* Los números que brincan (marcador y contador del mazo) están los dos sobre
@@ -285,7 +263,7 @@ body {
 .paused-flag {
   position: absolute;
   top: -5px;
-  right: 3px;
+  right: -5px;
   display: grid;
   place-items: center;
   width: 15px;
@@ -313,13 +291,13 @@ body {
   font-size: 12px;
   font-weight: 650;
   color: var(--ink-soft);
-  background: transparent;
+  background: var(--fill);
   border: 1px solid var(--line);
   border-radius: 999px;
   cursor: pointer;
   transition: background var(--speed) linear, color var(--speed) linear;
 }
-.mode-chip:hover { background: rgba(255, 255, 255, .1); color: var(--ink); }
+.mode-chip:hover { background: var(--fill-strong); color: var(--ink); }
 .mode-chip:focus-visible { outline: 2px solid var(--felt-accent); outline-offset: 2px; }
 /* La píldora es baja a propósito (si no, la barra crece), pero el dedo necesita
    sus 44 px: se los da una capa invisible que sobresale por arriba y por abajo. */
@@ -347,12 +325,14 @@ body {
 .seed-chip.copiado { color: var(--felt-ok); text-decoration: none; }
 .seed-chip::after { content: ''; position: absolute; inset: -13px -10px; }
 
-/* El progreso recorre el borde del marcador sin quitarle una fila al tapete. */
+/* Cuántas cartas llevan colocadas las fundaciones. Va en su propia línea, de
+   ancho completo, y la última de la barra aunque en el HTML esté en medio. */
 .progress {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
+  order: 1;
+  flex-basis: 100%;
   height: 3px;
-  background: rgba(255, 255, 255, .08);
+  border-radius: 999px;
+  background: var(--fill);
   overflow: hidden;
 }
 .progress > i {
@@ -391,32 +371,42 @@ html[data-theme="light"] body::before {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: 3px;
   /* La barra pinta hasta el borde; los botones conservan su tamaño por encima
      del indicador de inicio. La zona segura se reserva una sola vez aquí, con
      el mínimo hueco necesario, sin alargar el relleno de cada botón. */
-  padding: 10px max(12px, var(--safe-right)) max(10px, var(--safe-bottom)) max(12px, var(--safe-left));
+  padding: 5px max(6px, var(--safe-right)) max(5px, var(--safe-bottom)) max(6px, var(--safe-left));
   background: var(--header-bg);
   border-top: 1px solid var(--line);
+}
+
+/* El desenfoque de las dos barras, aparte: Safari lo pide con prefijo hasta muy
+   tarde y sin la consulta se quedaba sin él. 4 px bastan para separar la barra
+   del tapete; 6 obligaban a la GPU a trabajar de más en cada repintado. */
+@supports (backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px)) {
+  .topbar, .tools {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
 }
 
 .tool {
   flex: 1 1 0;
   min-width: 0;
-  max-width: 144px;
+  max-width: 96px;
   --tool-alto: 48px;             /* objetivo de dedo, no de ratón */
   min-height: var(--tool-alto, 48px);
   display: inline-flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: 2px;
   --tool-pad: 6px;
   padding: var(--tool-pad, 6px) 2px;
   font: inherit;
   color: var(--ink);
-  background: transparent;
-  border: 1px solid transparent;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid var(--line);
   border-radius: 10px;
   cursor: pointer;
   transition: var(--quieto, background var(--speed) linear, transform var(--speed) linear, opacity var(--speed) linear);
@@ -431,18 +421,11 @@ html[data-theme="light"] body::before {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.rotulo { font-size: 13px; font-weight: 600; }
-.tool:hover:not(:disabled) { background: rgba(255, 255, 255, .1); }
-.tool#btn-new { border-color: var(--line); }
-.tool#btn-undo:not(:disabled) { background: rgba(255, 255, 255, .12); border-color: var(--line); color: var(--felt-accent); }
-.tool#btn-undo:hover:not(:disabled) { background: rgba(255, 255, 255, .2); }
+.rotulo { font-size: 10.5px; font-weight: 600; }
+.tool:hover:not(:disabled) { background: rgba(255, 255, 255, .18); }
 .tool:active:not(:disabled) { transform: translateY(1px); }
 .tool:disabled { opacity: .35; cursor: default; }
 .tool:focus-visible, .btn:focus-visible, .seg-btn:focus-visible, .icon-btn:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 2px;
-}
-.tool:focus-visible { outline-color: var(--felt-accent); }
-.tab:focus-visible, .settings-details summary:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 /* ---------- tablero ---------- */
@@ -453,7 +436,7 @@ html[data-theme="light"] body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 28px max(8px, var(--safe-right)) 12px max(8px, var(--safe-left));
+  padding: 14px max(8px, var(--safe-right)) 10px max(8px, var(--safe-left));
   overflow-y: auto;
   /* Red de seguridad: el tablero se mide para que quepa con margen, pero si
      alguna animación creciera, antes se recorta que sacar barra horizontal.
@@ -475,16 +458,23 @@ html[data-theme="light"] body::before {
   width: var(--cw);
   height: var(--ch);
   border-radius: var(--radius);
-  border: 1px solid rgba(235, 246, 237, .24);
-  background: rgba(0, 0, 0, .1);
+  border: 1.5px solid rgba(255, 255, 255, .22);
+  background: rgba(0, 0, 0, .14);
   display: grid;
   place-items: center;
   transition: border-color var(--speed) linear, background var(--speed) linear, box-shadow var(--speed) linear;
 }
-.slot-mark { font-size: calc(var(--cw) * .34); opacity: .5; }
+.slot-mark { font-size: calc(var(--cw) * .34); opacity: .3; }
 .slot-mark.red { color: #ffb3a7; }
-/* Los huecos conservan marcas claras, subordinadas a las cartas que los tapan. */
-.slot-tableau .slot-mark { opacity: .42; font-family: var(--font-display); font-weight: 700; color: var(--hueco-marca); }
+/* La «K» del hueco de columna recuerda qué se puede poner ahí, pero es una
+   marca de fondo: cualquier carta encima tiene que ganarle de calle. El color no
+   se hereda de la tinta porque en el tema claro es blanca y sobre el tapete
+   claro no quedaba nada; en negro al 22 % se lee en los dos. */
+/* Blanca y no oscura: sobre el hueco (negro al 14 % encima del tapete) la tinta
+   clara rinde más que cualquier tono oscuro —medido, 1,7:1 frente a 1,3:1—, y el
+   .38 la deja a la altura de los glifos de las fundaciones, que es la misma clase
+   de marca y se leen bien en los dos temas. */
+.slot-tableau .slot-mark { opacity: .38; font-weight: 700; color: var(--hueco-marca); }
 .slot-stock { cursor: pointer; }
 .slot-stock.empty .slot-mark { opacity: .5; }
 .slot-stock.dead { cursor: not-allowed; }
@@ -640,8 +630,10 @@ html[data-theme="light"] body::before {
    movimiento. La clase dura lo mismo que las tres pasadas, así que no se ve el
    relevo.
    El anillo va a dos tonos —ámbar claro por dentro, un filo oscuro por fuera— y
-   no de un color solo. El tapete cambia de luminosidad con el tema y su degradado.
-   Con los dos filos, el que no contrasta con el fondo lo
+   no de un color solo. El tapete es un degradado que va de #35a066 a #1d7146 en
+   claro y de #14663f a #0b3f28 en oscuro: contra ese recorrido ningún color único
+   se despega de los dos extremos (el ámbar da 2,4:1 arriba y 4,4:1 abajo, y uno
+   oscuro justo al revés). Con los dos filos, el que no contrasta con el fondo lo
    hace con su compañero, que es como se resuelve un indicador sobre fondo
    desconocido. Sin movimiento este anillo es la única pista que queda, así que
    tiene que verse sí o sí. */
@@ -694,7 +686,6 @@ html[data-theme="light"] body::before {
   background: var(--card-face);
   border: 1px solid var(--card-line);
   color: var(--card-ink);
-  font-family: var(--font-display);
   padding: calc(var(--cw) * .055);
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -707,12 +698,11 @@ html[data-deck="4"] .card[data-suit="D"] .face { color: var(--card-diamond); }
 html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 
 .card .back {
-  background-color: var(--card-back);
-  background-image:
-    repeating-linear-gradient(45deg, var(--card-back-line) 0 1px, transparent 1px 7px),
-    repeating-linear-gradient(-45deg, var(--card-back-line) 0 1px, transparent 1px 7px);
-  border: 1px solid rgba(0, 0, 0, .25);
-  box-shadow: inset 0 0 0 3px var(--card-back), inset 0 0 0 4px rgba(236, 239, 227, .55);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .11) 0 4px, transparent 4px 8px),
+    linear-gradient(150deg, #2f5fa8, #1c3d75);
+  border: 1px solid rgba(0, 0, 0, .3);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .14);
 }
 
 .corner {
@@ -722,7 +712,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   justify-self: start;
   line-height: .95;
   font-weight: 700;
-  font-size: calc(var(--cw) * .25);
+  font-size: calc(var(--cw) * .23);
   font-variant-numeric: tabular-nums;
 }
 .corner .suit { font-size: calc(var(--cw) * .2); }
@@ -736,8 +726,8 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 }
 .card.court .pip {
   font-size: calc(var(--cw) * .36);
-  border: 1px solid currentColor;
-  border-radius: 3px;
+  border: 1.5px solid currentColor;
+  border-radius: 6px;
   padding: calc(var(--cw) * .04) calc(var(--cw) * .1);
   font-weight: 700;
   opacity: 1;
@@ -820,12 +810,11 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   border-radius: 14px;
   background: var(--panel);
   color: var(--panel-ink);
-  padding: var(--space-6);
+  padding: 20px;
   width: min(94vw, 460px);
   /* Con las tres secciones en uno, el panel puede dar de sí: que se desplace
      por dentro en vez de salirse por abajo de la pantalla. */
   max-height: 88vh;
-  max-height: 88dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
   box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
@@ -858,12 +847,10 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
     opacity: 0;
   }
 }
-.dlg h2 { margin: 0 0 4px; font: 600 28px/1.2 var(--font-display); letter-spacing: -.5px; }
-.dlg h3 { margin: 24px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--panel-ink-soft); }
+.dlg h2 { margin: 0 0 4px; font-size: 19px; }
+.dlg h3 { margin: 18px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: .8px; color: var(--panel-ink-soft); }
 .dlg p { margin: 6px 0; }
-.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
-.dlg-head h2 { min-width: 0; overflow-wrap: anywhere; }
-.dlg-head .icon-btn { flex: 0 0 44px; }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .dlg-foot, .dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
 .dlg-actions { justify-content: center; }
 
@@ -915,20 +902,20 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .field { margin: 16px 0; }
 .field-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; }
 .field-label em, .switch em { font-style: normal; font-weight: 400; color: var(--panel-ink-soft); }
-.hint-text { font-size: 13px; line-height: 1.6; color: var(--panel-ink-soft); margin: 6px 0 0; }
+.hint-text { font-size: 12.5px; color: var(--panel-ink-soft); margin: 6px 0 0; }
 /* El error va pegado a su control, no en el aviso de arriba: así se ve a la vez
    qué está mal y dónde se arregla. */
 .field-error { margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--danger); }
 .row { display: flex; gap: 8px; }
 
 .settings-group {
-  margin: 0 0 var(--space-6);
-  padding: 0 0 var(--space-6);
+  margin: 0 0 18px;
+  padding: 0 0 14px;
   border-bottom: 1px solid var(--panel-line);
 }
-.settings-group > h3 { margin: 0 0 16px; font-size: 12px; letter-spacing: 1px; }
-.settings-group .field { margin: 20px 0; }
-.settings-group .field:first-of-type { margin-top: 0; }
+.settings-group > h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .65px; }
+.settings-group .field { margin: 14px 0; }
+.settings-group .field:first-of-type { margin-top: 8px; }
 .settings-details {
   margin: 12px 0;
   border-top: 1px solid var(--panel-line);
@@ -953,22 +940,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .settings-details-body .switch:first-child { margin-top: 0; }
 .records-profile { max-width: 360px; margin-top: 0; }
 
-/* En escritorio los dos grupos se leen juntos; el móvil conserva una columna. */
-@media (min-width: 641px) {
-  #panel-ajustes {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: var(--space-8);
-    align-items: start;
-  }
-  #panel-ajustes > .settings-install,
-  #panel-ajustes > .settings-details { grid-column: 1 / -1; }
-  #panel-ajustes > .settings-group { margin-bottom: var(--space-2); }
-}
-
 /* Envuelve: en francés «Automatique / Clair / Sombre» pide 275 px y en una
    pantalla de 320 el grupo se salía del diálogo y sacaba barra horizontal. */
-.seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; background: var(--fill); border: 1px solid var(--panel-line); border-radius: 9px; padding: 3px; gap: 3px; }
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--fill); border: 1px solid var(--panel-line); border-radius: 9px; padding: 3px; gap: 3px; }
 .seg-btn {
   padding: 6px 13px; min-height: 44px; font: inherit; font-size: 13px; font-weight: 600;
   color: var(--panel-ink-soft); background: none; border: 0; border-radius: 7px; cursor: pointer;
@@ -988,8 +962,6 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 
 .text-input {
   flex: 1;
-  min-width: 0;
-  max-width: 100%;
   padding: 8px 11px;
   min-height: 44px;
   font: inherit;
@@ -997,9 +969,8 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   background: var(--fill);
   border: 1px solid var(--panel-line);
   border-radius: 8px;
-  caret-color: var(--accent);
 }
-.text-input::placeholder { color: var(--panel-ink-soft); opacity: 1; }
+.text-input::placeholder { color: var(--panel-ink-soft); opacity: .8; }
 .text-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .panel { min-height: 0; }
@@ -1009,15 +980,12 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    récords): se dibujan como pestañas de verdad y no como píldoras, para que a
    nadie se le confundan dos filas de lo mismo. */
 #panel-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 2px;
-  margin-bottom: var(--space-6);
+  margin-bottom: 16px;
   border-bottom: 1px solid var(--panel-line);
 }
 #panel-tabs .tab {
-  min-width: 0;
-  padding: 9px 4px;
+  padding: 9px 14px;
   font-size: 14px;
   background: none;
   border: 0;
@@ -1112,7 +1080,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .scores tbody tr:nth-child(odd) { background: var(--fill); }
 .scores .win { color: var(--ok); font-weight: 600; }
 .scores .loss { color: var(--panel-ink-soft); }
-.scores .me { background: var(--fill-strong); font-weight: 600; }
+.scores .me { box-shadow: inset 3px 0 0 var(--accent); }
 .empty { color: var(--panel-ink-soft); font-size: 13.5px; text-align: center; padding: 14px; }
 
 /* ---------- reto diario ---------- */
@@ -1245,7 +1213,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .invita-cerrar { position: absolute; top: 8px; right: 8px; }
 .invita-fecha { margin: 0; font-size: 12.5px; color: var(--panel-ink-soft); }
 .invita-fecha::first-letter { text-transform: uppercase; }
-.invita-texto { color: var(--panel-ink-soft); line-height: 1.65; }
+.invita-texto { color: var(--panel-ink-soft); }
 
 .dlg-stuck { text-align: center; width: min(94vw, 420px); }
 .stuck-art { font-size: 34px; letter-spacing: 8px; margin-bottom: 6px; opacity: .4; filter: grayscale(1); }
@@ -1322,7 +1290,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    desplaza a propósito). Aquí la cabecera se aprieta y la barra de progreso deja
    de gastar una línea entera: se ancla al borde de abajo. */
 @media (max-height: 520px) {
-  .topbar { display: flex; gap: 6px 12px; padding-top: 6px; padding-bottom: 6px; }
+  .topbar { gap: 6px 12px; padding-top: 6px; padding-bottom: 6px; }
   .brand h1 { display: none; }
   .brand { order: -2; }
   .mode-chip { order: -1; min-height: 28px; padding: 4px 10px; }
@@ -1330,13 +1298,11 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .update-texto { display: none; }
   .stat { min-width: 52px; padding: 1px 7px; }
   .stat dd { font-size: 14px; }
-  .stat-wide dd { padding-top: 0; }
   .progress { position: absolute; left: 0; right: 0; bottom: 0; flex-basis: auto; border-radius: 0; }
   .table { padding-top: 6px; padding-bottom: 4px; }
   .banner { margin-top: 6px; }
-  .tool { --tool-alto: 44px; --tool-pad: 3px; }
-  .rotulo { font-size: 11px; }
-  .tools { padding-top: 4px; padding-bottom: max(4px, var(--safe-bottom)); }
+  .tool { --tool-alto: 40px; --tool-pad: 3px; }
+  .rotulo { font-size: 9.5px; }
 }
 
 @media (max-width: 640px) {
@@ -1350,37 +1316,24 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
      se desplaza, y en una pantalla de móvil no se gana nada: no hay recorrido
      donde notar que el tapete se queda quieto. */
   body { background-attachment: scroll; }
-  .brand h1 { display: block; font-size: 22px; }
-  .brand-mark { width: 28px; height: 28px; }
+  /* Y por lo mismo, fuera el desenfoque: es el efecto más caro de la pantalla y
+     el que peor lleva un móvil justo de fuelle. Las dos barras se pintan con el
+     verde opaco de la cabecera, así que quitarlo no cambia lo que se ve. */
+  .topbar, .tools { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .brand h1 { display: none; }
+  /* Sin el título, la primera línea de la barra se queda con el escudo y medio
+     ancho de aire, mientras el chip de modalidad se iba solo a una tercera fila.
+     Reordenándolo se cuela junto al escudo y la cabecera se ahorra una línea
+     entera, que en una pantalla de 640 px de alto se nota en el tapete. */
   .brand { order: -2; }
-  .mode-chip { order: -1; font-size: 11px; padding: 6px 8px; }
-  .stat { min-width: 0; padding: 2px 7px; }
-  .stat dd { font-size: 18px; }
-  .stat-wide dd { font-size: 13px; padding-top: 5px; }
+  .mode-chip { order: -1; }
+  .stat { min-width: 54px; padding: 2px 7px; }
   .update-pill { order: -1; }
-  .table { padding: 14px max(4px, var(--safe-right)) 6px max(4px, var(--safe-left)); }
+  .table { padding: 8px max(4px, var(--safe-right)) 6px max(4px, var(--safe-left)); }
   .tools { gap: 3px; padding-left: max(4px, var(--safe-left)); padding-right: max(4px, var(--safe-right)); }
-  .tool { flex-direction: column; gap: 3px; --tool-alto: 48px; --tool-pad: 5px; }
-  .rotulo { font-size: 11px; letter-spacing: -.15px; }
-  .dlg { padding: 20px 16px; }
-  .dlg h2 { font-size: 24px; }
-  #panel-tabs .tab { font-size: 12px; }
+  .tool { --tool-alto: 48px; --tool-pad: 5px; }
+  .rotulo { font-size: 10px; }
   /* En pantalla estrecha los dos botones de la invitación se apilan a lo ancho:
      el primario arriba, que es el que se busca. */
   .dlg-invita .dlg-actions .btn { flex: 1 1 100%; }
-}
-
-@media (max-width: 360px) {
-  .brand h1 { font-size: 19px; }
-  .brand { gap: var(--space-1); }
-  .stat { padding-left: 4px; padding-right: 4px; }
-  .stat dt { letter-spacing: 0; }
-  .seg-btn { padding-left: 9px; padding-right: 9px; }
-  #panel-tabs .tab { font-size: 11px; padding-left: 2px; padding-right: 2px; }
-}
-
-@media (max-width: 899px) and (max-height: 520px) {
-  .brand h1 { display: none; }
-  .mode-chip { max-width: 35%; }
-  .scoreboard .stat { padding-left: 6px; padding-right: 6px; }
 }
