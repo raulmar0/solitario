@@ -112,8 +112,8 @@ html {
 }
 
 html, body {
-  height: 100%;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   margin: 0;
   overscroll-behavior: none;
   /* Nada de zoom: pan-x pan-y deja desplazarse pero quita el pellizco y el
@@ -121,6 +121,14 @@ html, body {
   touch-action: pan-x pan-y;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* En una PWA, Safari puede descontar la barra de estado del alto dinámico
+   aunque viewport-fit=cover permita dibujar detrás de ella. Recuperamos ese
+   espacio sin superar el alto total ni sumar el inset cuando ya está incluido.
+   Si iOS reserva la barra fuera de la página, --safe-top es cero. */
+@media (display-mode: standalone) {
+  html, body { height: min(100lvh, calc(100dvh + var(--safe-top))); }
 }
 
 body {
@@ -138,6 +146,7 @@ body {
 
 .topbar {
   position: relative;      /* la barra de progreso se ancla abajo en pantallas bajas */
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 10px 16px;
@@ -359,16 +368,14 @@ html[data-theme="light"] body::before {
 
 .tools {
   display: flex;
+  flex-shrink: 0;
+  align-items: center;
   justify-content: center;
   gap: 3px;
-  /* El hueco del indicador de inicio no lo guarda la barra sino cada botón: así
-     los botones llegan hasta el borde de la pantalla, como la cascada de
-     victoria, y no se quedan flotando sobre una franja verde. Lo que queda aquí
-     es el aire que va debajo de los botones: 5 px cuando no hay zona segura y
-     nada cuando el botón ya toca el canto. De este mismo valor salen las
-     esquinas de abajo del botón, para que las dos cosas no se desacompasen. */
-  --hueco-abajo: max(0px, calc(5px - var(--safe-bottom)));
-  padding: 5px max(6px, var(--safe-right)) var(--hueco-abajo, 5px) max(6px, var(--safe-left));
+  /* La barra pinta hasta el borde; los botones conservan su tamaño por encima
+     del indicador de inicio. La zona segura se reserva una sola vez aquí, con
+     el mínimo hueco necesario, sin alargar el relleno de cada botón. */
+  padding: 5px max(6px, var(--safe-right)) max(5px, var(--safe-bottom)) max(6px, var(--safe-left));
   background: var(--header-bg);
   border-top: 1px solid var(--line);
 }
@@ -387,37 +394,25 @@ html[data-theme="light"] body::before {
   flex: 1 1 0;
   min-width: 0;
   max-width: 96px;
-  /* El objetivo de dedo se mide por encima de la raya del sistema: como el
-     relleno de abajo se lleva la zona segura y las cajas son `border-box`, un
-     suelo fijo se la habría tragado. Va por variable porque las pantallas
-     apretadas de más abajo lo recortan. */
   --tool-alto: 48px;             /* objetivo de dedo, no de ratón */
-  min-height: calc(var(--tool-alto, 48px) + var(--safe-bottom));
+  min-height: var(--tool-alto, 48px);
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  /* El relleno de abajo se lleva la zona segura entera: la caja del botón baja
-     hasta el borde y el icono con su rótulo se quedan por encima de la raya del
-     sistema, que si no se comería el toque. La medida va por variable porque las
-     pantallas apretadas de más abajo la recortan. */
   --tool-pad: 6px;
-  padding: var(--tool-pad, 6px) 2px calc(var(--tool-pad, 6px) + var(--safe-bottom));
+  padding: var(--tool-pad, 6px) 2px;
   font: inherit;
   color: var(--ink);
   background: rgba(255, 255, 255, .07);
   border: 1px solid var(--line);
-  /* Abajo las esquinas siguen al hueco que le queda a la barra: redondas
-     mientras el botón flote sobre ella, cuadradas en cuanto toca el canto de la
-     pantalla —con la curva de siempre asomaban dos cuñas verdes—. Al salir las
-     dos del mismo valor no hay forma de que una se adelante a la otra. */
-  --radio-abajo: min(10px, calc(var(--hueco-abajo, 5px) * 2));
-  border-radius: 10px 10px var(--radio-abajo, 10px) var(--radio-abajo, 10px);
+  border-radius: 10px;
   cursor: pointer;
   transition: var(--quieto, background var(--speed) linear, transform var(--speed) linear, opacity var(--speed) linear);
 }
 .ico {
+  flex-shrink: 0;
   width: 22px;
   height: 22px;
   fill: none;
@@ -433,15 +428,11 @@ html[data-theme="light"] body::before {
 .tool:focus-visible, .btn:focus-visible, .seg-btn:focus-visible, .icon-btn:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
-/* Con zona segura el botón toca el canto de la pantalla y un anillo por fuera se
-   quedaría con el lado de abajo sin dibujar. Se mete hacia dentro en cuanto hay
-   hueco que guardar; sin él, los 2 px por fuera de todos los demás botones. */
-.tool:focus-visible { outline-offset: max(-2px, calc(2px - var(--safe-bottom))); }
-
 /* ---------- tablero ---------- */
 
 .table {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;

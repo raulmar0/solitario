@@ -153,10 +153,12 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   hacer scroll. Las cuatro zonas seguras del sistema van por variable
   (`--safe-top` y compañía). Arriba el hueco del reloj se aparta con **margen**,
   para que esa franja la pinte el fondo de la página; abajo lo guarda el relleno
-  de cada botón de la barra de acciones, así que los botones llegan al canto de
-  la pantalla y el icono con su rótulo se quedan por encima de la raya del
-  sistema. El `theme-color` se mueve con el tema para que el navegador pinte
-  alrededor del mismo verde.
+  de la barra de acciones. La barra llega al borde de la pantalla y los botones
+  mantienen su altura y sus esquinas redondeadas justo por encima del indicador
+  de inicio. La página sigue el alto visible del navegador y, cuando está
+  instalada, recupera el espacio de la barra de estado si Safari lo descuenta.
+  El `theme-color` se mueve con el tema para que el navegador pinte alrededor
+  del mismo verde.
 
 ## Aplicación instalable (PWA)
 
@@ -168,7 +170,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.12.2`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.12.3`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
