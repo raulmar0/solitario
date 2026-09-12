@@ -890,7 +890,7 @@ test('el marcador se lee sobre el tapete en los dos temas', () => {
   for (const [tema, v] of [['oscuro', base], ['claro', claro]]) {
     const fieltro = hex(v['--felt-1']);                       // la zona más clara del degradado
     const barra = hex(v['--header-bg']);                      // .topbar, verde opaco
-    const caja = sobre('rgba(255,255,255,.07)', barra);       // .stat
+    const caja = sobre(v['--felt-fill'], barra);              // .stat
     const etiqueta = sobre(v['--ink-soft'], caja);
     const valor = sobre(v['--ink'], caja);
     assert.ok(contraste(etiqueta, caja) >= 4.5, `${tema}: etiquetas del marcador ${contraste(etiqueta, caja).toFixed(2)}:1`);

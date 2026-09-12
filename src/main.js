@@ -242,7 +242,7 @@ function refreshHeader() {
   // el dato va en la propia barra, que ahora es una `progressbar` con su valor.
   const arriba = game.foundationCount;
   const progreso = $('#progress');
-  progreso.firstElementChild.style.width = `${((arriba / 52) * 100).toFixed(1)}%`;
+  progreso.style.setProperty('--llenado', (arriba / 52).toFixed(4));
   progreso.setAttribute('aria-valuenow', String(arriba));
   progreso.setAttribute('aria-valuetext', t('hud.fundaciones.valor', { n: arriba }));
 

@@ -257,13 +257,13 @@ test('subir una carta estira la barra de progreso, que es donde vive el contador
 
   escenario({ tableau: [[carta(1, 'S')]], stock: [carta(5, 'H', false)] });
   assert.equal(game.foundationCount, 0);
-  assert.equal(parseFloat($('#progress i').style.width) || 0, 0);
+  assert.equal(parseFloat($('#progress').style.getPropertyValue('--llenado')) || 0, 0);
   assert.equal($('#progress').getAttribute('role'), 'progressbar');
   assert.equal($('#progress').getAttribute('aria-valuenow'), '0');
 
   assert.equal(game.play({ type: 'move', from: { pile: 'tableau', index: 0 }, to: { pile: 'foundation', index: 0 }, count: 1 }), true);
   assert.equal(game.foundationCount, 1);
-  assert.equal(parseFloat($('#progress i').style.width), 1.9, 'una de 52 es el 1,9 % del camino');
+  assert.equal(parseFloat($('#progress').style.getPropertyValue('--llenado')), 0.0192, 'una de 52 es el 1,9 % del camino');
   assert.equal($('#progress').getAttribute('aria-valuenow'), '1');
   assert.equal($('#progress').getAttribute('aria-valuetext'), t('hud.fundaciones.valor', { n: 1 }),
     'y quien no la ve se entera igual: el valor va escrito');

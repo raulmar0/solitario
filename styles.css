@@ -39,6 +39,12 @@
   --felt-accent-suave: #f2c66b;
   --felt-filo: rgba(24, 12, 0, .72);   /* el filo oscuro que envuelve al anillo */
   --felt-ok: #8ff0bd;
+  /* Las cajas de las dos barras. Van aquí y no en `--fill` porque las barras son
+     verde oscuro en los dos temas: el `--fill` del tema claro es tinta oscura
+     sobre blanco y sobre este verde no se vería. Estaban escritas a mano en tres
+     sitios con el mismo número. */
+  --felt-fill: rgba(255, 255, 255, .07);
+  --felt-fill-fuerte: rgba(255, 255, 255, .18);
   --hueco-marca: var(--ink);          /* la «K» del hueco vacío */
   --card-face: #fdfcf8;
   --card-ink: #1b1b1b;
@@ -177,9 +183,19 @@ body {
   font-size: 15px;
 }
 
-/* Envuelve porque en una pantalla de 280 px las cuatro cajas no caben en fila
-   y se salían del ancho: antes dos líneas que barra horizontal. */
-.scoreboard { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; flex: 1 1 auto; }
+/* Las cuatro cajas miden lo mismo y se reparten el sitio a partes iguales: con
+   anchos de contenido salían de 60, 66, 67 y 70 px, cuatro cajas sueltas en vez
+   de un marcador. Las columnas pueden encogerse por debajo del contenido
+   (`minmax(0, 1fr)`), que es lo que las deja caber en una pantalla de 280. */
+.scoreboard {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+}
 
 /* Aviso de versión nueva: solo aparece cuando hay un worker esperando.
    Va del alto del chip de modalidad y con el rótulo corto porque tiene que
@@ -242,14 +258,27 @@ body {
 
 .stat {
   position: relative;
-  min-width: 62px;
-  padding: 3px 10px;
+  min-width: 0;
+  padding: 5px 8px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, .07);
+  background: var(--felt-fill);
   border: 1px solid var(--line);
   text-align: center;
 }
-.stat dt { font-size: 10px; text-transform: uppercase; letter-spacing: .7px; color: var(--ink-soft); }
+/* Once píxeles es el suelo: por debajo un rótulo deja de leerse en una pantalla
+   densa, y estos cuatro no son adorno, dicen qué cifra hay debajo. La caja no
+   crece por ello: lo que antes se iba en relleno lateral ahora lo reparte la
+   rejilla, y el espaciado entre letras baja de .7 a .4. */
+.stat dt {
+  font-size: 11px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .stat dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .stat-wide dd { font-size: 13px; padding-top: 2px; }
 .stat.bump dd { animation: var(--quieto, bump 320ms linear); }
@@ -304,6 +333,11 @@ body {
   cursor: pointer;
   transition: background var(--speed) linear, color var(--speed) linear;
 }
+/* En pantalla ancha sigue anclado a la derecha, como estaba: la marca sujeta un
+   extremo y la modalidad el otro. Antes lo empujaba el marcador al estirarse;
+   ahora que el marcador mide lo que mide, lo empuja el margen. En móvil no, que
+   ahí comparte fila con la marca. */
+@media (min-width: 641px) { .mode-chip { margin-left: auto; } }
 .mode-chip:hover { background: var(--fill-strong); color: var(--ink); }
 .mode-chip:focus-visible { outline: 2px solid var(--felt-accent); outline-offset: 2px; }
 /* La píldora es baja a propósito (si no, la barra crece), pero el dedo necesita
@@ -342,13 +376,19 @@ body {
   background: var(--fill);
   overflow: hidden;
 }
+/* Se estira con `transform` y no con `width`: animar el ancho obliga al
+   navegador a recalcular la disposición en cada fotograma, y esto se mueve cada
+   vez que sube una carta —o cincuenta y dos seguidas en la cascada final—. El
+   llenado lo escribe el JS en `--llenado`, de 0 a 1. */
 .progress > i {
   display: block;
-  width: 0;
+  width: 100%;
   height: 100%;
   background: var(--felt-accent);
   border-radius: inherit;
-  transition: var(--quieto, width var(--speed) linear);
+  transform: scaleX(var(--llenado, 0));
+  transform-origin: left center;
+  transition: var(--quieto, transform var(--speed) linear);
 }
 
 /* En el tema claro, la franja de la zona segura de arriba la pinta el tapete
@@ -408,11 +448,11 @@ html[data-theme="light"] body::before {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  --tool-pad: 6px;
-  padding: var(--tool-pad, 6px) 2px;
+  --tool-pad: 5px;
+  padding: var(--tool-pad, 5px) 2px;
   font: inherit;
   color: var(--ink);
-  background: rgba(255, 255, 255, .07);
+  background: var(--felt-fill);
   border: 1px solid var(--line);
   border-radius: 10px;
   cursor: pointer;
@@ -428,8 +468,11 @@ html[data-theme="light"] body::before {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.rotulo { font-size: 10.5px; font-weight: 600; }
-.tool:hover:not(:disabled) { background: rgba(255, 255, 255, .18); }
+/* El mismo suelo de 11 px que el marcador: estos cinco rótulos nombran lo que
+   hace cada botón y se leen a la primera o no sirven de nada. El alto se
+   mantiene quitándole al relleno lo que gana la letra. */
+.rotulo { font-size: 11px; line-height: 1.2; font-weight: 600; }
+.tool:hover:not(:disabled) { background: var(--felt-fill-fuerte); }
 .tool:active:not(:disabled) { transform: translateY(1px); }
 .tool:disabled { opacity: .35; cursor: default; }
 .tool:focus-visible, .btn:focus-visible, .seg-btn:focus-visible, .icon-btn:focus-visible {
@@ -1595,13 +1638,12 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .mode-chip { order: -1; min-height: 28px; padding: 4px 10px; }
   .update-pill { order: -1; min-height: 26px; padding: 3px 9px; }
   .update-texto { display: none; }
-  .stat { min-width: 52px; padding: 1px 7px; }
+  .stat { padding: 2px 6px; }
   .stat dd { font-size: 14px; }
   .progress { position: absolute; left: 0; right: 0; bottom: 0; flex-basis: auto; border-radius: 0; }
   .table { padding-top: 6px; padding-bottom: 4px; }
   .banner { margin-top: 6px; }
-  .tool { --tool-alto: 40px; --tool-pad: 3px; }
-  .rotulo { font-size: 9.5px; }
+  .tool { --tool-alto: 40px; --tool-pad: 2px; }
 }
 
 @media (max-width: 640px) {
@@ -1616,7 +1658,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   /* Ojo: sin repetir aquí la zona segura, el `padding: 8px` se comía la del
      iPhone y la barra se metía debajo del reloj y la muesca. */
   .topbar {
-    gap: 8px;
+    /* Menos aire entre filas que entre columnas: las tres filas de la cabecera
+       (marca, marcador, progreso) van juntas y lo que se gana es tapete. */
+    gap: 6px 8px;
     padding: 8px max(8px, var(--safe-right)) 8px max(8px, var(--safe-left));
   }
   /* En iOS un fondo fijo obliga a repintar el degradado entero cada vez que algo
@@ -1634,18 +1678,24 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
      entera, que en una pantalla de 640 px de alto se nota en el tapete. */
   .brand { order: -2; }
   .mode-chip { order: -1; }
-  .stat { min-width: 54px; padding: 2px 7px; }
+  .scoreboard { flex: 1 1 100%; gap: 5px; }
+  .stat { padding: 4px 6px; }
+  .stat dt { letter-spacing: .3px; }
   .update-pill { order: -1; }
   .table { padding: 8px max(4px, var(--safe-right)) 6px max(4px, var(--safe-left)); }
   .tools { gap: 3px; padding-left: max(4px, var(--safe-left)); padding-right: max(4px, var(--safe-right)); }
-  .tool { --tool-alto: 48px; --tool-pad: 5px; }
-  .rotulo { font-size: 10px; }
+  .tool { --tool-alto: 48px; --tool-pad: 4px; }
   /* En pantalla estrecha los dos botones de la invitación se apilan a lo ancho:
      el primario arriba, que es el que se busca. */
   .dlg-invita .dlg-actions .btn { flex: 1 1 100%; }
 }
 
 @media (max-width: 340px) {
+  /* En las pantallas más estrechas el rótulo del marcador no baja de 11 px: el
+     sitio sale del relleno lateral y del espaciado entre letras, que es adorno.
+     Cortar «JUGADAS» con puntos suspensivos sería peor que tenerlo pequeño. */
+  .stat { padding-inline: 3px; }
+  .stat dt { letter-spacing: 0; }
   #panel-tabs .tab { font-size: 11px; padding-inline: 2px; }
   #dlg-settings .seg:has([data-pref="dealBias"]) { grid-auto-flow: row; }
 }
