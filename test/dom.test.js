@@ -349,7 +349,9 @@ test('las cuatro secciones viven en el mismo panel y se cambia entre ellas', () 
   assert.equal(panels.section, 'ajustes');
   assert.equal($('#panel-titulo').textContent, t('dlg.titulo.ajustes'));
 
+  $('#menu-body').scrollTop = 400;
   $('#tab-ayuda').click();
+  assert.equal($('#menu-body').scrollTop, 0, 'cada sección empieza por su contenido inicial');
   assert.equal(panels.section, 'ayuda');
   assert.equal($('#panel-ayuda').hidden, false);
   assert.equal($('#panel-ajustes').hidden, true);

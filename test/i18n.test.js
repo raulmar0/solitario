@@ -68,6 +68,17 @@ function tipoDe(entrada) {
 
 // ---------------------------------------------------------------- paridad
 
+test('los catálogos no sobrescriben traducciones con claves duplicadas', () => {
+  for (const code of CODIGOS) {
+    const fuente = readFileSync(new URL(`../src/locales/${code}.js`, import.meta.url), 'utf8');
+    const vistas = new Set();
+    for (const [, clave] of fuente.matchAll(/^\s{2}'([^']+)'\s*:/gm)) {
+      assert.equal(vistas.has(clave), false, `${code}: la clave «${clave}» aparece más de una vez`);
+      vistas.add(clave);
+    }
+  }
+});
+
 test('los cinco diccionarios tienen exactamente las mismas claves y en el mismo orden', () => {
   for (const code of OTROS) {
     const claves = Object.keys(DICCIONARIOS[code]);

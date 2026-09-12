@@ -66,11 +66,18 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+
+  /* Lo que pinta el sistema y no nosotros —la lista desplegable del idioma, las
+     flechitas del campo numérico, las barras de desplazamiento— va con el tema
+     que se ha elegido aquí. Sin esto, quien tiene el sistema en claro y el juego
+     en oscuro abría el idioma y le salía una lista blanca. */
+  color-scheme: dark;
 }
 
 /* En claro solo cambian el fieltro y los paneles: sobre el tapete la tinta sigue
    siendo blanca, dentro de los diálogos pasa a ser oscura. */
 html[data-theme="light"] {
+  color-scheme: light;
   --felt-1: #35a066;
   --felt-2: #1d7146;
   --ink: #ffffff;
@@ -892,12 +899,17 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .btn.danger { color: var(--danger); border-color: rgba(224, 106, 92, .5); }
 .btn.ghost { background: transparent; }
 .btn.small { padding: 6px 11px; font-size: 13px; }
+/* Los iconos van dibujados, no con glifos del tipo de letra: un ✕ o un ‹ toman
+   el grosor y el centrado que quiera la fuente de turno y nunca casan entre sí. */
 .icon-btn {
+  display: grid; place-items: center;
   background: none; border: 0; color: var(--panel-ink-soft);
   font-size: 17px; cursor: pointer; padding: 4px 8px; border-radius: 7px;
   min-width: 44px; min-height: 44px;
+  transition: var(--quieto, background var(--speed) linear, color var(--speed) linear);
 }
-.icon-btn:hover { background: var(--fill); color: var(--panel-ink); }
+.icon-btn:hover:not(:disabled) { background: var(--fill); color: var(--panel-ink); }
+.icon-btn:disabled { opacity: .35; cursor: default; }
 
 .field { margin: 16px 0; }
 .field-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; }
@@ -980,24 +992,38 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    récords): se dibujan como pestañas de verdad y no como píldoras, para que a
    nadie se le confundan dos filas de lo mismo. */
 #panel-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex-shrink: 0;
   gap: 2px;
-  margin-bottom: 16px;
+  margin: 0 var(--menu-pad, 20px);
   border-bottom: 1px solid var(--panel-line);
 }
 #panel-tabs .tab {
-  padding: 9px 14px;
+  position: relative;
+  min-width: 0;
+  padding: 10px 4px;
   font-size: 14px;
   background: none;
   border: 0;
-  border-radius: 0;
-  border-bottom: 2.5px solid transparent;
-  margin-bottom: -1px;
+  border-radius: 8px 8px 0 0;
+  transition: var(--quieto, color var(--speed) ease-out, background var(--speed) ease-out);
 }
-#panel-tabs .tab[aria-selected="true"] {
-  background: none;
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+/* El subrayado se abre desde el centro al elegir la pestaña, en vez de aparecer
+   de golpe: es el único sitio del menú donde algo se mueve solo. */
+#panel-tabs .tab::after {
+  content: '';
+  position: absolute;
+  right: 6px; bottom: -1px; left: 6px;
+  height: 2.5px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: var(--quieto, transform 220ms cubic-bezier(0.16, 1, 0.3, 1));
 }
+#panel-tabs .tab:hover { background: var(--fill); }
+#panel-tabs .tab[aria-selected="true"] { background: none; color: var(--accent); }
+#panel-tabs .tab[aria-selected="true"]::after { transform: scaleX(1); }
 
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 .tab {
@@ -1008,7 +1034,256 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .tab:hover { color: var(--panel-ink); }
 .tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 
-.grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; margin: 0; }
+/* ---------- el menú ---------- */
+/* Las cuatro secciones viven en un marco que no se mueve: solo el cuerpo se
+   desplaza, así que las pestañas, el aviso y el cierre siguen al alcance por
+   larga que sea la sección. Las medidas salen de una escala corta y no de un
+   número distinto en cada regla: apretado dentro de un grupo, generoso entre
+   grupos, y siempre más aire encima de un título que debajo. */
+#dlg-settings {
+  --menu-pad: 20px;    /* el aire lateral del marco */
+  --menu-1: 8px;       /* entre un control y su explicación */
+  --menu-2: 16px;      /* entre dos controles del mismo grupo */
+  --menu-3: 28px;      /* entre dos grupos */
+  padding: 0;
+  height: min(88vh, 760px);
+  height: min(88dvh, 760px);
+  max-width: calc(100vw - 24px - var(--safe-left) - var(--safe-right));
+  max-height: calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom));
+  overflow: hidden;
+}
+#dlg-settings[open] { display: flex; flex-direction: column; }
+
+/* El texto que se selecciona dentro del menú también es del menú: sin esto se
+   pinta con el azul del sistema, que no es de nadie. */
+#dlg-settings ::selection { background: var(--accent); color: var(--accent-ink); }
+
+#dlg-settings .dlg-head {
+  flex-shrink: 0;
+  gap: 12px;
+  margin: 0;
+  padding: 14px var(--menu-pad) 10px;
+}
+#dlg-settings .dlg-head h2 {
+  min-width: 0;
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -.01em;
+  overflow-wrap: anywhere;
+}
+#dlg-settings .dlg-head .icon-btn { display: grid; place-items: center; flex: 0 0 44px; }
+#dlg-settings > .dlg-status {
+  flex-shrink: 0;
+  max-height: 96px;
+  overflow-y: auto;
+  margin: 12px var(--menu-pad) 0;
+}
+#dlg-settings > .dlg-status:empty { margin: 0; }
+
+.menu-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--menu-3) var(--menu-pad) var(--menu-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 16px;
+}
+
+/* La barra de desplazamiento venía con los colores del navegador y se veía. */
+.menu-body, .table-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: var(--fill-strong) transparent;
+}
+.menu-body::-webkit-scrollbar, .table-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
+.menu-body::-webkit-scrollbar-track, .table-wrap::-webkit-scrollbar-track { background: transparent; }
+.menu-body::-webkit-scrollbar-thumb, .table-wrap::-webkit-scrollbar-thumb {
+  background: var(--fill-strong);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+#dlg-settings .dlg-foot {
+  flex-shrink: 0;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 12px var(--menu-pad);
+  border-top: 1px solid var(--panel-line);
+}
+#dlg-settings .dlg-foot .btn { min-width: 112px; }
+
+/* Al cambiar de sección el cuerpo se posa; el estado de reposo es el visible,
+   así que si se pide quietud no se mueve nada y se ve igual. */
+@keyframes menu-entra {
+  from { opacity: 0; transform: translateY(7px); }
+}
+#dlg-settings .panel:not([hidden]) {
+  animation: var(--quieto, menu-entra 240ms cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+/* Jerarquía: el título del grupo manda, el rótulo del campo nombra el control y
+   la nota explica. Tres tamaños y tres pesos, no cinco. */
+#dlg-settings :is(.settings-group > h3, .menu-body h3) {
+  margin: var(--menu-3) 0 var(--menu-1);
+  font-size: 15px;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--panel-ink);
+}
+/* Solo pierde el aire de encima el título que abre una sección; el de un
+   bloque que viene detrás de otro contenido lo necesita entero. */
+#dlg-settings .menu-body > *:first-child,
+#dlg-settings .settings-group > h3:first-child { margin-top: 0; }
+#dlg-settings .field-label { font-size: 14px; font-weight: 600; margin-bottom: var(--menu-1); }
+#dlg-settings .hint-text { font-size: 13px; line-height: 1.55; }
+
+#dlg-settings .settings-group { margin: 0 0 var(--menu-3); padding: 0 0 var(--menu-3); }
+#dlg-settings .settings-group .field { margin: 0; padding: var(--menu-2) 0; }
+#dlg-settings .settings-group .field + .field { border-top: 1px solid var(--panel-line); }
+
+/* Interruptores dibujados. La casilla del navegador no es de esta interfaz: se
+   apaga con appearance y se dibuja el carril y la bola con los mismos tokens
+   que el resto, que además funcionan en los dos temas. */
+#dlg-settings .switch {
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  margin: 0;
+  padding: 12px 0;
+}
+#dlg-settings .switch + .switch { border-top: 1px solid var(--panel-line); }
+#dlg-settings .switch input {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  order: 1;
+  flex: 0 0 46px;
+  width: 46px;
+  height: 27px;
+  margin: 0;
+  background: var(--fill-strong);
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: var(--quieto, background var(--speed) ease-out, border-color var(--speed) ease-out);
+}
+#dlg-settings .switch input::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 19px;
+  height: 19px;
+  margin-top: -9.5px;
+  background: var(--panel-ink-soft);
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+  transition: var(--quieto, transform var(--speed) cubic-bezier(0.16, 1, 0.3, 1), background var(--speed) ease-out);
+}
+#dlg-settings .switch input:checked { background: var(--accent); border-color: transparent; }
+#dlg-settings .switch input:checked::after {
+  transform: translateX(19px);
+  background: var(--accent-ink);
+}
+#dlg-settings .switch:hover input:not(:checked) { background: var(--fill-strong); border-color: var(--panel-ink-soft); }
+
+/* El grupo de opciones ocupa su columna entera y reparte los botones a partes
+   iguales. Nada de partir «Equilibrado» por la mitad: se envuelve por palabras
+   o no se envuelve. */
+#dlg-settings .seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 100%;
+}
+#dlg-settings .seg-btn {
+  min-width: 0;
+  padding: 8px 6px;
+  line-height: 1.3;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+  transition: var(--quieto, background var(--speed) ease-out, color var(--speed) ease-out);
+}
+
+#dlg-settings .text-input { min-width: 0; max-width: 100%; caret-color: var(--accent); }
+/* La flecha del desplegable la pintaba el navegador, con su gris y su forma. Va
+   trazada, no en una imagen: la política de contenido no admite `data:` en
+   `img-src` y no se va a abrir por una flecha. Con bordes sale gratis, hereda la
+   tinta del tema y es la misma punta que abre «Opciones avanzadas». */
+.select-wrap { position: relative; display: flex; min-width: 0; }
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 7px;
+  height: 7px;
+  margin-top: -6px;
+  border-right: 1.7px solid var(--panel-ink-soft);
+  border-bottom: 1.7px solid var(--panel-ink-soft);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+#dlg-settings select.text-input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+}
+#dlg-settings .settings-group :is(.text-input, .select-wrap),
+#dlg-settings .records-profile .text-input { width: 100%; }
+#dlg-settings .text-input::placeholder { opacity: 1; }
+
+#dlg-settings .settings-details { margin: 0; border-top: 0; }
+#dlg-settings .settings-details summary { min-height: 52px; gap: 16px; }
+#dlg-settings .settings-details summary::after {
+  content: '';
+  width: 8px; height: 8px;
+  margin-right: 4px;
+  flex: 0 0 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: var(--quieto, transform var(--speed) ease-out);
+}
+#dlg-settings .settings-details[open] summary::after { transform: rotate(225deg); }
+#dlg-settings .settings-details-body { padding-bottom: var(--menu-2); }
+
+#dlg-settings :is(.tab, summary, .switch input, .cal-dia, .seg-btn):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#dlg-settings .app-row, #dlg-settings .bank-row { flex-wrap: wrap; }
+#dlg-settings .app-row .btn { flex: 0 1 auto; max-width: 100%; }
+/* El texto corrido se lee a una anchura, no a la que dé el diálogo: a lo ancho
+   del panel las reglas y la explicación de la puntuación pasaban de cien
+   caracteres por línea y el ojo perdía el renglón al volver. */
+#dlg-settings :is(#panel-ayuda, #panel-reto) :is(p, ul):not(.empty),
+#dlg-settings .keys { max-width: 68ch; }
+#dlg-settings .rules { line-height: 1.6; }
+#dlg-settings .rules li { margin: 10px 0; }
+#dlg-settings .rules li::marker { color: var(--panel-ink-soft); }
+
+@media (min-width: 641px) {
+  #dlg-settings .settings-group .field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+    gap: 4px 24px;
+    align-items: center;
+  }
+  #dlg-settings .settings-group .field-label { grid-column: 1; margin: 0; }
+  #dlg-settings .settings-group .hint-text { grid-column: 1; grid-row: 2; margin: 0; }
+  #dlg-settings .settings-group :is(.seg, .text-input, .select-wrap) { grid-column: 2; grid-row: 1 / 3; }
+}
+
+/* Son nueve siempre: en tres columnas salen tres filas llenas. Con `auto-fit`
+   la última fila quedaba coja y con un hueco a la derecha. */
+.grid-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
 .grid-stats > div {
   background: var(--panel-2); border: 1px solid var(--panel-line);
   border-radius: 10px; padding: 9px 11px;
@@ -1080,7 +1355,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .scores tbody tr:nth-child(odd) { background: var(--fill); }
 .scores .win { color: var(--ok); font-weight: 600; }
 .scores .loss { color: var(--panel-ink-soft); }
-.scores .me { box-shadow: inset 3px 0 0 var(--accent); }
+.scores .me { background: var(--fill-strong); font-weight: 650; }
 .empty { color: var(--panel-ink-soft); font-size: 13.5px; text-align: center; padding: 14px; }
 
 /* ---------- reto diario ---------- */
@@ -1134,7 +1409,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   transition: background var(--speed) linear, color var(--speed) linear;
 }
 .cal-dia:hover:not(:disabled) { background: var(--fill-strong); }
-.cal-dia:disabled { opacity: .32; cursor: default; background: none; }
+/* Apagado, no borrado: quitarle el fondo dejaba el mes sin cuadrícula de la
+   segunda fila para abajo y las filas descuadradas entre sí. */
+.cal-dia:disabled { color: var(--panel-ink-soft); opacity: .45; cursor: default; }
 .cal-dia.hoy { border-color: var(--accent); }
 .cal-dia.elegido { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 /* Cómo fue ese día: un punto bajo el número. Apagado si se jugó y se perdió,
@@ -1221,9 +1498,24 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 
 .rules { margin: 8px 0; padding-left: 20px; }
 .rules li { margin: 5px 0; }
-.keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 13.5px; }
+/* Un atajo se lee mejor si parece una tecla. El monoespaciado sobraba: esto no
+   es código, son los nombres de las teclas y van en la letra de la interfaz. */
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; align-items: center; }
 .keys > div { display: contents; }
-.keys dt { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); font-weight: 700; }
+.keys dt {
+  justify-self: start;
+  padding: 4px 9px;
+  min-width: 32px;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-ink);
+  background: var(--fill);
+  border: 1px solid var(--panel-line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+}
 .keys dd { margin: 0; color: var(--panel-ink-soft); }
 
 /* ---------- confeti y celebración ---------- */
@@ -1290,6 +1582,13 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    desplaza a propósito). Aquí la cabecera se aprieta y la barra de progreso deja
    de gastar una línea entera: se ancla al borde de abajo. */
 @media (max-height: 520px) {
+  /* Con la pantalla tumbada el marco se aprieta por la escala, no regla a
+     regla: así el ritmo de dentro se encoge entero y no a trozos. */
+  #dlg-settings { --menu-2: 12px; --menu-3: 18px; }
+  #dlg-settings .dlg-head { padding-top: 4px; padding-bottom: 0; }
+  #dlg-settings .dlg-foot { padding-top: 6px; padding-bottom: 6px; }
+  #dlg-settings .menu-body { padding-top: 12px; padding-bottom: 12px; }
+  #dlg-settings .switch { min-height: 42px; padding: 6px 0; }
   .topbar { gap: 6px 12px; padding-top: 6px; padding-bottom: 6px; }
   .brand h1 { display: none; }
   .brand { order: -2; }
@@ -1306,6 +1605,14 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 }
 
 @media (max-width: 640px) {
+  #dlg-settings { --menu-pad: 16px; --menu-3: 24px; height: min(92dvh, 760px); }
+  #dlg-settings .dlg-head h2 { font-size: 20px; }
+  #panel-tabs { margin-right: var(--menu-pad); margin-left: var(--menu-pad); }
+  #panel-tabs .tab { font-size: 12px; }
+  #dlg-settings .dlg-foot .btn { width: 100%; }
+  #dlg-settings .app-row .btn { width: 100%; }
+  #dlg-settings #stats-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #dlg-settings #stats-tabs .tab { padding: 8px; line-height: 1.3; }
   /* Ojo: sin repetir aquí la zona segura, el `padding: 8px` se comía la del
      iPhone y la barra se metía debajo del reloj y la muesca. */
   .topbar {
@@ -1336,4 +1643,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   /* En pantalla estrecha los dos botones de la invitación se apilan a lo ancho:
      el primario arriba, que es el que se busca. */
   .dlg-invita .dlg-actions .btn { flex: 1 1 100%; }
+}
+
+@media (max-width: 340px) {
+  #panel-tabs .tab { font-size: 11px; padding-inline: 2px; }
+  #dlg-settings .seg:has([data-pref="dealBias"]) { grid-auto-flow: row; }
 }

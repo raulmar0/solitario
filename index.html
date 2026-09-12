@@ -143,7 +143,7 @@
      abrir, una sola vez al día, y se quita de en medio con un clic —el reto vive
      detrás del menú y si no se pone delante no lo encuentra nadie. -->
 <dialog id="dlg-reto-invita" class="dlg dlg-invita" aria-labelledby="invita-titulo">
-  <button class="icon-btn invita-cerrar" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar">✕</button>
+  <button class="icon-btn invita-cerrar" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   <div class="invita-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
   <h2 id="invita-titulo" data-i18n="reto.invita.titulo">Reto del día</h2>
   <p class="invita-fecha" id="invita-fecha"></p>
@@ -157,7 +157,7 @@
 <dialog id="dlg-settings" class="dlg dlg-wide" aria-labelledby="panel-titulo">
   <header class="dlg-head">
     <h2 id="panel-titulo" data-i18n="dlg.titulo.ajustes">Ajustes</h2>
-    <button class="icon-btn" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar">✕</button>
+    <button class="icon-btn" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </header>
 
   <!-- Cuatro secciones en un mismo sitio: el reparto del día, lo que se toca, lo
@@ -174,6 +174,7 @@
        tablero queda tapado mientras está abierto. -->
   <p class="dlg-status" id="dlg-status" role="status" aria-live="polite"></p>
 
+  <div class="menu-body" id="menu-body">
   <!-- Reto diario: el calendario y el reparto del día. La semilla sale de la
        fecha, así que dos personas que jueguen el mismo día reparten las mismas
        cartas y pueden comparar la puntuación sin servidor de por medio. -->
@@ -181,9 +182,9 @@
     <p data-i18n="reto.intro">Cada día tiene su reparto, el mismo para todo el mundo. Juega el de hoy o vuelve a cualquier día del último año.</p>
 
     <div class="cal-nav">
-      <button class="icon-btn" type="button" id="cal-prev" data-i18n-aria-label="reto.mes.anterior" aria-label="Mes anterior">‹</button>
+      <button class="icon-btn" type="button" id="cal-prev" data-i18n-aria-label="reto.mes.anterior" aria-label="Mes anterior"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button>
       <strong class="cal-titulo" id="cal-titulo" aria-live="polite"></strong>
-      <button class="icon-btn" type="button" id="cal-next" data-i18n-aria-label="reto.mes.siguiente" aria-label="Mes siguiente">›</button>
+      <button class="icon-btn" type="button" id="cal-next" data-i18n-aria-label="reto.mes.siguiente" aria-label="Mes siguiente"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button>
     </div>
     <div class="cal" id="cal" role="grid" aria-labelledby="cal-titulo"></div>
 
@@ -237,13 +238,13 @@
       </div>
 
       <div class="field">
-        <span class="field-label" data-i18n="settings.reparto">Manos resolubles</span>
-        <div class="seg" role="radiogroup" aria-label="Manos resolubles" data-i18n-aria-label="settings.reparto">
+        <span class="field-label" data-i18n="settings.manos">Manos resolubles</span>
+        <div class="seg" role="radiogroup" aria-label="Manos resolubles" data-i18n-aria-label="settings.manos">
           <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="random" data-i18n="settings.reparto.azar">Al azar</button>
           <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="balanced" data-i18n="settings.reparto.equilibrado">Equilibrado</button>
           <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="solvable" data-i18n="settings.reparto.solubles">Solo resolubles</button>
         </div>
-        <p class="hint-text" data-i18n="settings.reparto.nota">«Equilibrado» reparte la mayoría de manos con solución comprobada y deja alguna al azar.</p>
+        <p class="hint-text" data-i18n="settings.manos.nota">«Equilibrado» reparte la mayoría de manos con solución comprobada y deja alguna al azar.</p>
       </div>
 
       <label class="switch"><input type="checkbox" data-pref="timed"><span data-i18n="settings.contrarreloj">Contrarreloj</span></label>
@@ -266,14 +267,16 @@
            en una lengua que no entiende reconoce el suyo igual. -->
       <div class="field">
         <label class="field-label" for="pref-lang" data-i18n="settings.idioma">Idioma</label>
-        <select id="pref-lang" class="text-input" data-pref="lang">
-          <option value="auto" data-i18n="settings.idioma.auto">Automático</option>
-          <option value="es">Español</option>
-          <option value="en">English</option>
-          <option value="fr">Français</option>
-          <option value="pt">Português</option>
-          <option value="ko">한국어</option>
-        </select>
+        <div class="select-wrap">
+          <select id="pref-lang" class="text-input" data-pref="lang">
+            <option value="auto" data-i18n="settings.idioma.auto">Automático</option>
+            <option value="es">Español</option>
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="pt">Português</option>
+            <option value="ko">한국어</option>
+          </select>
+        </div>
       </div>
 
       <label class="switch"><input type="checkbox" data-pref="animations"><span data-i18n="settings.animaciones">Animaciones</span></label>
@@ -387,6 +390,7 @@
     <p class="hint-text" data-i18n="help.privacidad">Todo se guarda en este navegador, en tu equipo. No sale nada a ningún servidor.</p>
   </section>
 
+  </div>
   <footer class="dlg-foot"><button class="btn primary" data-close data-i18n="dlg.listo">Listo</button></footer>
 </dialog>
 

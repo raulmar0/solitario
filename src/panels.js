@@ -99,6 +99,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   let seccion = 'ajustes';
 
   function mostrarSeccion(cual, { foco = false } = {}) {
+    const anterior = seccion;
     seccion = SECCIONES.includes(cual) ? cual : 'ajustes';
     for (const id of SECCIONES) {
       const pestana = $(`#tab-${id}`);
@@ -116,6 +117,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     // pestaña también. Volver a la sección y encontrarse en el mes de la última
     // vez, con un día de hace tres semanas elegido, no lo espera nadie.
     if (seccion === 'reto') { centrarReto(); renderReto(); }
+    if (seccion !== anterior) $('#menu-body').scrollTop = 0;
     if (foco) $(`#tab-${seccion}`).focus();
   }
 
@@ -152,7 +154,10 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (cual === 'records') statsMode = { scoring: game.prefs.scoring, drawCount: game.prefs.drawCount };
     mostrarSeccion(cual);
     onOpenSettings();
-    if (!dlgSettings.open) dlgSettings.showModal();
+    if (!dlgSettings.open) {
+      $('#menu-body').scrollTop = 0;
+      dlgSettings.showModal();
+    }
   }
 
   // ---------- récords ----------
