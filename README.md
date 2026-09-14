@@ -51,8 +51,9 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
     una, tres robando de tres).
 - **Récords locales**: partidas, victorias, porcentaje, mejor puntuación, mejor
   tiempo, menos jugadas, racha actual y mejor racha — todo separado por
-  modalidad — más una tabla con las 25 mejores partidas. Se pueden exportar e
-  importar en JSON y borrar del todo.
+  modalidad — más una tabla con las 25 mejores partidas. Cada partida guarda
+  cuántas pistas se pidieron, y la tabla y la ventana de victoria lo enseñan. Se
+  pueden exportar e importar en JSON y borrar del todo.
 - **La partida a medias se guarda sola**: si cierras la pestaña, al volver sigue
   donde estaba (con parte del historial de deshacer).
 - **Repartos reproducibles**: cada partida tiene un número. El mismo número
@@ -81,7 +82,10 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   alternativas y el jugador acababa sin saber cuál de las cuatro le convenía.
   La pista conserva ese criterio estratégico; el toque directo, cuando no hay una
   pista activa, prioriza una fundación legal para respetar la intención de subir.
-  Con una pista activa, el toque ejecuta el destino señalado.
+  Con una pista activa, el toque ejecuta el destino señalado. Las pistas se
+  cuentan siempre, se penalicen o no: cuántas se pidieron va con el resultado de
+  la partida; restar puntos por ellas es cosa aparte, del ajuste «Penalizar
+  pistas».
 - **Sonidos**: los clics de las cartas y los avisos están sintetizados con Web
   Audio, sin un solo fichero de audio ni una petición a la red. Se apagan desde
   Ajustes. El navegador no deja sonar nada hasta que tocas la página, así que el

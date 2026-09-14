@@ -1486,8 +1486,11 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 
 .dlg-win { text-align: center; width: min(94vw, 400px); }
 .win-art { font-size: 34px; letter-spacing: 8px; margin-bottom: 6px; }
-.win-stats { display: flex; justify-content: center; gap: 10px; margin: 16px 0 0; }
-.win-stats > div { flex: 1; background: var(--panel-2); border: 1px solid var(--panel-line); border-radius: 10px; padding: 9px; }
+/* Cuatro cajas en fila se quedan en 80 px y «Puntuación» ya no cabe: van en dos
+   y dos, que además es la misma retícula en el móvil más estrecho y en el panel
+   ancho. */
+.win-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 16px 0 0; }
+.win-stats > div { background: var(--panel-2); border: 1px solid var(--panel-line); border-radius: 10px; padding: 9px; }
 .win-stats dt { font-size: 11px; color: var(--panel-ink-soft); text-transform: uppercase; }
 .win-stats dd { margin: 2px 0 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .win-note { color: var(--accent); font-weight: 700; min-height: 20px; }

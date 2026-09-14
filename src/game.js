@@ -452,16 +452,20 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
       return true;
     },
 
+    /**
+     * Las pistas se cuentan siempre, se penalicen o no: cuántas se pidieron es
+     * parte de cómo salió la partida, y penalizarlas es cosa de la modalidad.
+     * Una pista es una: pedirla otra vez en la misma posición enseña la misma
+     * jugada, así que ni cuenta ni cobra dos veces.
+     */
     hint() {
       if (status !== 'playing' && status !== 'stuck') return null;
       const rec = advisor.recomendar(state, { historial: historialReciente() });
-      if (rec && modo().penalizeHints) {
-        if (lastHintEpoch !== selectionEpoch) {
-          lastHintEpoch = selectionEpoch;
-          hints += 1;
-          persist();
-          emit();
-        }
+      if (rec && lastHintEpoch !== selectionEpoch) {
+        lastHintEpoch = selectionEpoch;
+        hints += 1;
+        persist();
+        emit();
       }
       return rec;
     },

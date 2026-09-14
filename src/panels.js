@@ -301,6 +301,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
         t(r.won ? 'stats.ganada' : 'stats.perdida'),
         formatTime(r.timeMs ?? 0),
         String(r.moves ?? 0),
+        String(r.hints ?? 0),
         r.seed == null ? vacio : t('hud.reparto.numero', { n: r.seed }),
         fecha(r.at),
       ];
@@ -1109,6 +1110,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     $('#win-score').textContent = formatScore(r.scoring, r.score);
     $('#win-time').textContent = formatTime(r.timeMs);
     $('#win-moves').textContent = String(r.moves);
+    $('#win-hints').textContent = String(r.hints ?? 0);
     pintarChapaReto();
     avisoCompartir(null);
     prepararCompartir(pintarNotasVictoria());

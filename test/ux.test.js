@@ -1115,7 +1115,7 @@ test('la tabla de récords y el reto diario enseñan el modo en que se jugó', (
   for (const d of window.document.querySelectorAll('dialog')) d.close();
   // Comprobar la cabecera de la tabla de récords
   const ths = $$('#scores-table thead th').map((th) => th.textContent.trim());
-  assert.deepEqual(ths, ['#', 'Puntos', 'Modo', 'Resultado', 'Tiempo', 'Jugadas', 'Reparto', 'Fecha']);
+  assert.deepEqual(ths, ['#', 'Puntos', 'Modo', 'Resultado', 'Tiempo', 'Jugadas', 'Pistas', 'Reparto', 'Fecha']);
 
   // Guardar partidas con distintos modos
   store.recordGame({
@@ -1155,12 +1155,14 @@ test('la tabla de récords y el reto diario enseñan el modo en que se jugó', (
   assert.match(primera[2], /pistas penalizadas/i);
   assert.match(primera[2], /crono/i);
   assert.equal(primera[3], 'Ganada');
+  assert.equal(primera[6], '3', 'la columna de pistas cuenta las que se pidieron');
 
   const segunda = Array.from(filas[1].children).map((td) => td.textContent.trim());
   assert.equal(segunda[1], '500');
   assert.match(segunda[2], /Estándar/);
   assert.match(segunda[2], /pistas sin penalizar/i);
   assert.equal(segunda[3], 'Perdida');
+  assert.equal(segunda[6], '0', 'sin pistas, un cero');
 
   // Reto diario con pistas penalizadas
   const ayer = claveDia(new Date(Date.now() - 86400000));

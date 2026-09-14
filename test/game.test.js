@@ -624,3 +624,36 @@ test('modo de pistas penalizadas: en Vegas descuenta 5 $ y puede ser negativo', 
   assert.equal(game.hints, 1);
   assert.equal(game.score, -57, '-52 $ menos 5 $ por la pista');
 });
+
+test('las pistas se cuentan aunque no se penalicen, y no tocan la puntuación', () => {
+  const { game, store } = crear();           // sin penalizeHints
+  game.newGame(42);
+  assert.ok(!game.penalizeHints, 'esta partida no penaliza las pistas');
+  assert.equal(game.hints, 0);
+
+  const h1 = game.hint();
+  assert.ok(h1, 'debe haber jugada recomendada');
+  assert.equal(game.hints, 1, 'pedirla cuenta');
+  assert.equal(game.score, 0, 'pero no cuesta puntos');
+
+  game.hint();
+  assert.equal(game.hints, 1, 'la misma pista en la misma posición sigue siendo una');
+
+  game.play(h1.move);
+  const puntos = game.score;
+  if (game.hint()) {
+    assert.equal(game.hints, 2, 'otra posición, otra pista');
+    assert.equal(game.score, puntos, 'la puntuación no se entera');
+  }
+
+  // La cuenta llega al récord de la partida y sobrevive a cerrar la pestaña.
+  const antes = game.hints;
+  game.flush();
+  const resumido = createGame({ store, now: () => 0 });
+  assert.ok(resumido.resume(), 'la partida guardada vuelve');
+  assert.equal(resumido.hints, antes, 'con las pistas ya pedidas');
+
+  resumido.newGame(7);                        // abandonar registra la anterior
+  const [ultima] = store.getScores({ penalizeHints: false });
+  assert.equal(ultima.hints, antes);
+});
