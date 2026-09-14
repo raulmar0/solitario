@@ -66,6 +66,7 @@ export function datosDeTarjeta(resultado, { modo = '', notas = '', loc = globalT
       { etiqueta: t('dlg.victoria.puntuacion'), valor: formatScore(resultado.scoring, resultado.score) },
       { etiqueta: t('dlg.victoria.tiempo'), valor: formatTime(resultado.timeMs) },
       { etiqueta: t('dlg.victoria.jugadas'), valor: String(resultado.moves) },
+      { etiqueta: t('dlg.victoria.pistas'), valor: String(resultado.hints ?? 0) },
     ],
     notas,
     marca: t('app.titulo'),

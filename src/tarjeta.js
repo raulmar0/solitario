@@ -169,22 +169,29 @@ export function pintarTarjeta(ctx, datos, medidas = TARJETA) {
 
   const stats = datos.stats ?? [];
   if (stats.length) {
-    const total = stats.length * CASILLA.ancho + (stats.length - 1) * CASILLA.hueco;
+    // Las casillas se estrechan hasta caber: cuatro a 250 px se salen del
+    // cartel. En una fila siguen leyéndose de un vistazo; en dos filas el cartel
+    // crece por abajo y se come el enlace, que va anclado al pie.
+    const casilla = Math.min(
+      CASILLA.ancho,
+      (util - CASILLA.hueco * (stats.length - 1)) / stats.length,
+    );
+    const total = stats.length * casilla + (stats.length - 1) * CASILLA.hueco;
     let x = centro - total / 2;
     for (const { etiqueta, valor } of stats) {
-      caja(ctx, x, y, CASILLA.ancho, CASILLA.alto, CASILLA.radio);
+      caja(ctx, x, y, casilla, CASILLA.alto, CASILLA.radio);
       ctx.fillStyle = COLOR.casilla;
       ctx.fill();
       ctx.lineWidth = 2;
       ctx.strokeStyle = COLOR.linea;
       ctx.stroke();
-      escribir(ctx, etiqueta, x + CASILLA.ancho / 2, y + 56, {
-        font: fuente(600, 24), color: COLOR.tintaSuave, baseline: 'middle',
+      escribirAjustado(ctx, etiqueta, x + casilla / 2, y + 56, {
+        peso: 600, tamano: 24, minimo: 18, color: COLOR.tintaSuave, ancho: casilla - 24,
       });
-      escribirAjustado(ctx, valor, x + CASILLA.ancho / 2, y + 124, {
-        peso: 700, tamano: 58, color: COLOR.tinta, ancho: CASILLA.ancho - 32,
+      escribirAjustado(ctx, valor, x + casilla / 2, y + 124, {
+        peso: 700, tamano: 58, color: COLOR.tinta, ancho: casilla - 32,
       });
-      x += CASILLA.ancho + CASILLA.hueco;
+      x += casilla + CASILLA.hueco;
     }
     y += CASILLA.alto + 30;
   }

@@ -80,13 +80,38 @@ test('si la partida era el reto del día, el mensaje lo dice y con su fecha', ()
 
 test('la tarjeta lleva el marcador entero y la firma del juego', () => {
   const { ctx, textos } = lienzoFalso();
-  pintarTarjeta(ctx, datosDeTarjeta(partida(), { modo: 'Estándar · 1 carta', notas: 'Récord de tiempo', loc: LOC }), TARJETA);
+  pintarTarjeta(ctx, datosDeTarjeta(partida({ hints: 3 }), { modo: 'Estándar · 1 carta', notas: 'Récord de tiempo', loc: LOC }), TARJETA);
   const dichos = textos.map((x) => x.texto);
   assert.ok(dichos.includes(t('dlg.victoria.titulo')));
   assert.ok(dichos.includes('4227') && dichos.includes('03:12') && dichos.includes('126'));
+  assert.ok(dichos.includes(t('dlg.victoria.pistas')) && dichos.includes('3'),
+    'las pistas pedidas también se comparten');
   assert.ok(dichos.includes('Récord de tiempo'), 'las medallas también se comparten');
   assert.ok(dichos.includes(t('app.titulo')));
   assert.ok(dichos.includes('ejemplo.test/solitario'), 'el pie firma con la dirección del juego');
+});
+
+test('sin pistas, la casilla de la tarjeta enseña un cero', () => {
+  const { ctx, textos } = lienzoFalso();
+  pintarTarjeta(ctx, datosDeTarjeta(partida(), { loc: LOC }), TARJETA);
+  const dichos = textos.map((x) => x.texto);
+  assert.ok(dichos.includes(t('dlg.victoria.pistas')) && dichos.includes('0'));
+});
+
+test('las cuatro casillas caben dentro del cartel, sin salirse ni pisarse', () => {
+  const cajas = [];
+  const { ctx } = lienzoFalso();
+  const roundRect = (x, y, ancho, alto) => cajas.push({ x, ancho });
+  pintarTarjeta({ ...ctx, roundRect }, datosDeTarjeta(partida({ hints: 3 }), { loc: LOC }), TARJETA);
+  // La primera es el cartel; las cuatro siguientes, las casillas del marcador.
+  const marcador = cajas.slice(1, 5);
+  assert.equal(marcador.length, 4);
+  const margen = 56 + 64;                       // marco + sangría
+  assert.ok(marcador[0].x >= margen, 'la primera no se sale por la izquierda');
+  assert.ok(marcador[3].x + marcador[3].ancho <= TARJETA.ancho - margen, 'ni la última por la derecha');
+  for (let i = 1; i < marcador.length; i += 1) {
+    assert.ok(marcador[i].x >= marcador[i - 1].x + marcador[i - 1].ancho, 'ninguna pisa a la anterior');
+  }
 });
 
 test('la tarjeta del reto del día se anuncia como tal, en dorado y con la fecha', () => {
