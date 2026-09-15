@@ -153,6 +153,7 @@ export default {
   'reto.jugar': '이 챌린지 하기',
   'reto.jugar.hoy': '오늘 챌린지 하기',
   'reto.hoy': '오늘로 가기',
+  'reto.compartir': '공유하기',
   'reto.mes.anterior': '지난달',
   'reto.mes.siguiente': '다음 달',
   'reto.sin.jugar': '아직 안 함',
@@ -168,7 +169,9 @@ export default {
 
   // compartir — la tarjeta de la victoria y el mensaje que la acompaña
   'compartir.tarjeta.reto': '오늘의 도전',
-  'compartir.texto.reto': '{fecha} 오늘의 도전을 깼어요: {puntos} · {tiempo}. 오늘은 모두 같은 카드로 시작해요. 한번 해보세요: {url}',
+  'compartir.tarjeta.sin.resolver': '못 깼어요',
+  'compartir.texto.reto': '{fecha} 도전을 깼어요: {puntos} · {tiempo}. 그날은 모두 같은 카드로 시작해요. 한번 해보세요: {url}',
+  'compartir.texto.reto.perdido': '{fecha} 도전은 못 깼어요: {puntos} · {tiempo}. 그날은 모두 같은 카드로 시작해요. 한번 해보세요: {url}',
   'compartir.texto': '솔리테어에서 이겼어요: {puntos} · {tiempo} · {jugadas}수. 같은 판이에요: {url}',
 
   // settings — sección de ajustes

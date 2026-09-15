@@ -152,6 +152,7 @@ export default {
   'reto.jugar': 'Play this challenge',
   'reto.jugar.hoy': 'Play today’s challenge',
   'reto.hoy': 'Go to today',
+  'reto.compartir': 'Share',
   'reto.mes.anterior': 'Previous month',
   'reto.mes.siguiente': 'Next month',
   'reto.sin.jugar': 'not played yet',
@@ -167,7 +168,9 @@ export default {
 
   // compartir — la tarjeta de la victoria y el mensaje que la acompaña
   'compartir.tarjeta.reto': 'Daily challenge',
-  'compartir.texto.reto': 'I solved the {fecha} challenge: {puntos} in {tiempo}. Everyone plays the same cards today — see how you do: {url}',
+  'compartir.tarjeta.sin.resolver': 'Not solved',
+  'compartir.texto.reto': 'I solved the {fecha} challenge: {puntos} in {tiempo}. Everyone gets that same deal — see how you do: {url}',
+  'compartir.texto.reto.perdido': 'The {fecha} challenge got the better of me: {puntos} in {tiempo}. Everyone gets that same deal — see if you can crack it: {url}',
   'compartir.texto': 'I won at solitaire: {puntos} in {tiempo} and {jugadas} moves. Here is the same deal: {url}',
 
   // settings — sección de ajustes

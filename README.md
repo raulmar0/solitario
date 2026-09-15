@@ -27,13 +27,18 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   días. El calendario del panel enseña el mes entero con un punto en cada día
   jugado —verde si se ganó—, deja volver a cualquiera del último año y guarda tu
   mejor intento de cada uno. Del futuro no reparte. Se abre con **D** o desde el
-  menú, y se puede compartir con `?reto=hoy` o `?reto=AAAA-MM-DD`.
-- **Compartir la victoria**: al ganar, «Compartir» manda una imagen con el
+  menú, y se puede compartir con `?reto=hoy` o `?reto=AAAA-MM-DD`. Bajo el
+  calendario, tres botones: jugar el día elegido, ir a hoy y compartir lo que se
+  hizo aquel día.
+- **Compartir una partida**: al ganar, «Compartir» manda una imagen con el
   marcador —puntuación, tiempo, jugadas y las medallas— y un enlace que abre ese
   mismo reparto. La tarjeta se dibuja en un lienzo (`src/tarjeta.js`), sin
-  dependencias ni capturas de pantalla. Si la partida era el reto del día, lo
+  dependencias ni capturas de pantalla. Si la partida era el reto de un día, lo
   lleva por delante: chapa dorada con la fecha y enlace con `?reto=AAAA-MM-DD`,
-  para que quien lo reciba juegue esa misma mano y pueda comparar. Se usa
+  para que quien lo reciba juegue esa misma mano y pueda comparar. La misma
+  tarjeta sale del calendario, con el día que esté elegido: si aquel día no
+  salió, lo dice en vez de felicitar, y el reparto se comparte igual —que sigue
+  siendo el mismo para todo el mundo. Se usa
   `navigator.share` con fichero donde lo hay; donde solo se puede compartir
   texto, va el texto; y donde no hay nada de eso, la imagen se descarga y el
   mensaje se copia al portapapeles.
@@ -174,7 +179,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.12.3`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.14.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -234,8 +239,8 @@ src/storage.js         localStorage con reserva en memoria
 src/game.js            partida: motor + puntos + reloj + guardado + deshacer
 src/ui.js              tablero: dibujo y gestos
 src/panels.js          diálogos (reto y calendario, récords, ajustes, ayuda, victoria)
-src/compartir.js       compartir la victoria: enlace, mensaje y los caminos según el navegador
-src/tarjeta.js         la tarjeta de la victoria, dibujada en un lienzo y servida en PNG
+src/compartir.js       compartir una partida: enlace, mensaje y los caminos según el navegador
+src/tarjeta.js         la tarjeta que se comparte, dibujada en un lienzo y servida en PNG
 src/main.js            arranque, cabecera y teclado
 src/i18n.js            traducción: detección, plural, interpolación y DOM
 src/locales/*.js       los cinco diccionarios (es, en, fr, pt, ko)

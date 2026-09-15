@@ -71,7 +71,7 @@ window.localStorage.setItem('solitario.v1.stats', JSON.stringify({ 'standard-1':
 
 await import('../src/main.js');
 const { game, board, panels, refresh, store, i18n } = globalThis.solitario;
-const { claveDia, semillaDelDia } = await import('../src/reto.js');
+const { claveDia, fechaDeClave, semillaDelDia } = await import('../src/reto.js');
 const { t } = i18n;
 
 /**
@@ -642,6 +642,45 @@ test('cambiar de modalidad durante el reto reparte el mismo día, no una mano al
   game.setPrefs({ drawCount: 1 });
   game.newGame(1);
   board.cancel();
+});
+
+test('desde el calendario se comparte el día elegido, y un día sin jugar no tiene qué', async () => {
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
+  const jugado = claveDia(new Date(Date.now() - 3 * 86400000));
+  const sinJugar = claveDia(new Date(Date.now() - 4 * 86400000));
+  assert.equal(store.getReto(sinJugar), null, 'el día de control tiene que llegar sin jugar');
+  store.recordReto(jugado, {
+    won: false, score: 250, timeMs: 61000, moves: 44, scoring: 'standard', drawCount: 1,
+  });
+
+  const compartido = [];
+  navegador.share = (datos) => { compartido.push(datos); return Promise.resolve(); };
+  try {
+    panels.openReto();
+    mostrarDia(jugado).click();
+    assert.equal($('#btn-reto-share').disabled, false, 'ese día tiene puntuación que enseñar');
+
+    $('#btn-reto-share').click();
+    await espera(0);
+    assert.equal(compartido.length, 1, 'el clic llega al compartir del sistema');
+    assert.equal(
+      compartido[0].text,
+      t('compartir.texto.reto.perdido', {
+        fecha: i18n.fechaCorta(fechaDeClave(jugado)),
+        puntos: '250',
+        tiempo: '01:01',
+        url: `http://localhost:5173/?seed=${semillaDelDia(jugado)}&reto=${jugado}`,
+      }),
+      'con la puntuación de aquel día, su enlace, y sin colgarle una victoria que no fue',
+    );
+    assert.equal($('#dlg-status').textContent, '', 'si el sistema lo recoge no hay nada que avisar');
+
+    mostrarDia(sinJugar).click();
+    assert.equal($('#btn-reto-share').disabled, true, 'de un día sin jugar no hay nada que compartir');
+  } finally {
+    delete navegador.share;
+    $('#dlg-settings').close();
+  }
 });
 
 test('el enlace del reparto lleva el reto cuando se está jugando uno', async () => {

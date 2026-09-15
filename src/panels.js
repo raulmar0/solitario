@@ -15,7 +15,7 @@ import {
   claveDia, esFuturo, esJugable, fechaDeClave, rejillaDelMes, semillaDelDia,
 } from './reto.js';
 import { esMovil } from './device.js';
-import { compartirVictoria, datosDeTarjeta, prepararTarjeta } from './compartir.js';
+import { compartirPartida, datosDeTarjeta, prepararTarjeta } from './compartir.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -31,6 +31,15 @@ const modeName = ({ scoring, drawCount }) => t('modo.nombre', {
 });
 
 const AVISO_MS = 5000;          // lo que dura un aviso dentro del diálogo
+// Qué se le cuenta al jugador según por dónde haya salido el compartir. Lo miran
+// los dos sitios desde los que se comparte: el cartel de victoria y el calendario.
+const MENSAJE_COMPARTIR = {
+  descargada: 'msg.compartir.descargada',
+  imagen: 'msg.compartir.imagen',
+  copiado: 'msg.compartir.copiado',
+  enlace: 'msg.compartir.enlace',
+  error: 'msg.compartir.error',
+};
 const SVG_NS = 'http://www.w3.org/2000/svg';
 // El viewBox lo fija el HTML; el margen deja sitio al punto de la última partida,
 // que si no se comería el borde redondeado de la caja.
@@ -605,6 +614,9 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     jugar.disabled = !jugable;
     jugar.textContent = t(diaElegido === hoy ? 'reto.jugar.hoy' : 'reto.jugar');
     $('#btn-reto-hoy').disabled = diaElegido === hoy && mismoMes(hoy);
+    const resultado = resultadoDeDia(diaElegido, retos);
+    $('#btn-reto-share').disabled = !resultado;
+    prepararCompartirDia(resultado);
   }
 
   /** Reparte el reto de ese día. La semilla sale de la fecha y de nada más. */
@@ -614,6 +626,62 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     game.newGame(semillaDelDia(clave), { dia: clave });
     dlgSettings.close();
     onMessage('msg.reto.nuevo', { fecha: fechaCorta(fechaDeClave(clave)) });
+  }
+
+  // ---------- compartir el día elegido ----------
+
+  // La tarjeta en PNG se dibuja al elegir el día, no al pulsar «Compartir»: es la
+  // misma razón que en la victoria (ver `prepararTarjeta`), que `share()` solo
+  // vale mientras dura el gesto del jugador y convertir el lienzo lo gastaría.
+  // Se guarda con la firma de lo que lleva dentro para no repetir el dibujo en
+  // cada repintado del calendario —que son muchos— y sí rehacerlo cuando el día
+  // cambia, cuando se mejora la marca de ese día o cuando cambia el idioma.
+  let tarjetaDia = null;
+  let firmaTarjetaDia = null;
+
+  const firmaDeTarjeta = (resultado) => JSON.stringify(resultado ?? null);
+
+  /**
+   * Lo jugado aquel día, con lo que hace falta para compartirlo: la libreta
+   * guarda la puntuación, pero ni la fecha —que es la clave— ni la semilla, y el
+   * enlace y la tarjeta las piden. Null si ese día está sin jugar: no hay
+   * puntuación que enseñar y el botón se queda apagado.
+   */
+  function resultadoDeDia(clave, retos = store.getRetos()) {
+    const r = retos[clave];
+    return r ? { ...r, dia: clave, seed: semillaDelDia(clave) } : null;
+  }
+
+  function prepararCompartirDia(resultado) {
+    const firma = firmaDeTarjeta(resultado);
+    if (firma === firmaTarjetaDia) return;
+    firmaTarjetaDia = firma;
+    tarjetaDia = resultado
+      ? prepararTarjeta(datosDeTarjeta(resultado, { modo: modeName(resultado) }))
+      : null;
+  }
+
+  /**
+   * Comparte el día elegido: la misma tarjeta que la de la victoria, con su chapa
+   * dorada y su fecha, y un enlace que reparte esa mano. Si aquel día no salió,
+   * la tarjeta y el mensaje lo dicen —el reparto es igual de compartible, que
+   * sigue siendo el mismo para todo el mundo.
+   */
+  function compartirDia(boton) {
+    const resultado = resultadoDeDia(diaElegido);
+    if (!resultado) return;
+    boton.disabled = true;
+    avisoPanel(null);
+    // Sin `await` por delante: `share()` tiene que salir en el mismo turno que el
+    // clic o Safari lo rechaza por haberse gastado el gesto.
+    compartirPartida({ resultado, tarjeta: tarjetaDia })
+      .then(({ estado, enlace }) => {
+        const clave = MENSAJE_COMPARTIR[estado];
+        if (clave) avisoPanel(clave, { url: enlace });
+      })
+      // El botón vuelve como esté el día que esté elegido al acabar, que la hoja
+      // de compartir pudo tardar lo suyo y el calendario haber cambiado de día.
+      .finally(() => { boton.disabled = !resultadoDeDia(diaElegido); });
   }
 
   $('#cal').addEventListener('click', (event) => {
@@ -670,6 +738,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   $('#cal-next').addEventListener('click', (event) => pasarMes(1, event.currentTarget));
   $('#btn-reto-jugar').addEventListener('click', () => jugarReto(diaElegido));
   $('#btn-reto-hoy').addEventListener('click', () => { irADia(claveDia()); renderReto(); });
+  $('#btn-reto-share').addEventListener('click', (event) => compartirDia(event.currentTarget));
 
   // ---------- final de partida y celebración ----------
 
@@ -1059,14 +1128,6 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   let avisoCompartirTimer = null;
   let avisoCompartirVivo = null;
 
-  const MENSAJE_COMPARTIR = {
-    descargada: 'msg.compartir.descargada',
-    imagen: 'msg.compartir.imagen',
-    copiado: 'msg.compartir.copiado',
-    enlace: 'msg.compartir.enlace',
-    error: 'msg.compartir.error',
-  };
-
   function pintarAvisoCompartir() {
     $('#win-share-nota').textContent = avisoCompartirVivo
       ? t(avisoCompartirVivo.clave, avisoCompartirVivo.params)
@@ -1096,7 +1157,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     avisoCompartir(null);
     // Sin `await` por delante: `share()` tiene que salir en el mismo turno que el
     // clic o Safari lo rechaza por haberse gastado el gesto.
-    compartirVictoria({ resultado: r, tarjeta })
+    compartirPartida({ resultado: r, tarjeta })
       .then(({ estado, enlace }) => {
         const clave = MENSAJE_COMPARTIR[estado];
         if (clave) avisoCompartir(clave, { url: enlace });
@@ -1220,8 +1281,13 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (statsMode) renderStats();       // si aún no se han visto, no hay nada pintado
     // El calendario se escribe entero desde JS —nombres de mes, de día y de
     // fecha—, así que hay que rehacerlo: `traducirDom` no lo alcanza.
+    // La tarjeta del día también lleva dentro las cadenas traducidas: se olvida
+    // la que hubiera para que el repintado la dibuje en el idioma nuevo, y se
+    // olvida aunque el calendario no esté a la vista, que ya se rehará cuando lo
+    // esté.
+    firmaTarjetaDia = null;
     if (mesVisto) renderReto();
-    // La tarjeta lleva dentro las cadenas traducidas: hay que volver a dibujarla.
+    // La de la victoria lleva lo mismo dentro: hay que volver a dibujarla.
     if (dlgWin.open) { pintarChapaReto(); prepararCompartir(pintarNotasVictoria()); pintarAvisoCompartir(); }
     if (dlgStuck.open) pintarNotaBloqueo();
     if (dlgInvita.open) pintarInvitacion();

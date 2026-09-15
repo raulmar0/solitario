@@ -153,6 +153,7 @@ export default {
   'reto.jugar': 'Jugar este reto',
   'reto.jugar.hoy': 'Jugar el reto de hoy',
   'reto.hoy': 'Ir a hoy',
+  'reto.compartir': 'Compartir',
   'reto.mes.anterior': 'Mes anterior',
   'reto.mes.siguiente': 'Mes siguiente',
   'reto.sin.jugar': 'sin jugar',
@@ -168,7 +169,9 @@ export default {
 
   // compartir — la tarjeta de la victoria y el mensaje que la acompaña
   'compartir.tarjeta.reto': 'Reto del día',
-  'compartir.texto.reto': 'He resuelto el reto del {fecha}: {puntos} en {tiempo}. Hoy todos jugamos las mismas cartas, a ver qué tal se te da: {url}',
+  'compartir.tarjeta.sin.resolver': 'Sin resolver',
+  'compartir.texto.reto': 'He resuelto el reto del {fecha}: {puntos} en {tiempo}. Ese reparto es el mismo para todo el mundo, a ver qué tal se te da: {url}',
+  'compartir.texto.reto.perdido': 'El reto del {fecha} se me ha resistido: {puntos} en {tiempo}. Ese reparto es el mismo para todo el mundo, a ver si a ti se te da mejor: {url}',
   'compartir.texto': 'He ganado al solitario: {puntos} en {tiempo} y {jugadas} jugadas. Este es el mismo reparto: {url}',
 
   // settings — sección de ajustes

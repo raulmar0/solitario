@@ -152,6 +152,7 @@ export default {
   'reto.jugar': 'Jogar este desafio',
   'reto.jugar.hoy': 'Jogar o desafio de hoje',
   'reto.hoy': 'Ir para hoje',
+  'reto.compartir': 'Compartilhar',
   'reto.mes.anterior': 'Mês anterior',
   'reto.mes.siguiente': 'Mês seguinte',
   'reto.sin.jugar': 'por jogar',
@@ -167,7 +168,9 @@ export default {
 
   // compartir — la tarjeta de la victoria y el mensaje que la acompaña
   'compartir.tarjeta.reto': 'Desafio do dia',
-  'compartir.texto.reto': 'Resolvi o desafio de {fecha}: {puntos} em {tiempo}. Hoje todo mundo joga as mesmas cartas, veja como você se sai: {url}',
+  'compartir.tarjeta.sin.resolver': 'Sem resolver',
+  'compartir.texto.reto': 'Resolvi o desafio de {fecha}: {puntos} em {tiempo}. Essa distribuição é a mesma para todo mundo, veja como você se sai: {url}',
+  'compartir.texto.reto.perdido': 'O desafio de {fecha} resistiu: {puntos} em {tiempo}. Essa distribuição é a mesma para todo mundo, veja se você consegue: {url}',
   'compartir.texto': 'Ganhei no solitário: {puntos} em {tiempo} e {jugadas} jogadas. Esta é a mesma distribuição: {url}',
 
   // settings — sección de ajustes

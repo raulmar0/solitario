@@ -1,10 +1,15 @@
-// Compartir la victoria: una imagen con la puntuación y el enlace al juego.
+// Compartir una partida: una imagen con la puntuación y el enlace al juego.
 //
 // Lo que se manda son dos cosas que viajan juntas: la tarjeta en PNG —que se ve
 // sin pinchar, dentro de la conversación— y un texto con el enlace —que sí se
-// pincha y abre el mismo reparto—. Si la partida era el reto del día, las dos
-// van con la fecha por delante: quien lo reciba juega hoy esas mismas cartas y
-// puede comparar, que es de lo que va el reto.
+// pincha y abre el mismo reparto—. Si la partida era el reto de un día, las dos
+// van con la fecha por delante: quien lo reciba juega esas mismas cartas y puede
+// comparar, que es de lo que va el reto.
+//
+// Se comparte desde dos sitios: el cartel de victoria, que solo sale cuando se
+// ha ganado, y el calendario del reto, que comparte el día que esté elegido
+// aunque aquel día no saliera. De ahí que todo lo de aquí mire `won`: una
+// tarjeta que felicitara por una partida perdida sería una tarjeta que miente.
 //
 // El camino bueno es `navigator.share` con fichero (móviles y Safari). Donde no
 // lo haya se comparte solo el texto, y donde tampoco, se descarga la imagen y se
@@ -35,6 +40,13 @@ function enlaceALaVista(loc = globalThis.location) {
   return base.replace(/index\.html$/, '').replace(/\/$/, '');
 }
 
+/**
+ * Solo es derrota lo que llega marcado como tal. Del cartel de victoria siempre
+ * viene `won: true` y del calendario viene lo que quedó guardado aquel día; ante
+ * la duda, la tarjeta felicita antes que acusar.
+ */
+const ganada = (resultado) => resultado?.won !== false;
+
 /** «viernes, 11 de…» → «Viernes, 11 de…»: en la tarjeta la fecha abre línea. */
 const conMayuscula = (texto) => (texto ? texto[0].toLocaleUpperCase(idioma()) + texto.slice(1) : texto);
 
@@ -44,12 +56,19 @@ export function nombreDeFichero(resultado) {
     : `solitario-${resultado?.seed ?? 'partida'}.png`;
 }
 
-/** El mensaje que acompaña a la imagen. Con reto, la fecha manda. */
-export function textoDeVictoria(resultado, enlace) {
+/**
+ * El mensaje que acompaña a la imagen. Con reto, la fecha manda, y si aquel día
+ * se quedó sin resolver se cuenta así: el reparto sigue siendo el mismo para
+ * todos, que es lo que invita al otro a probarlo.
+ *
+ * Una partida suelta solo se comparte desde el cartel de victoria, así que por
+ * aquí nunca pasa perdida.
+ */
+export function mensajeDePartida(resultado, enlace) {
   const puntos = formatScore(resultado.scoring, resultado.score);
   const tiempo = formatTime(resultado.timeMs);
   return resultado.dia
-    ? t('compartir.texto.reto', {
+    ? t(ganada(resultado) ? 'compartir.texto.reto' : 'compartir.texto.reto.perdido', {
       fecha: fechaCorta(fechaDeClave(resultado.dia)), puntos, tiempo, url: enlace,
     })
     : t('compartir.texto', { puntos, tiempo, jugadas: resultado.moves, url: enlace });
@@ -58,7 +77,7 @@ export function textoDeVictoria(resultado, enlace) {
 /** Lo que hay que pintar en la tarjeta, ya traducido. */
 export function datosDeTarjeta(resultado, { modo = '', notas = '', loc = globalThis.location } = {}) {
   return {
-    titulo: t('dlg.victoria.titulo'),
+    titulo: t(ganada(resultado) ? 'dlg.victoria.titulo' : 'compartir.tarjeta.sin.resolver'),
     reto: resultado.dia ? t('compartir.tarjeta.reto') : null,
     fecha: resultado.dia ? conMayuscula(fechaLarga(fechaDeClave(resultado.dia))) : null,
     modo,
@@ -144,8 +163,9 @@ async function planB({ titulo, texto, enlace, tarjeta, resultado, navegador, doc
 }
 
 /**
- * Comparte la última victoria. Devuelve `{ estado, enlace }`, y el estado dice
- * qué hay que contarle al jugador:
+ * Comparte una partida: la que se acaba de ganar o la de un día del calendario.
+ * Devuelve `{ estado, enlace }`, y el estado dice qué hay que contarle al
+ * jugador:
  *
  *   compartido · lo recogió el sistema, no hay nada que decir
  *   cancelado  · cerró la hoja de compartir, tampoco
@@ -157,7 +177,7 @@ async function planB({ titulo, texto, enlace, tarjeta, resultado, navegador, doc
  * No es `async` a propósito: el `share()` del camino bueno tiene que salir en el
  * mismo turno que el clic (ver `prepararTarjeta`).
  */
-export function compartirVictoria({
+export function compartirPartida({
   resultado,
   tarjeta = null,
   navegador = globalThis.navigator,
@@ -166,7 +186,7 @@ export function compartirVictoria({
 } = {}) {
   if (!resultado) return Promise.resolve({ estado: 'error', enlace: '' });
   const enlace = enlaceDePartida(resultado, loc);
-  const texto = textoDeVictoria(resultado, enlace);
+  const texto = mensajeDePartida(resultado, enlace);
   const titulo = t('app.titulo');
   const comun = { titulo, texto, enlace, tarjeta, resultado, navegador, doc };
   const fichero = ficheroDeTarjeta(tarjeta?.blob, resultado);

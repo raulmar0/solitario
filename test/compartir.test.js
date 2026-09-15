@@ -1,12 +1,14 @@
-// Compartir la victoria: el enlace, el texto, la tarjeta y los caminos que
+// Compartir una partida: el enlace, el texto, la tarjeta y los caminos que
 // quedan cuando el navegador no sabe compartir ficheros. Lo que no puede pasar
-// es que el jugador pulse «Compartir» y no se lleve nada.
+// es que el jugador pulse «Compartir» y no se lleve nada —ni que una tarjeta
+// felicite por un reto que aquel día no salió.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { fijarIdioma, t } from '../src/i18n.js';
+import { fijarIdioma, t, fechaCorta } from '../src/i18n.js';
+import { fechaDeClave } from '../src/reto.js';
 import {
-  compartirVictoria, datosDeTarjeta, enlaceDePartida, nombreDeFichero, textoDeVictoria,
+  compartirPartida, datosDeTarjeta, enlaceDePartida, mensajeDePartida, nombreDeFichero,
 } from '../src/compartir.js';
 import { pintarTarjeta, TARJETA } from '../src/tarjeta.js';
 
@@ -15,6 +17,7 @@ fijarIdioma('es');
 const LOC = { origin: 'https://ejemplo.test', pathname: '/solitario/', host: 'ejemplo.test' };
 
 const partida = (extra = {}) => ({
+  won: true,
   scoring: 'standard',
   drawCount: 1,
   score: 4227,
@@ -62,7 +65,7 @@ test('el fichero se llama por lo que lleva dentro', () => {
 
 test('el texto del mensaje lleva siempre la puntuación, el tiempo y el enlace', () => {
   const enlace = enlaceDePartida(partida(), LOC);
-  const texto = textoDeVictoria(partida(), enlace);
+  const texto = mensajeDePartida(partida(), enlace);
   assert.match(texto, /4227/);
   assert.match(texto, /03:12/);
   assert.ok(texto.includes(enlace), 'sin enlace el mensaje no sirve de invitación');
@@ -70,8 +73,8 @@ test('el texto del mensaje lleva siempre la puntuación, el tiempo y el enlace',
 
 test('si la partida era el reto del día, el mensaje lo dice y con su fecha', () => {
   const r = partida({ dia: '2026-09-11' });
-  const texto = textoDeVictoria(r, enlaceDePartida(r, LOC));
-  assert.notEqual(texto, textoDeVictoria(partida(), 'x'), 'el reto no se anuncia como una partida suelta');
+  const texto = mensajeDePartida(r, enlaceDePartida(r, LOC));
+  assert.notEqual(texto, mensajeDePartida(partida(), 'x'), 'el reto no se anuncia como una partida suelta');
   assert.match(texto, /sept/, 'la fecha del reto va en el mensaje');
   assert.match(texto, /reto/i);
 });
@@ -130,6 +133,35 @@ test('la tarjeta del reto del día se anuncia como tal, en dorado y con la fecha
   assert.equal(suelta.trazos.some((x) => x.color === '#f0c453'), false);
 });
 
+test('un día que no salió se comparte como lo que fue, no como una victoria', () => {
+  const r = partida({ dia: '2026-09-11', won: false, score: 120, moves: 40 });
+  const { ctx, textos } = lienzoFalso();
+  pintarTarjeta(ctx, datosDeTarjeta(r, { loc: LOC }), TARJETA);
+  const dichos = textos.map((x) => x.texto);
+  assert.ok(dichos.includes(t('compartir.tarjeta.sin.resolver')), 'la tarjeta no felicita a quien no ganó');
+  assert.equal(dichos.includes(t('dlg.victoria.titulo')), false);
+  assert.ok(dichos.includes(t('compartir.tarjeta.reto')), 'pero sigue siendo el reto de aquel día');
+  assert.ok(dichos.includes('120') && dichos.includes('40'), 'con la puntuación que se hizo');
+
+  const texto = mensajeDePartida(r, enlaceDePartida(r, LOC));
+  assert.equal(texto, t('compartir.texto.reto.perdido', {
+    fecha: fechaCorta(fechaDeClave('2026-09-11')),
+    puntos: '120',
+    tiempo: '03:12',
+    url: 'https://ejemplo.test/solitario/?seed=391&reto=2026-09-11',
+  }));
+  assert.ok(texto.includes('reto=2026-09-11'), 'y el enlace reparte igualmente esa mano');
+});
+
+test('una partida sin `won` se da por ganada: es la del cartel de victoria', () => {
+  const { ctx, textos } = lienzoFalso();
+  const sinMarca = partida();
+  delete sinMarca.won;
+  pintarTarjeta(ctx, datosDeTarjeta(sinMarca, { loc: LOC }), TARJETA);
+  assert.ok(textos.map((x) => x.texto).includes(t('dlg.victoria.titulo')),
+    'ante la duda la tarjeta felicita: la derrota hay que marcarla');
+});
+
 // -------------------------------------------------- los caminos de compartir
 
 const blobFalso = { size: 10, type: 'image/png' };
@@ -141,7 +173,7 @@ test('donde se pueden compartir ficheros, se manda la imagen con el texto', asyn
     canShare: ({ files }) => files?.length === 1,
     share: (datos) => { compartido.push(datos); return Promise.resolve(); },
   };
-  const { estado } = await compartirVictoria({
+  const { estado } = await compartirPartida({
     resultado: partida(), tarjeta: tarjetaLista(), navegador, doc: null, loc: LOC,
   });
   assert.equal(estado, 'compartido');
@@ -155,7 +187,7 @@ test('cerrar la hoja de compartir no es un fallo y no deja aviso', async () => {
     canShare: () => true,
     share: () => Promise.reject(Object.assign(new Error('no'), { name: 'AbortError' })),
   };
-  const { estado } = await compartirVictoria({
+  const { estado } = await compartirPartida({
     resultado: partida(), tarjeta: tarjetaLista(), navegador, doc: null, loc: LOC,
   });
   assert.equal(estado, 'cancelado');
@@ -167,7 +199,7 @@ test('sin ficheros pero con compartir, va el texto solo', async () => {
     canShare: () => false,
     share: (datos) => { compartido.push(datos); return Promise.resolve(); },
   };
-  const { estado } = await compartirVictoria({
+  const { estado } = await compartirPartida({
     resultado: partida(), tarjeta: tarjetaLista(), navegador, doc: null, loc: LOC,
   });
   assert.equal(estado, 'compartido');
@@ -192,7 +224,7 @@ test('sin compartir nativo, la imagen se descarga y el texto se copia', async ()
   globalThis.URL.createObjectURL = () => 'blob:falso';
   globalThis.URL.revokeObjectURL = () => {};
   try {
-    const { estado } = await compartirVictoria({
+    const { estado } = await compartirPartida({
       resultado: partida({ dia: '2026-09-11' }),
       tarjeta: tarjetaLista(),
       navegador: { clipboard: { writeText: (x) => { copiado.push(x); return Promise.resolve(); } } },
@@ -209,7 +241,7 @@ test('sin compartir nativo, la imagen se descarga y el texto se copia', async ()
 });
 
 test('si no se puede ni copiar ni descargar, se devuelve el enlace para copiarlo a mano', async () => {
-  const { estado, enlace } = await compartirVictoria({
+  const { estado, enlace } = await compartirPartida({
     resultado: partida(), tarjeta: { blob: null, promesa: Promise.resolve(null) },
     navegador: {}, doc: null, loc: LOC,
   });
