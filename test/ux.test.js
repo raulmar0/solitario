@@ -168,8 +168,8 @@ test('la barra, el sprite y la ayuda hablan de deshacer y ya no prometen rehacer
   assert.equal(undo.querySelector('.ico use').getAttribute('href'), '#i-deshacer');
   assert.ok($('symbol#i-deshacer'), 'y el dibujo existe');
 
-  assert.deepEqual($$('#tools .tool').map((b) => b.id),
-    ['btn-new', 'btn-restart', 'btn-undo', 'btn-hint', 'btn-settings']);
+  assert.deepEqual($$('#tools .tool').map((b) => b.id), ['btn-undo', 'btn-hint'],
+    'abajo solo Deshacer y Pista; Nueva, Repetir y el menú están en la cabecera');
 
   // La ayuda es el contrato con el jugador: si nombrara rehacer, mentiría.
   const ayuda = $('#panel-ayuda').textContent;

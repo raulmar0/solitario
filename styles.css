@@ -157,24 +157,53 @@ body {
 
 /* ---------- barra superior ---------- */
 
+/* Una rejilla con nombre para cada pieza: en el móvil la primera fila es Nueva,
+   el chip de modalidad en el centro y Repetir y el menú a la derecha, con el
+   marcador debajo; en pantalla ancha todo cabe en una sola fila. Así cada
+   tamaño coloca las piezas sin ir reordenándolas una a una. */
 .topbar {
   position: relative;      /* la barra de progreso se ancla abajo en pantallas bajas */
   flex-shrink: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, auto) auto;
+  grid-template-areas:
+    "marca marcador izq chip der"
+    "progreso progreso progreso progreso progreso";
   align-items: center;
-  gap: 10px 16px;
-  flex-wrap: wrap;
+  gap: 8px 10px;
   /* Instalada en iPhone la barra de estado se superpone (black-translucent +
      viewport-fit=cover), así que hay que dejarle su hueco. Va de margen y no de
      relleno para que ese hueco lo pinte el tapete y no el velo de la barra:
      arriba y abajo, las dos franjas del sistema son del color del fondo. */
   margin-top: var(--safe-top);
-  padding: 10px max(12px, var(--safe-right)) 10px max(12px, var(--safe-left));
+  padding: 8px max(12px, var(--safe-right)) 10px max(12px, var(--safe-left));
   background: var(--header-bg);
   border-bottom: 1px solid var(--line);
 }
 
-.brand { display: flex; align-items: center; gap: 8px; }
+/* Las acciones que no son de la partida en curso: iconos sueltos, sin caja, con
+   su nombre en el título y en el lector de pantalla. La barra es verde oscuro en
+   los dos temas, así que la tinta y el resalte son los de la barra de abajo. */
+.barra-izq { grid-area: izq; display: flex; align-items: center; gap: 6px; }
+.barra-der { grid-area: der; display: flex; align-items: center; }
+.bar-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: var(--bar-alto, 44px);
+  padding: 0;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: var(--quieto, background var(--speed) linear, transform var(--speed) linear);
+}
+.bar-btn:hover { background: var(--felt-fill-fuerte); }
+.bar-btn:active { transform: translateY(1px); }
+.bar-btn:focus-visible { outline: 2px solid var(--felt-accent); outline-offset: 2px; }
+
+.brand { grid-area: marca; display: flex; align-items: center; gap: 8px; margin-right: 6px; }
 .brand h1 { font-size: 17px; margin: 0; letter-spacing: .3px; font-weight: 650; }
 .brand-mark {
   display: grid; place-items: center;
@@ -183,17 +212,18 @@ body {
   font-size: 15px;
 }
 
-/* Las cuatro cajas miden lo mismo y se reparten el sitio a partes iguales: con
-   anchos de contenido salían de 60, 66, 67 y 70 px, cuatro cajas sueltas en vez
-   de un marcador. Las columnas pueden encogerse por debajo del contenido
+/* Las cuatro cifras se reparten la fila a partes iguales: con anchos de
+   contenido salían de 60, 66, 67 y 70 px, cuatro datos sueltos en vez de un
+   marcador. Las columnas pueden encogerse por debajo del contenido
    (`minmax(0, 1fr)`), que es lo que las deja caber en una pantalla de 280. */
 .scoreboard {
+  grid-area: marcador;
+  justify-self: start;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   gap: 6px;
   margin: 0;
-  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -238,12 +268,6 @@ body {
   .update-pill { padding: 4px 9px; }
 }
 
-/* Y cuando el aviso está puesto, el marcador se aprieta un punto para hacerle
-   sitio en la fila que ya hay. Son treinta píxeles repartidos entre cuatro
-   cajas; lo que se evita es que la cabecera gane una fila entera de golpe, con
-   la partida a medias, y el tapete pierda cuarenta píxeles. */
-.topbar:has(#btn-update-pill:not([hidden])) .stat { min-width: 48px; padding-left: 7px; padding-right: 7px; }
-
 /* Lo que solo tiene que oírse. El texto sigue en el árbol —un lector de
    pantalla lo canta— pero no ocupa ni un píxel. */
 .solo-lectores {
@@ -256,19 +280,20 @@ body {
   border: 0;
 }
 
+/* Sin caja: cada cifra con su rótulo encima, directamente sobre la barra. La
+   celda mide lo que su texto y se centra en su columna, así la marca de pausa
+   cae junto al rótulo del reloj y no en el borde de la columna. */
 .stat {
   position: relative;
+  justify-self: center;
   min-width: 0;
-  padding: 5px 8px;
-  border-radius: 8px;
-  background: var(--felt-fill);
-  border: 1px solid var(--line);
+  max-width: 100%;
+  padding: 2px 4px;
   text-align: center;
 }
 /* Once píxeles es el suelo: por debajo un rótulo deja de leerse en una pantalla
-   densa, y estos cuatro no son adorno, dicen qué cifra hay debajo. La caja no
-   crece por ello: lo que antes se iba en relleno lateral ahora lo reparte la
-   rejilla, y el espaciado entre letras baja de .7 a .4. */
+   densa, y estos cuatro no son adorno, dicen qué cifra hay debajo. El espaciado
+   entre letras se queda en .4 para que quepan en la rejilla. */
 .stat dt {
   font-size: 11px;
   line-height: 1.2;
@@ -292,14 +317,14 @@ body {
 
 /* El reloj parado. Antes era una pastilla con su rótulo debajo del número, y
    cada vez que el jugador cambiaba de pestaña la cabecera crecía 22 px y el
-   tablero daba un salto. Ahora es una marca en la esquina de la caja del reloj:
-   se sale del flujo, así que no mueve nada, y el número se apaga un poco, que es
-   lo que de verdad dice «esto está parado». El rótulo sigue ahí para quien
-   escucha. */
+   tablero daba un salto. Ahora es una marca justo detrás del rótulo «Tiempo», a
+   su altura y sin tapar la última letra: se sale del flujo, así que no mueve
+   nada, y el número se apaga un poco, que es lo que de verdad dice «esto está
+   parado». El rótulo sigue ahí para quien escucha. */
 .paused-flag {
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: 1px;
+  right: -15px;
   display: grid;
   place-items: center;
   width: 15px;
@@ -320,7 +345,11 @@ body {
 
 /* La modalidad, de un vistazo y sin abrir nada; pulsarla lleva a los ajustes. */
 .mode-chip {
+  grid-area: chip;
+  justify-self: center;
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   padding: 6px 12px;
   min-height: 34px;
   font: inherit;
@@ -333,11 +362,10 @@ body {
   cursor: pointer;
   transition: background var(--speed) linear, color var(--speed) linear;
 }
-/* En pantalla ancha sigue anclado a la derecha, como estaba: la marca sujeta un
-   extremo y la modalidad el otro. Antes lo empujaba el marcador al estirarse;
-   ahora que el marcador mide lo que mide, lo empuja el margen. En móvil no, que
-   ahí comparte fila con la marca. */
-@media (min-width: 641px) { .mode-chip { margin-left: auto; } }
+/* Con las modalidades largas (el reto, las pistas penalizadas, otros idiomas) el
+   chip no salta a una segunda línea, que haría crecer la cabecera: se corta con
+   puntos suspensivos y la frase entera sigue en Ajustes, a un toque. */
+.modo-texto { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mode-chip:hover { background: var(--fill-strong); color: var(--ink); }
 .mode-chip:focus-visible { outline: 2px solid var(--felt-accent); outline-offset: 2px; }
 /* La píldora es baja a propósito (si no, la barra crece), pero el dedo necesita
@@ -367,10 +395,9 @@ body {
 .seed-chip::after { content: ''; position: absolute; inset: -13px -10px; }
 
 /* Cuántas cartas llevan colocadas las fundaciones. Va en su propia línea, de
-   ancho completo, y la última de la barra aunque en el HTML esté en medio. */
+   ancho completo, la última de la barra. */
 .progress {
-  order: 1;
-  flex-basis: 100%;
+  grid-area: progreso;
   height: 3px;
   border-radius: 999px;
   background: var(--fill);
@@ -409,7 +436,8 @@ html[data-theme="light"] body::before {
 
 /* ---------- barra de acciones ---------- */
 /* Va al fondo de la pantalla a propósito: arriba, en un móvil grande, hay que
-   cambiar la mano para llegar. Aquí cae el pulgar solo. */
+   cambiar la mano para llegar. Aquí cae el pulgar solo, y por eso aquí se
+   quedan solo Deshacer y Pista, las dos que se usan a media partida. */
 
 .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 
@@ -418,11 +446,11 @@ html[data-theme="light"] body::before {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 8px;
   /* La barra pinta hasta el borde; los botones conservan su tamaño por encima
      del indicador de inicio. La zona segura se reserva una sola vez aquí, con
      el mínimo hueco necesario, sin alargar el relleno de cada botón. */
-  padding: 5px max(6px, var(--safe-right)) max(5px, var(--safe-bottom)) max(6px, var(--safe-left));
+  padding: 8px max(10px, var(--safe-right)) max(8px, var(--safe-bottom)) max(10px, var(--safe-left));
   background: var(--header-bg);
   border-top: 1px solid var(--line);
 }
@@ -437,19 +465,19 @@ html[data-theme="light"] body::before {
   }
 }
 
+/* Dos botones anchos que se reparten la fila, con el icono y el rótulo en línea.
+   En pantalla ancha no pasan de 240 px: más largos no se tocan mejor. */
 .tool {
   flex: 1 1 0;
   min-width: 0;
-  max-width: 96px;
+  max-width: 240px;
   --tool-alto: 48px;             /* objetivo de dedo, no de ratón */
   min-height: var(--tool-alto, 48px);
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  --tool-pad: 5px;
-  padding: var(--tool-pad, 5px) 2px;
+  gap: 8px;
+  padding: 0 12px;
   font: inherit;
   color: var(--ink);
   background: var(--felt-fill);
@@ -468,10 +496,9 @@ html[data-theme="light"] body::before {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-/* El mismo suelo de 11 px que el marcador: estos cinco rótulos nombran lo que
-   hace cada botón y se leen a la primera o no sirven de nada. El alto se
-   mantiene quitándole al relleno lo que gana la letra. */
-.rotulo { font-size: 11px; line-height: 1.2; font-weight: 600; }
+/* Al lado del icono y no debajo: con dos botones hay sitio, y el rótulo va a la
+   medida del texto de los botones de los diálogos. */
+.rotulo { font-size: 15px; line-height: 1.2; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tool:hover:not(:disabled) { background: var(--felt-fill-fuerte); }
 .tool:active:not(:disabled) { transform: translateY(1px); }
 .tool:disabled { opacity: .35; cursor: default; }
@@ -1635,18 +1662,25 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   #dlg-settings .dlg-foot { padding-top: 6px; padding-bottom: 6px; }
   #dlg-settings .menu-body { padding-top: 12px; padding-bottom: 12px; }
   #dlg-settings .switch { min-height: 42px; padding: 6px 0; }
-  .topbar { gap: 6px 12px; padding-top: 6px; padding-bottom: 6px; }
+  /* Una sola fila, con la barra de progreso pegada al borde de abajo. */
+  .topbar {
+    grid-template-areas: "marca marcador izq chip der";
+    gap: 6px 10px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    --bar-alto: 40px;
+  }
   .brand h1 { display: none; }
-  .brand { order: -2; }
-  .mode-chip { order: -1; min-height: 28px; padding: 4px 10px; }
-  .update-pill { order: -1; min-height: 26px; padding: 3px 9px; }
+  .mode-chip { min-height: 28px; padding: 4px 10px; }
+  .update-pill { min-height: 26px; padding: 3px 9px; }
   .update-texto { display: none; }
-  .stat { padding: 2px 6px; }
+  .stat { padding: 0 6px; }
   .stat dd { font-size: 14px; }
-  .progress { position: absolute; left: 0; right: 0; bottom: 0; flex-basis: auto; border-radius: 0; }
+  .progress { grid-area: auto; position: absolute; left: 0; right: 0; bottom: 0; border-radius: 0; }
   .table { padding-top: 6px; padding-bottom: 4px; }
   .banner { margin-top: 6px; }
-  .tool { --tool-alto: 40px; --tool-pad: 2px; }
+  .tool { --tool-alto: 40px; }
+  .tools { padding-top: 5px; }
 }
 
 @media (max-width: 640px) {
@@ -1661,10 +1695,16 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   /* Ojo: sin repetir aquí la zona segura, el `padding: 8px` se comía la del
      iPhone y la barra se metía debajo del reloj y la muesca. */
   .topbar {
-    /* Menos aire entre filas que entre columnas: las tres filas de la cabecera
-       (marca, marcador, progreso) van juntas y lo que se gana es tapete. */
-    gap: 6px 8px;
-    padding: 8px max(8px, var(--safe-right)) 8px max(8px, var(--safe-left));
+    /* Tres filas: Nueva, el chip y Repetir con el menú; el marcador; el
+       progreso. Las dos columnas de los lados miden lo mismo (al menos los dos
+       iconos de la derecha), así el chip queda centrado en la pantalla. */
+    grid-template-columns: minmax(88px, 1fr) minmax(0, auto) minmax(88px, 1fr);
+    grid-template-areas:
+      "izq chip der"
+      "marcador marcador marcador"
+      "progreso progreso progreso";
+    gap: 4px 0;
+    padding: 2px max(4px, var(--safe-right)) 8px max(4px, var(--safe-left));
   }
   /* En iOS un fondo fijo obliga a repintar el degradado entero cada vez que algo
      se desplaza, y en una pantalla de móvil no se gana nada: no hay recorrido
@@ -1674,23 +1714,26 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
      el que peor lleva un móvil justo de fuelle. Las dos barras se pintan con el
      verde opaco de la cabecera, así que quitarlo no cambia lo que se ve. */
   .topbar, .tools { backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .brand h1 { display: none; }
-  /* Sin el título, la primera línea de la barra se queda con el escudo y medio
-     ancho de aire, mientras el chip de modalidad se iba solo a una tercera fila.
-     Reordenándolo se cuela junto al escudo y la cabecera se ahorra una línea
-     entera, que en una pantalla de 640 px de alto se nota en el tapete. */
-  .brand { order: -2; }
-  .mode-chip { order: -1; }
-  .scoreboard { flex: 1 1 100%; gap: 5px; }
-  .stat { padding: 4px 6px; }
+  /* La marca no entra en el móvil: la primera fila es para Nueva, el chip y los
+     dos iconos de la derecha. */
+  .brand { display: none; }
+  .barra-der { justify-self: end; }
+  .mode-chip { padding-inline: 10px; }
+  .scoreboard { justify-self: stretch; gap: 0; }
   .stat dt { letter-spacing: .3px; }
-  .update-pill { order: -1; }
+  .progress { margin: 0 4px; }
   .table { padding: 8px max(4px, var(--safe-right)) 6px max(4px, var(--safe-left)); }
-  .tools { gap: 3px; padding-left: max(4px, var(--safe-left)); padding-right: max(4px, var(--safe-right)); }
-  .tool { --tool-alto: 48px; --tool-pad: 4px; }
+  .tool { max-width: none; }
   /* En pantalla estrecha los dos botones de la invitación se apilan a lo ancho:
      el primario arriba, que es el que se busca. */
   .dlg-invita .dlg-actions .btn { flex: 1 1 100%; }
+}
+
+/* Por debajo de 360 no caben dos columnas iguales de 88 px y el chip entero: los
+   lados miden lo que su contenido y el chip se queda con el resto, aunque se
+   desplace un poco del centro. */
+@media (max-width: 359px) {
+  .topbar { grid-template-columns: auto minmax(0, 1fr) auto; }
 }
 
 @media (max-width: 340px) {

@@ -804,32 +804,43 @@ test('las barras y las zonas seguras usan el verde reforzado de cada tema', () =
     'el color del sistema sigue el verde de la cabecera oscura');
 });
 
-test('las herramientas están abajo, donde llega el pulgar, y se pueden tocar', () => {
+test('Deshacer y Pista están abajo, donde llega el pulgar; empezar de nuevo y el menú, arriba', () => {
   const barra = $('#tools');
   assert.ok(barra, 'hay barra de acciones');
   // Después del tablero en el orden del documento: en pantalla queda debajo.
   assert.equal(barra.previousElementSibling.tagName, 'MAIN');
-  assert.equal(window.document.querySelector('.topbar .tool'), null, 'y ya no arriba');
 
-  const botones = [...barra.querySelectorAll('.tool')];
-  assert.equal(botones.length, 5, 'quedan cinco: nueva, repetir, deshacer, pista y ajustes');
-  assert.deepEqual(botones.map((b) => b.id),
-    ['btn-new', 'btn-restart', 'btn-undo', 'btn-hint', 'btn-settings']);
-  for (const b of botones) {
-    assert.ok(b.getAttribute('aria-label'), `${b.id} necesita nombre para el lector de pantalla`);
-    const icono = b.querySelector('.ico use')?.getAttribute('href');
-    assert.match(icono ?? '', /^#i-/, `${b.id} tiene que llevar icono`);
-    assert.ok(window.document.querySelector(`symbol${icono}`), `falta el dibujo de ${icono}`);
-    assert.ok(b.querySelector('.rotulo')?.textContent, `${b.id} lleva su rótulo`);
-  }
-
-  // Con cinco botones los rótulos caben también en el móvil: nada de esconderlos.
+  // Abajo, solo lo que se pulsa a media partida, con su rótulo a la vista.
+  const abajo = [...barra.querySelectorAll('.tool')];
+  assert.deepEqual(abajo.map((b) => b.id), ['btn-undo', 'btn-hint']);
+  for (const b of abajo) assert.ok(b.querySelector('.rotulo')?.textContent, `${b.id} lleva su rótulo`);
   const movil = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)[1];
   assert.equal(/\.rotulo\s*\{[^}]*display:\s*none/.test(movil), false,
     'los rótulos se quedan a la vista');
 
-  // El objetivo táctil vive entero dentro de la zona segura de la barra.
+  // Arriba, Nueva en su esquina y Repetir con el menú en la otra: empezar otra
+  // mano ya no queda pegado a Deshacer.
+  const cabecera = window.document.querySelector('.topbar');
+  const arriba = [...cabecera.querySelectorAll('.bar-btn')];
+  assert.deepEqual(arriba.map((b) => b.id), ['btn-new', 'btn-restart', 'btn-settings']);
+  assert.ok($('#btn-new').closest('.barra-izq'), 'Nueva va sola a la izquierda');
+  assert.ok($('#btn-restart').closest('.barra-der') && $('#btn-settings').closest('.barra-der'));
+  assert.equal(barra.querySelector('#btn-new, #btn-restart, #btn-settings'), null, 'y ya no abajo');
+  assert.equal(cabecera.querySelector('.tool'), null, 'ni las de abajo arriba');
+
+  // Arriba no hay rótulo a la vista: el nombre va en el título y en el lector.
+  for (const b of [...abajo, ...arriba]) {
+    assert.ok(b.getAttribute('aria-label'), `${b.id} necesita nombre para el lector de pantalla`);
+    assert.ok(b.getAttribute('title'), `${b.id} necesita título para quien pasa el ratón`);
+    const icono = b.querySelector('.ico use')?.getAttribute('href');
+    assert.match(icono ?? '', /^#i-/, `${b.id} tiene que llevar icono`);
+    assert.ok(window.document.querySelector(`symbol${icono}`), `falta el dibujo de ${icono}`);
+  }
+
+  // El objetivo táctil: 44 px como poco abajo, dentro de la zona segura, y arriba.
   assert.ok(parseFloat(regla('.tool').style.getPropertyValue('--tool-alto')) >= 44);
+  assert.equal(regla('.bar-btn').style.getPropertyValue('width'), '44px');
+  assert.equal(apretado(regla('.bar-btn').style.getPropertyValue('height')), 'var(--bar-alto,44px)');
 });
 
 test('al cambiar de pestaña de récords el foco se queda en la pestaña', () => {
@@ -890,11 +901,15 @@ test('el marcador se lee sobre el tapete en los dos temas', () => {
   for (const [tema, v] of [['oscuro', base], ['claro', claro]]) {
     const fieltro = hex(v['--felt-1']);                       // la zona más clara del degradado
     const barra = hex(v['--header-bg']);                      // .topbar, verde opaco
-    const caja = sobre(v['--felt-fill'], barra);              // .stat
-    const etiqueta = sobre(v['--ink-soft'], caja);
-    const valor = sobre(v['--ink'], caja);
-    assert.ok(contraste(etiqueta, caja) >= 4.5, `${tema}: etiquetas del marcador ${contraste(etiqueta, caja).toFixed(2)}:1`);
-    assert.ok(contraste(valor, caja) >= 4.5, `${tema}: cifras del marcador ${contraste(valor, caja).toFixed(2)}:1`);
+    // Las cifras van sin caja, directamente sobre la barra.
+    const etiqueta = sobre(v['--ink-soft'], barra);
+    const valor = sobre(v['--ink'], barra);
+    assert.ok(contraste(etiqueta, barra) >= 4.5, `${tema}: etiquetas del marcador ${contraste(etiqueta, barra).toFixed(2)}:1`);
+    assert.ok(contraste(valor, barra) >= 4.5, `${tema}: cifras del marcador ${contraste(valor, barra).toFixed(2)}:1`);
+    // Los rótulos de Deshacer y Pista, sobre el relleno de su botón.
+    const boton = sobre(v['--felt-fill'], barra);             // .tool
+    const rotulo = sobre(v['--ink'], boton);
+    assert.ok(contraste(rotulo, boton) >= 4.5, `${tema}: rótulos de la barra ${contraste(rotulo, boton).toFixed(2)}:1`);
 
     const chip = sobre(reglas().find((r) => r.selectorText === '.banner').style.getPropertyValue('background'), fieltro);
     const aviso = sobre(v['--ink-soft'], chip);
@@ -1045,7 +1060,7 @@ test('el vuelo de las cartas acelera y frena; los controles van a velocidad fija
   assert.ok(volteo.includes('var(--volteo)'), 'el volteo se frena en el canto, no corre ahí');
   assert.equal(/ease-in-out/.test(volteo), false, 'ease-in-out precipita el 90° y parece un parpadeo');
 
-  for (const sel of ['.tool', '.slot', '.btn']) {
+  for (const sel of ['.tool', '.bar-btn', '.slot', '.btn']) {
     const valor = regla(sel).style.getPropertyValue('transition');
     assert.match(valor, /\blinear\b/, `${sel} debería ir a velocidad lineal`);
     assert.equal(/ease|cubic-bezier/.test(valor), false, `${sel} no debería acelerar ni frenar`);

@@ -257,7 +257,9 @@ function refreshHeader() {
   $('#seed').setAttribute('aria-label', semilla == null
     ? t('hud.reparto.copiar')
     : t('hud.reparto.copiar.n', { n: semilla }));
-  $('#mode-chip').textContent = textoModo();
+  // En su span y no en el botón: así el texto se corta sin recortar la capa que
+  // estira el objetivo de dedo del chip.
+  $('#mode-chip .modo-texto').textContent = textoModo();
 
   if (ultimaPuntuacion !== null && puntos !== ultimaPuntuacion) {
     const baja = typeof puntos === 'number' && typeof ultimaPuntuacion === 'number' && puntos < ultimaPuntuacion;

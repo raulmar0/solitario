@@ -323,9 +323,9 @@ test('traducirDom lee data-i18n-params y aguanta un JSON roto sin dejar el nodo 
 test('traducirDom traduce también el nodo raíz que se le pasa, no solo sus hijos', () => {
   conIdioma('es', () => {
     const suelto = document.createElement('span');
-    suelto.setAttribute('data-i18n', 'tool.nueva.corto');
+    suelto.setAttribute('data-i18n', 'tool.pista.corto');
     traducirDom(suelto);
-    assert.equal(suelto.textContent, 'Nueva');
+    assert.equal(suelto.textContent, 'Pista');
   });
 });
 

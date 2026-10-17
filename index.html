@@ -44,6 +44,28 @@
     <h1 data-i18n="app.titulo">Solitario</h1>
   </div>
 
+  <!-- Nueva va sola en su esquina: empezar otra mano tira la de ahora, y abajo
+       quedaba pegada a Deshacer, que es lo que más se pulsa. Al lado se pone el
+       aviso de versión nueva cuando lo hay, sin quitarle sitio a nadie. -->
+  <div class="barra-izq">
+    <button id="btn-new" class="bar-btn" type="button" aria-label="Partida nueva (N)" title="Partida nueva (N)" data-i18n-aria-label="tool.nueva" data-i18n-title="tool.nueva"><svg class="ico" aria-hidden="true"><use href="#i-nueva"/></svg></button>
+    <!-- La píldora es baja y corta a propósito: si creciera, la cabecera crecería
+         con ella y el tapete perdería una fila entera de cartas. La frase entera
+         va en el título y en el nombre accesible. -->
+    <button type="button" class="update-pill" id="btn-update-pill" data-i18n-title="app.update.pill" data-i18n-aria-label="app.update.pill" hidden>
+      <span class="update-flecha" aria-hidden="true">↑</span><span class="update-texto" aria-hidden="true" data-i18n="app.update.pill.corto">Actualizar</span>
+    </button>
+  </div>
+
+  <!-- El texto va en su propio span para poder cortarlo con puntos suspensivos
+       sin recortar la capa que le da al chip sus 44 px de dedo. -->
+  <button type="button" class="mode-chip" id="mode-chip" title="Modalidad de juego: toca para cambiarla en Ajustes" data-i18n-title="hud.modo.titulo"><span class="modo-texto"></span></button>
+
+  <div class="barra-der">
+    <button id="btn-restart" class="bar-btn" type="button" aria-label="Repetir este reparto (R)" title="Repetir este reparto (R)" data-i18n-aria-label="tool.repetir" data-i18n-title="tool.repetir"><svg class="ico" aria-hidden="true"><use href="#i-repetir"/></svg></button>
+    <button id="btn-settings" class="bar-btn" type="button" aria-label="Ajustes, récords y ayuda (,)" title="Ajustes, récords y ayuda (,)" data-i18n-aria-label="tool.menu" data-i18n-title="tool.menu"><svg class="ico" aria-hidden="true"><use href="#i-ajustes"/></svg></button>
+  </div>
+
   <dl class="scoreboard" aria-live="off">
     <div class="stat"><dt data-i18n="hud.puntos">Puntos</dt><dd id="score">0</dd></div>
     <!-- El aviso de pausa vive dentro de la caja del reloj: si el crono se para,
@@ -55,20 +77,11 @@
     <div class="stat stat-wide"><dt data-i18n="hud.reparto">Reparto</dt><dd><button type="button" class="seed-chip" id="seed" data-i18n="hud.vacio">—</button></dd></div>
   </dl>
 
-  <button type="button" class="mode-chip" id="mode-chip" title="Modalidad de juego: toca para cambiarla en Ajustes" data-i18n-title="hud.modo.titulo"></button>
-
   <!-- Cuánto queda para las 52. Ocupa la línea entera bajo el marcador: es un
        vistazo, no un dato que haya que leer. Desde que la caja de «Fundaciones»
        se fue de la cabecera, este es también el sitio donde vive el número: la
        barra lo lleva en su aria-valuetext, así que quien no la ve no lo pierde. -->
   <div class="progress" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="52" aria-valuenow="0" data-i18n-aria-label="hud.fundaciones"><i></i></div>
-
-  <!-- La píldora es baja y corta a propósito: si creciera, la cabecera crecería
-       con ella y el tapete perdería una fila entera de cartas. La frase entera
-       va en el título y en el nombre accesible. -->
-  <button type="button" class="update-pill" id="btn-update-pill" data-i18n-title="app.update.pill" data-i18n-aria-label="app.update.pill" hidden>
-    <span class="update-flecha" aria-hidden="true">↑</span><span class="update-texto" aria-hidden="true" data-i18n="app.update.pill.corto">Actualizar</span>
-  </button>
 </header>
 
 <main class="table" id="table">
@@ -99,12 +112,11 @@
   <p class="banner" id="banner" role="status" aria-live="polite"></p>
 </main>
 
+<!-- Abajo, donde cae el pulgar, solo las dos acciones de la partida en curso, anchas
+     y con su rótulo. Empezar de nuevo y el menú suben a la cabecera. -->
 <nav class="tools" id="tools" aria-label="Acciones" data-i18n-aria-label="tool.acciones">
-  <button id="btn-new" class="tool" type="button" aria-label="Partida nueva (N)" title="Partida nueva (N)" data-i18n-aria-label="tool.nueva" data-i18n-title="tool.nueva"><svg class="ico" aria-hidden="true"><use href="#i-nueva"/></svg><span class="rotulo" data-i18n="tool.nueva.corto">Nueva</span></button>
-  <button id="btn-restart" class="tool" type="button" aria-label="Repetir este reparto (R)" title="Repetir este reparto (R)" data-i18n-aria-label="tool.repetir" data-i18n-title="tool.repetir"><svg class="ico" aria-hidden="true"><use href="#i-repetir"/></svg><span class="rotulo" data-i18n="tool.repetir.corto">Repetir</span></button>
   <button id="btn-undo" class="tool" type="button" aria-label="Deshacer (Ctrl+Z)" title="Deshacer (Ctrl+Z)" data-i18n-aria-label="tool.deshacer" data-i18n-title="tool.deshacer"><svg class="ico" aria-hidden="true"><use href="#i-deshacer"/></svg><span class="rotulo" data-i18n="tool.deshacer.corto">Deshacer</span></button>
   <button id="btn-hint" class="tool" type="button" aria-label="Pista (H)" title="Pista (H)" data-i18n-aria-label="tool.pista" data-i18n-title="tool.pista"><svg class="ico" aria-hidden="true"><use href="#i-pista"/></svg><span class="rotulo" data-i18n="tool.pista.corto">Pista</span></button>
-  <button id="btn-settings" class="tool" type="button" aria-label="Ajustes, récords y ayuda (,)" title="Ajustes, récords y ayuda (,)" data-i18n-aria-label="tool.menu" data-i18n-title="tool.menu"><svg class="ico" aria-hidden="true"><use href="#i-ajustes"/></svg><span class="rotulo" data-i18n="tool.menu.corto">Menú</span></button>
 </nav>
 
 <dialog id="dlg-win" class="dlg dlg-win" aria-labelledby="win-titulo">

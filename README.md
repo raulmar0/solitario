@@ -95,23 +95,29 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   Audio, sin un solo fichero de audio ni una petición a la red. Se apagan desde
   Ajustes. El navegador no deja sonar nada hasta que tocas la página, así que el
   reparto de bienvenida es mudo a propósito.
-- **Las acciones, abajo**: en un móvil grande, la parte de arriba de la pantalla
-  queda lejos del pulgar. Los cinco botones —nueva, repetir, **deshacer**, pista
-  y menú— van al fondo, con su rótulo debajo, iconos de trazo propios (no
-  emojis, que cada sistema dibuja a su manera) y 82 x 51 px de objetivo, muy por
-  encima del mínimo que pide Apple. Rehacer se ha quitado: en un solitario se
-  deshace mucho y se rehace casi nunca, y el hueco lo aprovecha mejor deshacer.
-- **La cabecera cuenta la partida sin crecer**: un chip con la modalidad del
-  reparto («Estándar · 1 carta · crono», o «Reto 29 ago · Estándar · 1 carta»)
-  que lleva a Ajustes, y la barra de progreso hacia las 52. Nada de lo que
-  aparece y desaparece le cambia el alto: el aviso de reloj parado es una marca
-  en la esquina de su caja —y el número se apaga— en vez de una pastilla que
-  añadía una fila, y el aviso de versión nueva es una píldora baja que cabe en la
-  fila del chip. Con la caja de «Fundaciones» fuera (decía lo mismo que la barra,
-  que ahora lleva el número en su `aria-valuetext`), en un móvil de 390 px la
-  cabecera pasó de 195 a 114 px, y de 269 a 114 con el aviso de pausa y el de
-  actualizar puestos: son 155 px más de tapete. Pulsar el número de reparto copia
-  su enlace, con `?seed=` puesto, para retar a alguien a la misma mano.
+- **Deshacer y Pista, abajo y a lo ancho**: en un móvil grande, la parte de
+  arriba de la pantalla queda lejos del pulgar. Al fondo van solo las dos
+  acciones que se usan a media partida, **deshacer** y pista, como dos botones
+  anchos con el icono y el rótulo en línea: 181 x 48 px cada uno en un móvil de
+  390. Nueva, repetir y el menú suben a la cabecera como iconos de 44 x 44 px,
+  con su nombre en el título y para el lector de pantalla. Nueva queda sola en
+  su esquina, lejos de Deshacer: empezar otra mano tira la de ahora. Los iconos
+  son de trazo propio (no emojis, que cada sistema dibuja a su manera). Rehacer
+  se ha quitado: en un solitario se deshace mucho y se rehace casi nunca.
+- **La cabecera cuenta la partida sin crecer**: en el móvil, una fila con Nueva,
+  el chip con la modalidad del reparto en el centro («Estándar · 1 carta ·
+  crono», o «Reto 29 ago · Estándar · 1 carta»), que lleva a Ajustes, y repetir
+  y el menú a la derecha; debajo, el marcador sin cajas, cuatro cifras con su
+  rótulo encima, y la barra de progreso hacia las 52. En pantalla ancha todo va
+  en una sola fila. Nada de lo que aparece y desaparece le cambia el alto: el
+  aviso de reloj parado es una marca junto al rótulo del tiempo (y el número se
+  apaga) en vez de una pastilla que añadía una fila; el aviso de versión nueva es
+  una píldora baja que cabe junto a Nueva, y una modalidad larga se corta con
+  puntos suspensivos en vez de saltar de línea. Con la caja de «Fundaciones»
+  fuera (decía lo mismo que la barra, que ahora lleva el número en su
+  `aria-valuetext`), en un móvil de 390 px la cabecera pasó de 195 a 114 px;
+  ahora mide 106. Pulsar el número de reparto copia su enlace, con `?seed=`
+  puesto, para retar a alguien a la misma mano.
 - **Baraja de cuatro colores** para quien no distinga bien el rojo del negro:
   cada palo con su color, separados también en luminosidad para que se lean en
   escala de grises. Y un pequeño golpe de vibración al colocar y al fallar, en
@@ -179,7 +185,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.14.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.15.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
