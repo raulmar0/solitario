@@ -374,6 +374,46 @@ test('las cuatro secciones viven en el mismo panel y se cambia entre ellas', () 
   $('#dlg-settings').close();
 });
 
+test('el menú se abre por el principio de la sección aunque se cerrara desplazado', () => {
+  // En jsdom el desplazamiento es un número que guarda lo que se le escriba, y así
+  // cualquier orden parece bueno. En un navegador no: con el diálogo cerrado el
+  // cuerpo no tiene caja, lo que se escriba entonces se pierde y, al abrir, vuelve
+  // el desplazamiento con que se cerró. Se imita eso.
+  const dlg = $('#dlg-settings');
+  const cuerpo = $('#menu-body');
+  let desplazado = 0;
+  Object.defineProperty(cuerpo, 'scrollTop', {
+    configurable: true,
+    get: () => (dlg.open ? desplazado : 0),
+    set: (valor) => { if (dlg.open) desplazado = valor; },
+  });
+  const boton = () => $('#btn-settings').click();
+  const tecla = (key) => () => window.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }));
+  try {
+    // Cada vez se cierra desplazado: unas se vuelve a la misma sección y otras
+    // se abre directamente otra.
+    for (const [como, abrir, seccion] of [
+      ['el botón', boton, 'ajustes'],
+      ['la coma', tecla(','), 'ajustes'],
+      ['la D', tecla('d'), 'reto'],
+      ['la P', tecla('p'), 'records'],
+      ['la ?', tecla('?'), 'ayuda'],
+      ['otra vez la ?', tecla('?'), 'ayuda'],
+      ['el botón', boton, 'ajustes'],
+    ]) {
+      abrir();
+      assert.equal(dlg.open, true, `${como} abre el menú`);
+      assert.equal(panels.section, seccion, `${como} abre ${seccion}`);
+      assert.equal(cuerpo.scrollTop, 0, `${como} abre ${seccion} por el principio`);
+      cuerpo.scrollTop = 500;
+      dlg.close();
+    }
+  } finally {
+    delete cuerpo.scrollTop;       // vuelve el de jsdom
+    if (dlg.open) dlg.close();
+  }
+});
+
 test('los ajustes están agrupados y las acciones ocasionales viven fuera de Ajustes', () => {
   assert.ok($('#settings-group-partida'), 'falta el grupo de partida');
   assert.ok($('#settings-group-interfaz'), 'falta el grupo de interfaz');

@@ -126,6 +126,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     // pestaña también. Volver a la sección y encontrarse en el mes de la última
     // vez, con un día de hace tres semanas elegido, no lo espera nadie.
     if (seccion === 'reto') { centrarReto(); renderReto(); }
+    // Esto vale para cambiar de pestaña con el menú abierto. Con el menú cerrado
+    // no surte efecto, porque el cuerpo no tiene caja: al abrir se encarga `abrir()`.
     if (seccion !== anterior) $('#menu-body').scrollTop = 0;
     if (foco) $(`#tab-${seccion}`).focus();
   }
@@ -164,8 +166,11 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     mostrarSeccion(cual);
     onOpenSettings();
     if (!dlgSettings.open) {
-      $('#menu-body').scrollTop = 0;
       dlgSettings.showModal();
+      // Después de abrir y no antes: con el diálogo cerrado el cuerpo no tiene
+      // caja, el navegador no hace caso de ese cero y al abrir repone el
+      // desplazamiento con que se cerró, aunque se abra por otra sección.
+      $('#menu-body').scrollTop = 0;
     }
   }
 
