@@ -56,8 +56,8 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
     una, tres robando de tres).
 - **Récords locales**: partidas, victorias, porcentaje, mejor puntuación, mejor
   tiempo, menos jugadas, racha actual y mejor racha — todo separado por
-  modalidad — más una tabla con las 25 mejores partidas. Cada partida guarda
-  cuántas pistas se pidieron, y la tabla y la ventana de victoria lo enseñan. Se
+  modalidad — más la lista de las 25 mejores partidas. Cada partida guarda
+  cuántas pistas se pidieron, y la lista y la ventana de victoria lo enseñan. Se
   pueden exportar e importar en JSON y borrar del todo.
 - **La partida a medias se guarda sola**: si cierras la pestaña, al volver sigue
   donde estaba (con parte del historial de deshacer).
@@ -141,6 +141,19 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   partidos en dos filas desparejas. «Cerrar» dejó la fila de botones: es la ✕ de
   la esquina, y va la última en el documento para que al abrirse el foco caiga en
   la salida principal.
+- **Las mejores partidas, enteras en el móvil**: eran una tabla de nueve columnas
+  que en un móvil de 390 px medía 871 de ancho. Al abrirla se veían el puesto,
+  los puntos y el principio del modo; para leer el resultado, el tiempo o la
+  fecha había que desplazarla de lado, y entonces se perdía de qué partida eran.
+  Ahora cada partida es un bloque que cabe entero: el puesto, los puntos y el
+  resultado arriba; la fecha y cómo se jugó (pistas penalizadas o no, crono)
+  debajo, y al pie el tiempo, las jugadas, las pistas y el reparto, cada uno con
+  su rótulo encima, como en las casillas de arriba. La modalidad ya no se repite
+  en cada partida: la eligen las pestañas. La lista corre con el desplazamiento
+  del menú, sin una caja con scroll propio dentro, y sus columnas son de la lista
+  entera, así que el tiempo de una partida cae justo debajo del de la anterior.
+  Cabe en los cinco idiomas hasta en 320 px (en portugués, «DISTRIBUIÇÃO»), y el
+  lector de pantalla sigue oyendo cada valor con el nombre de su columna.
 - **Partida cerrada, dicho con precisión**: un mazo con cartas ya no basta para
   dar una partida por viva. Si ninguna de las que pueden salir cabe en ningún
   sitio —ni ahora ni tras pasear cartas entre columnas—, dar vueltas al montón es
@@ -199,7 +212,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.16.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.17.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 

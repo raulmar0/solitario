@@ -341,6 +341,54 @@ test('el panel de récords se rellena', () => {
   $('#dlg-settings').close();
 });
 
+test('las mejores partidas caben en el móvil: una por bloque y cada valor con su rótulo', () => {
+  // Era una tabla de nueve columnas que en un móvil de 390 px medía 871 de ancho
+  // y se desplazaba de lado. jsdom no mide, así que se fija la forma: una lista
+  // sin caja con scroll propio, los cuatro valores medidos con su rótulo a la
+  // vista y el resto con el suyo para el lector de pantalla.
+  assert.equal($('#scores-table'), null, 'ya no hay tabla');
+  assert.equal($('.table-wrap'), null, 'ni caja con scroll propio');
+  const lista = $('#scores-list');
+  assert.equal(lista.tagName, 'OL');
+  assert.equal(lista.getAttribute('role'), 'list', 'Safari no anuncia como lista la que va sin viñetas');
+
+  const antes = window.localStorage.getItem('solitario.v1.scores');
+  window.localStorage.setItem('solitario.v1.scores', JSON.stringify([
+    { scoring: 'standard', drawCount: 1, score: 702, won: true, timeMs: 251000, moves: 97, hints: 0, seed: 3304, timed: true, penalizeHints: false, at: '2026-10-06T18:30:00.000Z' },
+    { scoring: 'standard', drawCount: 1, score: 95, won: false, timeMs: 610000, moves: 151, hints: 3, seed: null, timed: false, penalizeHints: false, at: '2026-10-05T18:30:00.000Z' },
+  ]));
+  try {
+    panels.openStats();
+    const [primera, segunda] = [...lista.children];
+    assert.deepEqual([...primera.querySelectorAll('dt')].map((dt) => dt.textContent), ['Tiempo', 'Jugadas', 'Pistas', 'Reparto']);
+    assert.deepEqual([...primera.querySelectorAll('dd')].map((dd) => dd.textContent), ['04:11', '97', '0', '#3304']);
+    assert.equal([...segunda.querySelectorAll('dd')].at(-1).textContent, '—', 'sin número de reparto, la raya');
+    // Lo que se entiende solo va sin rótulo a la vista, pero no para quien oye.
+    assert.deepEqual(
+      [...primera.querySelectorAll('.solo-lectores')].map((s) => s.textContent.trim()),
+      ['#', 'Puntos', 'Resultado', 'Fecha', 'Modo'],
+    );
+    assert.ok(primera.querySelector('.partida-res').classList.contains('win'));
+    assert.ok(segunda.querySelector('.partida-res').classList.contains('loss'));
+    assert.equal(lista.hidden, false);
+    assert.equal($('#scores-empty').hidden, true);
+  } finally {
+    if (antes === null) window.localStorage.removeItem('solitario.v1.scores');
+    else window.localStorage.setItem('solitario.v1.scores', antes);
+    $('#dlg-settings').close();
+  }
+
+  // La lista corre con el scroll del menú, y las columnas son de la lista entera:
+  // el tiempo de una partida cae debajo del de la anterior, como en la tabla.
+  const bloque = (sel) => new RegExp(`\\n${sel.replace(/\./g, '\\.')} \\{([^}]*)\\}`).exec(css)?.[1] ?? '';
+  assert.doesNotMatch(bloque('.scores'), /max-height|overflow:\s*auto/, 'sin scroll propio dentro del menú');
+  assert.match(bloque('.partida'), /grid-template-columns:\s*subgrid/);
+  assert.match(bloque('.partida-datos dd'), /white-space:\s*nowrap/, 'un «#777001» no se parte');
+  // En 320 px el sitio sale del espaciado, no del tamaño: «DISTRIBUIÇÃO» cabe.
+  const estrecho = /@media \(max-width: 340px\) \{([\s\S]*?)\n\}/.exec(css)[1];
+  assert.match(estrecho, /\.partida-datos dt \{[^}]*letter-spacing:\s*0/);
+});
+
 test('las cuatro secciones viven en el mismo panel y se cambia entre ellas', () => {
   assert.equal(window.document.querySelector('#dlg-stats'), null, 'ya no hay diálogo de récords aparte');
   assert.equal(window.document.querySelector('#dlg-help'), null, 'ni de ayuda');
@@ -932,6 +980,20 @@ test('el texto de los diálogos se lee en los dos temas', () => {
     const acento = sobre(v['--accent'], panel);
     const tintaAcento = sobre(v['--accent-ink'], acento);
     assert.ok(contraste(tintaAcento, acento) >= 4.5, `${tema}: botón principal ${contraste(tintaAcento, acento).toFixed(2)}:1`);
+  }
+});
+
+test('la partida recién jugada se distingue sin bajar del contraste mínimo', () => {
+  // Con el relleno fuerte, el verde de «Ganada» se quedaba en 4,49:1 en claro.
+  const base = variables(':root');
+  const claro = { ...base, ...variables('html[data-theme="light"]') };
+  const fondo = /var\((--[\w-]+)\)/.exec(regla('.scores .me').style.getPropertyValue('background'))[1];
+  for (const [tema, v] of [['oscuro', base], ['claro', claro]]) {
+    const me = sobre(v[fondo], hex(v['--panel']));
+    const suave = sobre(v['--panel-ink-soft'] === 'var(--ink-soft)' ? v['--ink-soft'] : v['--panel-ink-soft'], me);
+    const verde = sobre(v['--ok'], me);
+    assert.ok(contraste(verde, me) >= 4.5, `${tema}: «Ganada» ${contraste(verde, me).toFixed(2)}:1`);
+    assert.ok(contraste(suave, me) >= 4.5, `${tema}: fecha, puesto y rótulos ${contraste(suave, me).toFixed(2)}:1`);
   }
 });
 

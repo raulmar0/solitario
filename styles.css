@@ -1169,13 +1169,13 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 }
 
 /* La barra de desplazamiento venía con los colores del navegador y se veía. */
-.menu-body, .table-wrap {
+.menu-body {
   scrollbar-width: thin;
   scrollbar-color: var(--fill-strong) transparent;
 }
-.menu-body::-webkit-scrollbar, .table-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
-.menu-body::-webkit-scrollbar-track, .table-wrap::-webkit-scrollbar-track { background: transparent; }
-.menu-body::-webkit-scrollbar-thumb, .table-wrap::-webkit-scrollbar-thumb {
+.menu-body::-webkit-scrollbar { width: 10px; }
+.menu-body::-webkit-scrollbar-track { background: transparent; }
+.menu-body::-webkit-scrollbar-thumb {
   background: var(--fill-strong);
   border: 3px solid transparent;
   border-radius: 999px;
@@ -1416,14 +1416,64 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   background: var(--panel-2); border: 1px solid var(--panel-line); border-radius: 10px; font-size: 14px;
 }
 
-.table-wrap { max-height: 260px; overflow: auto; border: 1px solid var(--panel-line); border-radius: 10px; }
-.scores { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
-.scores th, .scores td { padding: 7px 10px; text-align: left; white-space: nowrap; }
-.scores thead th { position: sticky; top: 0; background: var(--panel-2); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--panel-ink-soft); }
-.scores tbody tr:nth-child(odd) { background: var(--fill); }
+/* Las mejores partidas, una por bloque. Era una tabla de nueve columnas que en
+   un móvil de 390 px medía 871 de ancho: se veían el puesto, los puntos y el
+   principio del modo, y al desplazarla para leer el resultado, el tiempo o la
+   fecha se perdía de qué partida eran. Ahora cada partida cabe entera: el
+   puesto, los puntos y el resultado arriba; la fecha y cómo se jugó debajo; y
+   al pie los cuatro valores medidos, con el rótulo encima como en las casillas.
+   La lista no lleva caja con scroll propio: corre con el del menú, y así no hay
+   dos desplazamientos verticales uno dentro de otro.
+
+   Las columnas son de la lista entera, no de cada partida (subgrid): el tiempo
+   de la segunda cae justo debajo del de la primera, como en la tabla, y cada
+   columna mide al menos su rótulo más largo, que en portugués es
+   «DISTRIBUIÇÃO». Sin subgrid, cada bloque reparte sus cuatro columnas. */
+.scores {
+  display: grid;
+  grid-template-columns: auto repeat(4, minmax(min-content, 1fr));
+  column-gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.partida {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto repeat(4, minmax(0, 1fr));
+  grid-template-columns: subgrid;
+  align-items: baseline;
+  padding: 10px 12px;
+  line-height: 1.35;
+}
+.partida + .partida { border-top: 1px solid var(--panel-line); }
+.partida-pos { grid-column: 1; color: var(--panel-ink-soft); }
+.partida-puntos { grid-column: 2 / 4; font-size: 18px; font-weight: 650; line-height: 1.2; }
+.partida-res { grid-column: 4 / -1; justify-self: end; }
+/* Con la clase delante: si no, el margen de `.dlg p` separaba la fecha de sus
+   puntos tanto como de la tira de abajo. */
+.scores .partida-meta { grid-column: 2 / -1; margin: 2px 0 0; color: var(--panel-ink-soft); }
+.partida-datos {
+  grid-column: 2 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: subgrid;
+  margin: var(--menu-1, 8px) 0 0;
+}
+.partida-datos dt { font-size: 11px; color: var(--panel-ink-soft); text-transform: uppercase; letter-spacing: .5px; }
+.partida-datos dd { margin: 0; white-space: nowrap; }
 .scores .win { color: var(--ok); font-weight: 600; }
 .scores .loss { color: var(--panel-ink-soft); }
-.scores .me { background: var(--fill-strong); font-weight: 650; }
+/* La que se acaba de jugar. Con el relleno fuerte, el verde de «Ganada» se
+   quedaba en 4,49:1 en el tema claro; sin el rayado de la tabla, el suave ya la
+   distingue y deja el verde en 5,1:1 y el texto secundario en 5,2:1. */
+.scores .me { background: var(--fill); font-weight: 650; }
+.scores .me dt { font-weight: 400; }
 .empty { color: var(--panel-ink-soft); font-size: 13.5px; text-align: center; padding: 14px; }
 
 /* ---------- reto diario ---------- */
@@ -1768,4 +1818,10 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .stat dt { letter-spacing: 0; }
   #panel-tabs .tab { font-size: 11px; padding-inline: 2px; }
   #dlg-settings .seg:has([data-pref="dealBias"]) { grid-auto-flow: row; }
+  /* Con 320 px, en portugués «DISTRIBUIÇÃO» no cabía en la tira de cada partida.
+     Lo mismo que en el marcador: el sitio sale del relleno, del espacio entre
+     columnas y del espaciado entre letras, no del tamaño del rótulo. */
+  .scores { column-gap: 8px; }
+  .partida { padding-inline: 8px; }
+  .partida-datos dt { letter-spacing: 0; }
 }

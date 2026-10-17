@@ -1150,12 +1150,8 @@ test('la evolución se calla con dos partidas y se dibuja con cinco', () => {
   $('#dlg-settings').close();
 });
 
-test('la tabla de récords y el reto diario enseñan el modo en que se jugó', () => {
+test('las mejores partidas y el reto diario enseñan cómo se jugó', () => {
   for (const d of window.document.querySelectorAll('dialog')) d.close();
-  // Comprobar la cabecera de la tabla de récords
-  const ths = $$('#scores-table thead th').map((th) => th.textContent.trim());
-  assert.deepEqual(ths, ['#', 'Puntos', 'Modo', 'Resultado', 'Tiempo', 'Jugadas', 'Pistas', 'Reparto', 'Fecha']);
-
   // Guardar partidas con distintos modos
   store.recordGame({
     scoring: 'standard',
@@ -1185,23 +1181,37 @@ test('la tabla de récords y el reto diario enseñan el modo en que se jugó', (
   });
 
   panels.openStats('standard', 1);
-  const filas = $$('#scores-table tbody tr');
+  const filas = $$('#scores-list > li');
   assert.ok(filas.length >= 2);
-  const primera = Array.from(filas[0].children).map((td) => td.textContent.trim());
-  assert.equal(primera[1], '650');
-  assert.match(primera[2], /Estándar/);
-  assert.match(primera[2], /1 carta/);
-  assert.match(primera[2], /pistas penalizadas/i);
-  assert.match(primera[2], /crono/i);
-  assert.equal(primera[3], 'Ganada');
-  assert.equal(primera[6], '3', 'la columna de pistas cuenta las que se pidieron');
+  // Lo que se ve, sin los rótulos que solo oye el lector de pantalla.
+  const aLaVista = (el) => [...el.childNodes]
+    .filter((n) => !n.classList?.contains('solo-lectores'))
+    .map((n) => (n.nodeType === 3 ? n.textContent : aLaVista(n)))
+    .join('');
+  const leer = (li) => ({
+    puntos: aLaVista(li.querySelector('.partida-puntos')),
+    resultado: aLaVista(li.querySelector('.partida-res')),
+    meta: aLaVista(li.querySelector('.partida-meta')),
+    datos: Object.fromEntries([...li.querySelectorAll('.partida-datos > div')]
+      .map((par) => [par.querySelector('dt').textContent, par.querySelector('dd').textContent])),
+  });
 
-  const segunda = Array.from(filas[1].children).map((td) => td.textContent.trim());
-  assert.equal(segunda[1], '500');
-  assert.match(segunda[2], /Estándar/);
-  assert.match(segunda[2], /pistas sin penalizar/i);
-  assert.equal(segunda[3], 'Perdida');
-  assert.equal(segunda[6], '0', 'sin pistas, un cero');
+  const primera = leer(filas[0]);
+  assert.equal(primera.puntos, '650');
+  assert.equal(primera.resultado, 'Ganada');
+  assert.match(primera.meta, /pistas penalizadas/i);
+  assert.match(primera.meta, /crono/i);
+  // La modalidad la eligen las pestañas de arriba: repetirla en cada partida
+  // era la columna más ancha de la tabla y no decía nada nuevo.
+  assert.doesNotMatch(primera.meta, /Estándar|1 carta/);
+  assert.equal(primera.datos.Pistas, '3', 'cuenta las pistas que se pidieron');
+
+  const segunda = leer(filas[1]);
+  assert.equal(segunda.puntos, '500');
+  assert.equal(segunda.resultado, 'Perdida');
+  assert.match(segunda.meta, /pistas sin penalizar/i);
+  assert.doesNotMatch(segunda.meta, /crono/i, 'sin crono no se dice nada, como antes');
+  assert.equal(segunda.datos.Pistas, '0', 'sin pistas, un cero');
 
   // Reto diario con pistas penalizadas
   const ayer = claveDia(new Date(Date.now() - 86400000));

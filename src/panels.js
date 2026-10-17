@@ -290,44 +290,69 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     bankRow.hidden = scoring !== 'vegas';
     if (scoring === 'vegas') $('#bank-value').textContent = formatScore('vegas', store.getBank(drawCount));
 
+    // El espacio de antes del punto no se parte: si la línea no cabe, el punto se
+    // queda al final de la de arriba y no abre la de abajo.
+    const SEPARADOR = '\u00a0· ';
+    // La modalidad no se repite en cada partida: ya la dicen las pestañas de
+    // arriba, y en el móvil era la columna más ancha. Queda lo que las pestañas
+    // no eligen, cómo se jugó esa partida en concreto.
     const formatearModoFila = (r) => {
-      const partes = [
-        t('modo.nombre', {
-          puntuacion: t(`modo.${r.scoring}`),
-          robo: t(`modo.robo.${r.drawCount === 3 ? 3 : 1}`),
-        }),
-        r.penalizeHints ? t('modo.pistasPenalizadas') : t('modo.pistasSinPenalizar'),
-      ];
+      const partes = [r.penalizeHints ? t('modo.pistasPenalizadas') : t('modo.pistasSinPenalizar')];
       if (r.timed) partes.push(t('modo.crono'));
-      return partes.join(' · ');
+      return partes.join(SEPARADOR);
+    };
+    // Lo que se entiende solo —el puesto, los puntos, el resultado, la fecha y el
+    // modo— va sin rótulo a la vista, pero el lector de pantalla oye el de la
+    // columna que tenía la tabla: «Puntos 655», no un número suelto.
+    const conRotulo = (etiqueta, clase, rotulo, texto) => {
+      const el = document.createElement(etiqueta);
+      if (clase) el.className = clase;
+      const oculto = document.createElement('span');
+      oculto.className = 'solo-lectores';
+      oculto.textContent = `${t(rotulo)} `;
+      el.append(oculto, texto);
+      return el;
+    };
+    // Los cuatro valores medidos sí llevan su rótulo a la vista: un 131 o un 3
+    // sueltos no dicen si son jugadas o pistas.
+    const dato = (rotulo, texto) => {
+      const par = document.createElement('div');
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = t(rotulo);
+      dd.textContent = texto;
+      par.append(dt, dd);
+      return par;
     };
 
     const filas = store.getScores({ scoring, drawCount, limit: 25 });
-    const tbody = $('#scores-table tbody');
-    tbody.replaceChildren(...filas.map((r, i) => {
-      const tr = document.createElement('tr');
-      if (game.lastResult && r.at === game.lastResult.at) tr.className = 'me';
-      // Las cabeceras las traduce el HTML por data-i18n; estas celdas, nosotros.
-      const celdas = [
-        String(i + 1),
-        formatScore(scoring, r.score ?? 0),
-        formatearModoFila(r),
-        t(r.won ? 'stats.ganada' : 'stats.perdida'),
-        formatTime(r.timeMs ?? 0),
-        String(r.moves ?? 0),
-        String(r.hints ?? 0),
-        r.seed == null ? vacio : t('hud.reparto.numero', { n: r.seed }),
-        fecha(r.at),
-      ];
-      celdas.forEach((texto, col) => {
-        const td = document.createElement('td');
-        td.textContent = texto;
-        if (col === 3) td.className = r.won ? 'win' : 'loss';
-        tr.appendChild(td);
-      });
-      return tr;
+    $('#scores-list').replaceChildren(...filas.map((r, i) => {
+      const li = document.createElement('li');
+      li.className = game.lastResult && r.at === game.lastResult.at ? 'partida me' : 'partida';
+      const meta = conRotulo('p', 'partida-meta', 'stats.col.fecha', fecha(r.at));
+      const punto = document.createElement('span');
+      punto.setAttribute('aria-hidden', 'true');
+      punto.textContent = SEPARADOR;
+      const modo = conRotulo('span', '', 'stats.col.modo', formatearModoFila(r));
+      meta.append(punto, modo);
+      const datos = document.createElement('dl');
+      datos.className = 'partida-datos';
+      datos.append(
+        dato('stats.col.tiempo', formatTime(r.timeMs ?? 0)),
+        dato('stats.col.jugadas', String(r.moves ?? 0)),
+        dato('stats.col.pistas', String(r.hints ?? 0)),
+        dato('stats.col.reparto', r.seed == null ? vacio : t('hud.reparto.numero', { n: r.seed })),
+      );
+      li.append(
+        conRotulo('span', 'partida-pos', 'stats.col.pos', String(i + 1)),
+        conRotulo('strong', 'partida-puntos', 'stats.col.puntos', formatScore(scoring, r.score ?? 0)),
+        conRotulo('span', `partida-res ${r.won ? 'win' : 'loss'}`, 'stats.col.resultado', t(r.won ? 'stats.ganada' : 'stats.perdida')),
+        meta,
+        datos,
+      );
+      return li;
     }));
-    $('#scores-table').hidden = filas.length === 0;
+    $('#scores-list').hidden = filas.length === 0;
     $('#scores-empty').hidden = filas.length > 0;
 
     // Los botones se han vuelto a crear: si el foco estaba en ellos, se repone.
