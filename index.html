@@ -134,9 +134,10 @@
     <button class="btn primary" data-action="new" data-i18n="dlg.victoria.otra">Otra partida</button>
     <button class="btn" id="btn-win-share" data-action="share" data-i18n="dlg.victoria.compartir">Compartir</button>
     <button class="btn" data-action="stats" data-i18n="dlg.victoria.records">Ver récords</button>
-    <button class="btn ghost" data-close data-i18n="dlg.cerrar">Cerrar</button>
   </div>
   <p class="win-share-nota" id="win-share-nota" role="status" aria-live="polite"></p>
+  <!-- La ✕ va la última a propósito: al abrirse, el foco cae en «Otra partida». -->
+  <button class="icon-btn dlg-cerrar" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
 </dialog>
 
 <dialog id="dlg-stuck" class="dlg dlg-stuck" aria-labelledby="stuck-titulo">
@@ -147,8 +148,8 @@
     <button class="btn primary" data-action="undo" data-i18n="dlg.bloqueo.deshacer">Deshacer la última</button>
     <button class="btn" data-action="restart" data-i18n="dlg.bloqueo.repetir">Repetir reparto</button>
     <button class="btn" data-action="new" data-i18n="dlg.bloqueo.nueva">Partida nueva</button>
-    <button class="btn ghost" data-close data-i18n="dlg.cerrar">Cerrar</button>
   </div>
+  <button class="icon-btn dlg-cerrar" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
 </dialog>
 
 
@@ -156,7 +157,7 @@
      abrir, una sola vez al día, y se quita de en medio con un clic —el reto vive
      detrás del menú y si no se pone delante no lo encuentra nadie. -->
 <dialog id="dlg-reto-invita" class="dlg dlg-invita" aria-labelledby="invita-titulo">
-  <button class="icon-btn invita-cerrar" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+  <button class="icon-btn dlg-cerrar" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   <div class="invita-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
   <h2 id="invita-titulo" data-i18n="reto.invita.titulo">Reto del día</h2>
   <p class="invita-fecha" id="invita-fecha"></p>
@@ -405,7 +406,6 @@
   </section>
 
   </div>
-  <footer class="dlg-foot"><button class="btn primary" data-close data-i18n="dlg.listo">Listo</button></footer>
 </dialog>
 
 

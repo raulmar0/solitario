@@ -122,11 +122,25 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   cada palo con su color, separados también en luminosidad para que se lean en
   escala de grises. Y un pequeño golpe de vibración al colocar y al fallar, en
   los móviles que lo permiten.
-- **Un solo panel**: reto, ajustes, récords y ayuda están en el mismo sitio, en
-  cuatro secciones. Antes eran tres diálogos y tres botones distintos. Lo que pasa
-  dentro se cuenta dentro: la validación del reparto, exportar, importar o borrar
-  escriben en el propio diálogo, no en un cartel que queda tapado detrás. Los
-  récords enseñan además la evolución de tus últimas veinte partidas.
+- **Un solo panel, que sube desde abajo**: reto, ajustes, récords y ayuda están en
+  el mismo sitio, en cuatro secciones. Antes eran tres diálogos y tres botones
+  distintos. En el móvil el panel es una hoja pegada al borde de abajo, a todo lo
+  ancho, con una franja de la mesa a la vista por encima; en pantalla ancha sigue
+  siendo una tarjeta centrada. Se cierra con la ✕ de su cabecera: el «Listo» del
+  pie hacía lo mismo y era un segundo botón dorado junto al principal de cada
+  sección (en el reto, «Jugar el reto de hoy»). Lo que pasa dentro se cuenta
+  dentro: la validación del reparto, exportar, importar o borrar escriben en el
+  propio diálogo, no en un cartel que queda tapado detrás. Los récords enseñan
+  además la evolución de tus últimas veinte partidas.
+- **Los carteles, también desde abajo**: la victoria, la partida cerrada y la
+  invitación al reto suben en el móvil como la misma hoja, y la mesa se sigue
+  viendo encima: detrás de «La partida está cerrada» quedan las cartas que ya no
+  tienen jugada, y detrás de «¡Ganaste!», el rastro de la cascada. Una salida
+  manda: la principal va a lo ancho («Otra partida», «Deshacer la última», «Jugar
+  el reto de hoy») y las otras dos debajo, a medias, en vez de cuatro botones
+  partidos en dos filas desparejas. «Cerrar» dejó la fila de botones: es la ✕ de
+  la esquina, y va la última en el documento para que al abrirse el foco caiga en
+  la salida principal.
 - **Partida cerrada, dicho con precisión**: un mazo con cartas ya no basta para
   dar una partida por viva. Si ninguna de las que pueden salir cabe en ningún
   sitio —ni ahora ni tras pasear cartas entre columnas—, dar vueltas al montón es
@@ -185,7 +199,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.15.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.16.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 

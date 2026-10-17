@@ -928,8 +928,15 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .dlg h3 { margin: 18px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: .8px; color: var(--panel-ink-soft); }
 .dlg p { margin: 6px 0; }
 .dlg-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.dlg-foot, .dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
-.dlg-actions { justify-content: center; }
+.dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+/* Los carteles que se cierran con la ✕ la llevan sobre el contenido, en la
+   esquina: no tienen barra, y una fila entera para un solo botón desequilibraría
+   el centrado. Cerrar ya no ocupa sitio entre los botones de verdad. */
+.dlg-cerrar { position: absolute; top: 8px; right: 8px; }
+/* Una salida manda: la principal a lo ancho y las otras dos debajo, a medias.
+   Eran cuatro botones que se partían en dos filas desparejas. */
+:is(.dlg-win, .dlg-stuck) .dlg-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:is(.dlg-win, .dlg-stuck) .dlg-actions .primary { grid-column: 1 / -1; }
 
 /* Lo que pasa dentro del diálogo se contesta dentro del diálogo: el aviso del
    tablero queda detrás y no se lee. */
@@ -1174,15 +1181,6 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   border-radius: 999px;
   background-clip: content-box;
 }
-
-#dlg-settings .dlg-foot {
-  flex-shrink: 0;
-  justify-content: flex-end;
-  margin: 0;
-  padding: 12px var(--menu-pad);
-  border-top: 1px solid var(--panel-line);
-}
-#dlg-settings .dlg-foot .btn { min-width: 112px; }
 
 /* Al cambiar de sección el cuerpo se posa; el estado de reposo es el visible,
    así que si se pide quietud no se mueve nada y se ve igual. */
@@ -1532,6 +1530,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   justify-content: center;
   gap: 8px;
   margin: 0 0 10px;
+  /* Va a la altura de la ✕: deja libre su hueco (8 + 44 − 20 de relleno) a los
+     dos lados, y así la chapa y la fecha siguen centradas sin meterse debajo. */
+  padding-inline: 32px;
 }
 .win-reto-chapa {
   padding: 4px 12px;
@@ -1558,9 +1559,6 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    para que se lea de un vistazo y se cierre sin pensarlo. */
 .dlg-invita { text-align: center; width: min(94vw, 400px); position: relative; }
 .invita-art { font-size: 34px; letter-spacing: 8px; margin-bottom: 6px; color: var(--accent); }
-/* La ✕ va sobre el contenido, no en una cabecera: el cartel no tiene barra y una
-   fila entera para un solo botón desequilibraría el centrado. */
-.invita-cerrar { position: absolute; top: 8px; right: 8px; }
 .invita-fecha { margin: 0; font-size: 12.5px; color: var(--panel-ink-soft); }
 .invita-fecha::first-letter { text-transform: uppercase; }
 .invita-texto { color: var(--panel-ink-soft); }
@@ -1659,7 +1657,6 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
      regla: así el ritmo de dentro se encoge entero y no a trozos. */
   #dlg-settings { --menu-2: 12px; --menu-3: 18px; }
   #dlg-settings .dlg-head { padding-top: 4px; padding-bottom: 0; }
-  #dlg-settings .dlg-foot { padding-top: 6px; padding-bottom: 6px; }
   #dlg-settings .menu-body { padding-top: 12px; padding-bottom: 12px; }
   #dlg-settings .switch { min-height: 42px; padding: 6px 0; }
   /* Una sola fila, con la barra de progreso pegada al borde de abajo. */
@@ -1684,11 +1681,38 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 }
 
 @media (max-width: 640px) {
-  #dlg-settings { --menu-pad: 16px; --menu-3: 24px; height: min(92dvh, 760px); }
+  /* En el móvil el menú y los carteles son una hoja pegada al borde de abajo, a
+     todo lo ancho, y la mesa se sigue viendo encima: detrás de «La partida está
+     cerrada» quedan a la vista las cartas que ya no tienen jugada. El modal va
+     con inset 0; el margen de arriba en auto lo deja caer. Sube al abrirse en
+     vez de crecer desde el centro. */
+  .dlg {
+    width: 100%;
+    max-width: none;
+    margin: auto 0 0;
+    padding-bottom: calc(20px + var(--safe-bottom));
+    border-bottom: 0;
+    border-radius: 14px 14px 0 0;
+    transform: translateY(100%);
+  }
+  .dlg[open] { transform: none; }
+  @starting-style {
+    .dlg[open] { transform: translateY(100%); }
+  }
+  /* El menú conserva su alto, así que arriba queda una franja de mesa. Sin pie
+     ni «Listo»: se cierra con la ✕ de la cabecera, y el cuerpo llega hasta abajo
+     con su último renglón por encima de la zona segura. */
+  #dlg-settings {
+    --menu-pad: 16px;
+    --menu-3: 24px;
+    height: min(92dvh, 760px);
+    max-width: none;
+    max-height: calc(100dvh - 24px - var(--safe-top));
+  }
+  #dlg-settings .menu-body { padding-bottom: calc(var(--menu-3) + var(--safe-bottom)); }
   #dlg-settings .dlg-head h2 { font-size: 20px; }
   #panel-tabs { margin-right: var(--menu-pad); margin-left: var(--menu-pad); }
   #panel-tabs .tab { font-size: 12px; }
-  #dlg-settings .dlg-foot .btn { width: 100%; }
   #dlg-settings .app-row .btn { width: 100%; }
   #dlg-settings #stats-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #dlg-settings #stats-tabs .tab { padding: 8px; line-height: 1.3; }

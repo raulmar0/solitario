@@ -895,6 +895,34 @@ test('el texto de los diálogos se lee en los dos temas', () => {
   }
 });
 
+test('en el móvil el menú y los carteles son una hoja pegada abajo que se cierra con la ✕', () => {
+  // La hoja: a todo lo ancho, pegada al borde de abajo y con la zona segura dentro.
+  const movil = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)[1];
+  const hoja = /\n {2}\.dlg \{([\s\S]*?)\}/.exec(movil)?.[1] ?? '';
+  assert.match(hoja, /width:\s*100%/, 'a todo lo ancho');
+  assert.match(hoja, /margin:\s*auto 0 0/, 'pegada al borde de abajo');
+  assert.match(hoja, /border-radius:\s*14px 14px 0 0/, 'redondeada solo por arriba');
+  assert.match(hoja, /padding-bottom:[^;]*var\(--safe-bottom\)/, 'con la zona segura dentro');
+  assert.match(movil, /#dlg-settings \.menu-body \{[^}]*var\(--safe-bottom\)/, 'el menú también la guarda');
+
+  // Cerrar es la ✕: ni «Listo» al pie del menú ni «Cerrar» entre los botones.
+  assert.equal($('#dlg-settings .dlg-foot'), null, 'el menú ya no tiene pie');
+  for (const id of ['#dlg-win', '#dlg-stuck', '#dlg-reto-invita']) {
+    const cruz = $(`${id} > .dlg-cerrar[data-close]`);
+    assert.ok(cruz, `${id} se cierra con la ✕`);
+    assert.equal(cruz.getAttribute('data-i18n-aria-label'), 'dlg.cerrar', `${id}: la ✕ tiene nombre`);
+  }
+  for (const id of ['#dlg-win', '#dlg-stuck']) {
+    assert.equal($(`${id} .dlg-actions [data-close]`), null, `${id} ya no tiene «Cerrar» entre sus botones`);
+    // La ✕ va al final: al abrirse, el foco cae en la salida principal.
+    assert.ok($(`${id} button`).classList.contains('primary'), `${id}: el primer botón es el principal`);
+  }
+
+  $('#dlg-win').showModal();
+  $('#dlg-win .dlg-cerrar').click();
+  assert.equal($('#dlg-win').open, false, 'y la ✕ cierra de verdad');
+});
+
 test('el marcador se lee sobre el tapete en los dos temas', () => {
   const base = variables(':root');
   const claro = { ...base, ...variables('html[data-theme="light"]') };

@@ -106,7 +106,6 @@ export default {
 
   // dlg — diálogos (victoria, bloqueo, panel)
   'dlg.cerrar': '닫기',
-  'dlg.listo': '완료',
   'dlg.victoria.titulo': '이겼어요!',
   'dlg.victoria.puntuacion': '점수',
   'dlg.victoria.tiempo': '시간',

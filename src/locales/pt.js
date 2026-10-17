@@ -105,7 +105,6 @@ export default {
 
   // dlg — diálogos (victoria, bloqueo, panel)
   'dlg.cerrar': 'Fechar',
-  'dlg.listo': 'Pronto',
   'dlg.victoria.titulo': 'Ganhou!',
   'dlg.victoria.puntuacion': 'Pontuação',
   'dlg.victoria.tiempo': 'Tempo',
