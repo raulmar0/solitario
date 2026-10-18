@@ -1,6 +1,6 @@
 // Prueba de integración con jsdom: comprueba que la página se monta,
 // que el tablero refleja el estado y que los gestos mueven cartas de verdad.
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
@@ -1629,15 +1629,60 @@ const ordenDelReparto = () => {
   return orden;
 };
 
-test('el reparto deja una separación visible entre cartas', async () => {
-  board.cancel();
-  game.newGame(82);
-  const segunda = ordenDelReparto()[1];
+/**
+ * Reloj falso para el reparto: sus `setTimeout` avanzan cuando la prueba lo dice
+ * y los frames se pintan a su paso, como en el navegador. Con el reloj de verdad,
+ * lo que se veía al mirar dependía de lo que tardara jsdom en repintar, y con la
+ * CPU cargada —`npm test` corre los ficheros en paralelo— se miraba a destiempo:
+ * la segunda carta ya había salido, o la última aún no se había destapado.
+ */
+const FRAME_MS = 16;   // un frame a 60 Hz, redondeado
+function relojFalso() {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  const rafOriginal = window.requestAnimationFrame;
+  const cancelarOriginal = window.cancelAnimationFrame;
+  const frames = new Map();
+  let ultimo = 0;
+  window.requestAnimationFrame = (callback) => { frames.set(++ultimo, callback); return ultimo; };
+  window.cancelAnimationFrame = (id) => { frames.delete(id); };
+  return {
+    /** Deja pasar `ms` milisegundos, pintando por el camino cada frame que toque. */
+    avanzar(ms) {
+      for (let pasado = 0; pasado < ms; pasado += FRAME_MS) {
+        mock.timers.tick(Math.min(FRAME_MS, ms - pasado));
+        // Lo que se pida mientras se pinta va al frame siguiente, como en el navegador.
+        for (const [id, callback] of [...frames]) {
+          if (frames.delete(id)) callback();
+        }
+      }
+    },
+    /** Vuelve al reloj de verdad con el reparto cortado y nada en el aire. */
+    devolver() {
+      mock.timers.reset();
+      board.cancel();   // con los frames falsos aún puestos: si queda uno pendiente, se cancela aquí
+      window.requestAnimationFrame = rafOriginal;
+      window.cancelAnimationFrame = cancelarOriginal;
+      // Lo que despegó con el reloj falso ya no aterrizaría nunca, y una carta
+      // que se cree en vuelo se queda por encima de todas en las pruebas de capas.
+      board.settle();
+    },
+  };
+}
 
-  await new Promise((r) => setTimeout(r, 40));
-  assert.equal(Math.round(posicion(segunda).x), Math.round(mazoX()),
-    'la segunda carta todavía espera su turno en el mazo');
+test('el reparto deja una separación visible entre cartas', () => {
   board.cancel();
+  const reloj = relojFalso();
+  try {
+    game.newGame(82);
+    const [primera, segunda] = ordenDelReparto();
+    reloj.avanzar(40);
+    // Sin esta, un reparto que no arrancara también dejaría la segunda en el mazo.
+    assert.notEqual(Math.round(posicion(primera).x), Math.round(mazoX()), 'la primera ya ha salido');
+    assert.equal(Math.round(posicion(segunda).x), Math.round(mazoX()),
+      'la segunda carta todavía espera su turno en el mazo');
+  } finally {
+    reloj.devolver();
+  }
 });
 
 test('un frame atrasado no repinta después de cancelar el reparto', async () => {
@@ -1706,21 +1751,26 @@ test('un toque durante el reparto se lo salta y coloca todo', () => {
   }
 });
 
-test('el reparto termina solo y deja el tablero en su sitio', async () => {
+test('el reparto termina solo y deja el tablero en su sitio', () => {
   board.cancel();
-  game.newGame(79);
-  const limite = Date.now() + 6000;
-  while (board.repartiendo && Date.now() < limite) {
-    await new Promise((r) => setTimeout(r, 60));
-  }
-  assert.equal(board.repartiendo, false, 'el reparto acaba por sí solo');
+  const reloj = relojFalso();
+  try {
+    game.newGame(79);
+    // Con el reloj de verdad se miraba en cuanto `repartiendo` se apagaba, y eso
+    // podía caer antes del frame que destapa la última carta. Seis segundos
+    // falsos son de sobra para las 28, y cada frame se pinta por el camino.
+    reloj.avanzar(6000);
+    assert.equal(board.repartiendo, false, 'el reparto acaba por sí solo');
 
-  for (const [i, pila] of game.state.tableau.entries()) {
-    const arriba = pila.at(-1);
-    assert.equal(Math.round(posicion(arriba.id).x), Math.round(i * (cssVar('--cw') + cssVar('--gap'))));
-    assert.equal(cartaEl(arriba.id).classList.contains('down'), false, 'la última de cada columna acaba destapada');
+    for (const [i, pila] of game.state.tableau.entries()) {
+      const arriba = pila.at(-1);
+      assert.equal(Math.round(posicion(arriba.id).x), Math.round(i * (cssVar('--cw') + cssVar('--gap'))));
+      assert.equal(cartaEl(arriba.id).classList.contains('down'), false, 'la última de cada columna acaba destapada');
+    }
+    assert.equal(game.moves, 0, 'repartir no cuenta como jugada');
+  } finally {
+    reloj.devolver();
   }
-  assert.equal(game.moves, 0, 'repartir no cuenta como jugada');
 });
 
 test('jugar durante el reparto lo cancela en vez de dejar cartas en el aire', async () => {
