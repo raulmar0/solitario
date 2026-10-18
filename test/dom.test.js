@@ -1194,7 +1194,12 @@ test('un toque en el propio cajón no lo cierra: solo en el fondo', () => {
   const dlg = $('#dlg-settings');
   // jsdom no mide: el cajón va de 120 px hasta abajo, y encima queda la mesa.
   dlg.getBoundingClientRect = () => ({ left: 0, right: 375, top: 120, bottom: 812, width: 375, height: 692, x: 0, y: 120 });
-  const toque = (y) => dlg.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, clientX: 8, clientY: y }));
+  // Un toque es apretar y soltar en el mismo sitio, y detrás llega el clic.
+  const toque = (y) => {
+    puntero('pointerdown', dlg, 8, y);
+    puntero('pointerup', dlg, 8, y);
+    dlg.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, clientX: 8, clientY: y }));
+  };
   try {
     panels.openSettings();
     toque(170);     // el margen junto a las pestañas: el clic da en el propio diálogo
@@ -1204,6 +1209,51 @@ test('un toque en el propio cajón no lo cierra: solo en el fondo', () => {
   } finally {
     delete dlg.getBoundingClientRect;
     if (dlg.open) dlg.close();
+  }
+});
+
+test('apretar dentro y soltar fuera no lo cierra: el toque en el fondo tiene que empezar en él', () => {
+  const dlg = $('#dlg-stuck');
+  const menu = $('#dlg-settings');
+  // jsdom no mide. En pantalla ancha el cartel es una tarjeta en el centro, con
+  // mesa por los cuatro lados; el menú, un cajón con la mesa por encima.
+  dlg.getBoundingClientRect = () => ({ left: 370, right: 730, top: 220, bottom: 540, width: 360, height: 320, x: 370, y: 220 });
+  menu.getBoundingClientRect = () => ({ left: 0, right: 375, top: 120, bottom: 812, width: 375, height: 692, x: 0, y: 120 });
+  // Con el ratón se aprieta en un sitio y se suelta en otro, y el navegador
+  // manda el clic al elemento que contiene a los dos: soltando en la mesa, ese
+  // es el propio diálogo, y el ratón ya está fuera de su caja.
+  const pulsar = (dialogo, aprieta, [x0, y0], [x1, y1]) => {
+    puntero('pointerdown', aprieta, x0, y0);
+    puntero('pointerup', dialogo, x1, y1);
+    dialogo.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, clientX: x1, clientY: y1 }));
+  };
+  const debajo = [550, 640];
+  try {
+    dlg.showModal();
+    pulsar(dlg, $('#dlg-stuck .stuck-art'), [550, 250], debajo);
+    assert.equal(dlg.open, true, 'apretar en los palos y soltar debajo de la tarjeta no la cierra');
+    pulsar(dlg, dlg, [550, 530], debajo);
+    assert.equal(dlg.open, true, 'apretar en su relleno, tampoco');
+    // Si la mesa se aprieta y no llega el clic —el sistema se queda el dedo—, la
+    // siguiente pulsación no hereda dónde empezó aquella.
+    puntero('pointerdown', dlg, ...debajo);
+    puntero('pointercancel', dlg, ...debajo);
+    pulsar(dlg, $('#dlg-stuck .stuck-art'), [550, 250], debajo);
+    assert.equal(dlg.open, true, 'cuenta dónde empezó esta pulsación, no la anterior');
+    pulsar(dlg, dlg, debajo, [560, 650]);
+    assert.equal(dlg.open, false, 'apretar y soltar en la mesa sí la cierra');
+
+    // En el menú, lo mismo apretando en el cuerpo y soltando en la franja de mesa de encima.
+    panels.openSettings();
+    pulsar(menu, $('#tarjeta-nombre'), [180, 300], [180, 60]);
+    assert.equal(menu.open, true, 'apretar en el cuerpo y soltar en la mesa no lo cierra');
+    pulsar(menu, menu, [180, 60], [180, 60]);
+    assert.equal(menu.open, false, 'apretar y soltar en la mesa, sí');
+  } finally {
+    delete dlg.getBoundingClientRect;
+    delete menu.getBoundingClientRect;
+    if (dlg.open) dlg.close();
+    if (menu.open) menu.close();
   }
 });
 

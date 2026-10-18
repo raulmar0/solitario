@@ -88,7 +88,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     return true;
   }
 
-  /** El clic es en el fondo y no en el diálogo: su relleno también es suyo. */
+  /** El puntero está en el fondo y no en el diálogo: su relleno también es suyo. */
   function enElFondo(dlg, event) {
     if (event.target !== dlg) return false;
     const caja = dlg.getBoundingClientRect();
@@ -96,11 +96,26 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       || event.clientY < caja.top || event.clientY > caja.bottom;
   }
 
+  // Y no basta con que el clic acabe en el fondo: tiene que haber empezado en
+  // él. Con el ratón, apretar dentro —en los palos de adorno de un cartel, en el
+  // texto del menú— y soltar fuera hace que el navegador mande el clic al
+  // elemento que contiene a los dos sitios, que es el propio diálogo, y con el
+  // ratón ya fuera de su caja: para `enElFondo` era un toque en la mesa y lo
+  // cerraba. Así que cada pulsación apunta si ha empezado en el fondo, y el clic
+  // solo cuenta como un toque en la mesa si viene de una de esas. Con el dedo no
+  // pasaba: apretar, arrastrar y soltar no es un toque, y no deja clic.
+  let fondoApretado = null;         // el diálogo en cuyo fondo ha empezado la última pulsación
+
   for (const dlg of [dlgWin, dlgStuck, dlgSettings, dlgInvita]) {
+    dlg.addEventListener('pointerdown', (event) => {
+      fondoApretado = enElFondo(dlg, event) ? dlg : null;
+    });
     // Antes bastaba con que el clic diera en el propio diálogo, y eso es también
     // su relleno: el margen junto a las pestañas o el pie de una hoja cerraban.
     dlg.addEventListener('click', (event) => {
-      if (event.target.closest('[data-close]') || enElFondo(dlg, event)) cerrarDialogo(dlg);
+      const desdeElFondo = fondoApretado === dlg;
+      fondoApretado = null;
+      if (event.target.closest('[data-close]') || (desdeElFondo && enElFondo(dlg, event))) cerrarDialogo(dlg);
     });
     // Escape, y el gesto de atrás en Android, también lo bajan en vez de quitarlo.
     dlg.addEventListener('cancel', (event) => {
