@@ -117,6 +117,152 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     });
   }
 
+  // ---------- bajar el cajón tirando de él ----------
+
+  // Un cajón de verdad también se cierra tirando de él hacia abajo. El dedo solo
+  // engancha arriba —el tirador y, en el menú, la cabecera y las pestañas—, que
+  // es donde la hoja de estilos le quita el gesto al navegador: el cuerpo del
+  // menú se tiene que seguir desplazando. Los carteles solo enseñan su tirador
+  // donde son cajones, en el móvil, así que en pantalla ancha no hay de qué tirar.
+  //
+  // Mientras se tira, `data-arrastrando` quita la transición y el cajón va pegado
+  // al dedo; hacia arriba se resiste. Al soltar, si ha bajado un cuarto de su
+  // alto o se ha soltado de un tirón, se cierra por `cerrarDialogo`, y si no
+  // vuelve a su sitio con la transición de abrir. En los dos casos el transform
+  // del dedo se quita en el mismo paso en que se decide: así la transición sale
+  // de donde lo dejó el dedo y no da un salto. Con la quietud pedida no hay
+  // transición: el cajón sigue al dedo igual, pero al soltar se cierra o se
+  // coloca en el acto.
+  const ZONA_TIRADOR = '.dlg-tirador, .dlg-head, #panel-tabs';
+  const UMBRAL_TIRON = 8;           // px de dedo, arriba o abajo, antes de que el toque pase a ser arrastre
+  const FRACCION_CIERRE = 0.25;     // bajado más que esto de su alto, al soltar se cierra
+  const LANZAMIENTO = 0.5;          // px/ms: un tirón así de rápido lo cierra aunque haya bajado poco
+  // ms: la velocidad que cuenta es la de este último tramo. Con más, un cajón
+  // que se recoge hacia arriba justo antes de soltarlo aún parecía ir hacia abajo.
+  const VENTANA_TIRON = 50;
+  const ESTIRON = 24;               // px que cede como mucho hacia arriba
+  let arrastre = null;              // { dlg, id, tirando, base, origen, alto, y, muestras }
+  let clicDelArrastre = null;       // el diálogo cuyo próximo clic es el final de un arrastre
+
+  /** Dónde va el cajón respecto a su sitio, en px: a media subida aún no está en cero. */
+  function desplazamiento(dlg) {
+    const m = /^matrix(3d)?\((.*)\)$/.exec(window.getComputedStyle(dlg).transform);
+    if (!m) return 0;
+    const v = m[2].split(',').map(Number);
+    return (m[1] ? v[13] : v[5]) || 0;
+  }
+
+  /** Hacia abajo, lo que diga el dedo; hacia arriba cede cada vez menos, y nunca más de ESTIRON. */
+  function resistir(y) {
+    return y >= 0 ? y : -ESTIRON * (1 - 1 / (1 - (y * 0.55) / ESTIRON));
+  }
+
+  /**
+   * Se apunta por dónde va el dedo y cuándo. Se guarda el último tramo y una
+   * muestra de antes, que hace de referencia: si se para y al soltar tiembla un
+   * pelo, eso no es un tirón.
+   */
+  function muestrear(a, event) {
+    a.muestras.push({ t: event.timeStamp, y: event.clientY });
+    while (a.muestras.length > 1 && a.muestras[1].t <= event.timeStamp - VENTANA_TIRON) a.muestras.shift();
+  }
+
+  /** La velocidad al soltar, en px/ms y hacia abajo en positivo. */
+  function velocidad({ muestras }) {
+    const [desde, hasta] = [muestras[0], muestras.at(-1)];
+    const dt = hasta.t - desde.t;
+    return dt > 0 ? (hasta.y - desde.y) / dt : 0;
+  }
+
+  /** Lo devuelve a la hoja de estilos: sin el dedo, mandan su sitio y su transición. */
+  function dejarDeTirar(dlg) {
+    delete dlg.dataset.arrastrando;
+    dlg.style.removeProperty('transform');
+    dlg.style.removeProperty('--dlg-fondo');
+  }
+
+  /** Se suelta: se cierra o vuelve. Si el sistema se quedó el dedo, siempre vuelve. */
+  function soltar(event, { puedeCerrar }) {
+    const a = arrastre;
+    arrastre = null;
+    if (!a.tirando) return;              // ha sido un toque: el clic hará lo suyo
+    const { dlg } = a;
+    let cierra = false;
+    if (puedeCerrar) {
+      muestrear(a, event);
+      const v = velocidad(a);
+      cierra = v > LANZAMIENTO || (a.y > a.alto * FRACCION_CIERRE && v > -LANZAMIENTO);
+    }
+    // El clic que llega detrás de soltar es del arrastre, no un toque: se habría
+    // ido al propio diálogo y, con el ratón ya fuera del cajón, contaba como un
+    // toque en el fondo. Ese clic sale en el mismo turno que el `pointerup`, así
+    // que pasado este turno la marca ya no hace falta.
+    clicDelArrastre = dlg;
+    setTimeout(() => { if (clicDelArrastre === dlg) clicDelArrastre = null; }, 0);
+    dejarDeTirar(dlg);
+    if (cierra) cerrarDialogo(dlg);
+  }
+
+  for (const dlg of [dlgWin, dlgStuck, dlgSettings, dlgInvita]) {
+    dlg.addEventListener('pointerdown', (event) => {
+      clicDelArrastre = null;
+      // Un segundo dedo no tira de nada: manda el primero.
+      if (arrastre || event.button !== 0 || !dlg.open || cierres.has(dlg)) return;
+      if (!event.target.closest?.(ZONA_TIRADOR)) return;
+      arrastre = { dlg, id: event.pointerId, tirando: false, origen: event.clientY, muestras: [] };
+      muestrear(arrastre, event);
+    });
+
+    dlg.addEventListener('pointermove', (event) => {
+      const a = arrastre;
+      if (a?.dlg !== dlg || event.pointerId !== a.id) return;
+      if (!a.tirando) {
+        const recorrido = event.clientY - a.origen;
+        if (Math.abs(recorrido) < UMBRAL_TIRON) return;
+        // Ya es un arrastre. Sale de donde esté el cajón, que puede ir aún a
+        // media subida, y desde aquí el dedo se lo lleva aunque salga del diálogo.
+        // Cuenta desde donde se apoyó más el umbral, no desde este evento: el
+        // primero puede llegar muy lejos y el cajón se quedaría atrás todo el rato.
+        a.tirando = true;
+        a.base = desplazamiento(dlg);
+        a.origen += Math.sign(recorrido) * UMBRAL_TIRON;
+        a.alto = dlg.getBoundingClientRect().height || 1;
+        dlg.dataset.arrastrando = '';
+        dlg.setPointerCapture?.(event.pointerId);
+      }
+      muestrear(a, event);
+      a.y = resistir(a.base + event.clientY - a.origen);
+      dlg.style.transform = `translateY(${a.y}px)`;
+      dlg.style.setProperty('--dlg-fondo', Math.min(1, Math.max(0, 1 - a.y / a.alto)).toFixed(3));
+    });
+
+    const esElSuyo = (event) => arrastre?.dlg === dlg && event.pointerId === arrastre.id;
+    dlg.addEventListener('pointerup', (event) => {
+      if (esElSuyo(event)) soltar(event, { puedeCerrar: true });
+    });
+    dlg.addEventListener('pointercancel', (event) => {
+      if (esElSuyo(event)) soltar(event, { puedeCerrar: false });
+    });
+    // El dedo enganchado al principio (con el táctil, lo que se tocó) también
+    // suelta su captura cuando se la queda el diálogo: esa no cuenta.
+    dlg.addEventListener('lostpointercapture', (event) => {
+      if (event.target === dlg && esElSuyo(event)) soltar(event, { puedeCerrar: false });
+    });
+
+    dlg.addEventListener('click', (event) => {
+      if (clicDelArrastre !== dlg) return;
+      clicDelArrastre = null;
+      event.stopImmediatePropagation();
+      event.preventDefault();
+    }, { capture: true });
+
+    // Cerrado por donde sea —Escape a media arrastrada—, no se queda colgado del dedo.
+    dlg.addEventListener('close', () => {
+      if (arrastre?.dlg === dlg) arrastre = null;
+      dejarDeTirar(dlg);
+    });
+  }
+
   // ---------- avisos dentro del diálogo ----------
 
   // Mientras el panel está abierto tapa el banner del tablero, así que lo que

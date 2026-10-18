@@ -120,6 +120,9 @@
 </nav>
 
 <dialog id="dlg-win" class="dlg dlg-win" aria-labelledby="win-titulo">
+  <!-- El tirador del cajón: de él se tira hacia abajo para cerrarlo. Solo se ve
+       donde el diálogo es un cajón (el menú siempre, los carteles en el móvil). -->
+  <div class="dlg-tirador" aria-hidden="true"></div>
   <p class="win-reto" id="win-reto" hidden><span class="win-reto-chapa" data-i18n="dlg.victoria.reto">Reto del día</span><span class="win-reto-fecha" id="win-reto-fecha"></span></p>
   <div class="win-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
   <h2 id="win-titulo" data-i18n="dlg.victoria.titulo">¡Ganaste!</h2>
@@ -141,6 +144,7 @@
 </dialog>
 
 <dialog id="dlg-stuck" class="dlg dlg-stuck" aria-labelledby="stuck-titulo">
+  <div class="dlg-tirador" aria-hidden="true"></div>
   <div class="stuck-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
   <h2 id="stuck-titulo" data-i18n="dlg.bloqueo.titulo">La partida se ha atascado</h2>
   <p class="stuck-note" id="stuck-note"></p>
@@ -157,6 +161,7 @@
      abrir, una sola vez al día, y se quita de en medio con un clic —el reto vive
      detrás del menú y si no se pone delante no lo encuentra nadie. -->
 <dialog id="dlg-reto-invita" class="dlg dlg-invita" aria-labelledby="invita-titulo">
+  <div class="dlg-tirador" aria-hidden="true"></div>
   <button class="icon-btn dlg-cerrar" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   <div class="invita-art" aria-hidden="true">♠ ♥ ♦ ♣</div>
   <h2 id="invita-titulo" data-i18n="reto.invita.titulo">Reto del día</h2>
@@ -169,6 +174,7 @@
 </dialog>
 
 <dialog id="dlg-settings" class="dlg dlg-wide" aria-labelledby="panel-titulo">
+  <div class="dlg-tirador" aria-hidden="true"></div>
   <header class="dlg-head">
     <h2 id="panel-titulo" data-i18n="dlg.titulo.ajustes">Ajustes</h2>
     <button class="icon-btn" data-close aria-label="Cerrar" data-i18n-aria-label="dlg.cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>

@@ -1220,6 +1220,332 @@ test('lo de dentro sube con el cajón y solo se posa aparte al cambiar de secci�
   assert.match(regla('#dlg-settings .panel.entra:not([hidden])').style.getPropertyValue('animation'), /\bmenu-entra\b/);
 });
 
+// ---------- tirar del cajón hacia abajo ----------
+
+/**
+ * Un dedo que tira del cajón: como `puntero`, pero con su hora puesta. Con ella
+ * se sabe si se ha soltado de un tirón, y jsdom le pone a cada evento la del
+ * reloj de verdad: dos eventos seguidos saldrían a la vez o separados por lo
+ * que tarde la máquina, y la prueba diría una cosa u otra según el día.
+ */
+function tirar(tipo, target, y, t, { id = 1 } = {}) {
+  const ev = new window.MouseEvent(tipo, { bubbles: true, cancelable: true, clientX: 180, clientY: y, button: 0 });
+  Object.defineProperty(ev, 'pointerId', { value: id });
+  Object.defineProperty(ev, 'timeStamp', { value: t });
+  target.dispatchEvent(ev);
+}
+
+/**
+ * Lleva el dedo de `desde` a `hasta` a paso de persona: 4 px por fotograma, que
+ * son 0,25 px/ms, la mitad de lo que ya cuenta como tirón. Devuelve la hora a la
+ * que llega.
+ */
+function recorrer(target, desde, hasta, t) {
+  const paso = Math.sign(hasta - desde) * 4;
+  for (let y = desde + paso; paso > 0 ? y <= hasta : y >= hasta; y += paso) tirar('pointermove', target, y, t += 16);
+  return t;
+}
+
+/** jsdom no mide: el menú, como en un móvil de 375 × 812, va de 120 px hasta abajo. */
+const MENU_MOVIL = { left: 0, right: 375, top: 120, bottom: 812, width: 375, height: 692, x: 0, y: 120 };
+const desplazado = (dlg) => Number(/^translateY\((-?[\d.]+)px\)$/.exec(dlg.style.transform)?.[1] ?? NaN);
+
+test('el cajón se agarra por arriba: el tirador, la cabecera y las pestañas, nunca el cuerpo', () => {
+  // Cada cajón lleva su tirador, que es de adorno: el lector de pantalla no lo nombra.
+  for (const id of ['#dlg-settings', '#dlg-win', '#dlg-stuck', '#dlg-reto-invita']) {
+    const tirador = $(`${id} > .dlg-tirador`);
+    assert.ok(tirador, `${id} tiene tirador`);
+    assert.equal(tirador.getAttribute('aria-hidden'), 'true', `${id}: el tirador no se lee`);
+  }
+  // Solo ahí se le quita el gesto al navegador: el cuerpo del menú se sigue desplazando.
+  const zona = reglas().find((r) => apretado(r.selectorText ?? '') === '.dlg-tirador,#dlg-settings:is(.dlg-head,#panel-tabs)');
+  assert.ok(zona, 'una sola regla dice de dónde se tira');
+  assert.equal(zona.style.getPropertyValue('touch-action'), 'none');
+  assert.equal(zona.style.getPropertyValue('user-select'), 'none', 'y tirar con el ratón no va seleccionando el título');
+  assert.equal(reglas().some((r) => /menu-body/.test(r.selectorText ?? '') && r.style.getPropertyValue('touch-action')), false,
+    'el cuerpo se queda con el desplazamiento del navegador');
+  // Donde no hay cajón no hay tirador: en pantalla ancha los carteles son tarjetas.
+  assert.equal(regla('.dlg-tirador').style.getPropertyValue('display'), 'none');
+  const menu = regla('#dlg-settings .dlg-tirador').style;
+  assert.equal(menu.getPropertyValue('display'), 'block', 'el menú es un cajón en cualquier ancho');
+  assert.equal(menu.getPropertyValue('pointer-events'), 'none', 'y ahí es solo la rayita: no le quita el toque a la ✕');
+  const movil = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)[1];
+  assert.match(movil, /\n {2}\.dlg-tirador \{[^}]*display:\s*block/, 'en el móvil, los carteles también');
+  assert.ok(Number(regla('.dlg-cerrar').style.getPropertyValue('z-index')) > Number(regla('.dlg-tirador').style.getPropertyValue('z-index')),
+    'la ✕ de los carteles queda por encima de su tirador');
+  // Mientras se tira no hay transición, ni en el cajón ni en el fondo, y el fondo dice cuánto queda.
+  assert.equal(regla('.dlg[data-arrastrando]').style.getPropertyValue('transition'), 'none');
+  assert.equal(regla('.dlg[data-arrastrando]::backdrop').style.getPropertyValue('transition'), 'none');
+  assert.equal(apretado(regla('.dlg[open]::backdrop').style.getPropertyValue('opacity')), 'var(--dlg-fondo,1)');
+});
+
+test('tirando de la cabecera el cajón baja pegado al dedo, y si no llega a un cuarto vuelve a su sitio', () => {
+  const dlg = $('#dlg-settings');
+  const titulo = $('#panel-titulo');
+  dlg.getBoundingClientRect = () => MENU_MOVIL;
+  try {
+    panels.openSettings();
+    tirar('pointerdown', titulo, 150, 0);
+    tirar('pointermove', titulo, 155, 16);
+    assert.equal(dlg.hasAttribute('data-arrastrando'), false, 'cinco píxeles aún son un toque');
+    assert.equal(dlg.style.transform, '');
+    tirar('pointermove', titulo, 170, 32);
+    assert.equal(dlg.hasAttribute('data-arrastrando'), true, 'pasado el umbral ya es un arrastre, sin transición');
+    assert.equal(dlg.style.transform, 'translateY(12px)', 'que sale de donde está: no salta lo que mide el umbral');
+    let t = 32;
+    for (let y = 175; y <= 250; y += 5) tirar('pointermove', titulo, y, t += 16);
+    assert.equal(dlg.style.transform, 'translateY(92px)', 'y desde ahí va pegado al dedo');
+    assert.equal(dlg.style.getPropertyValue('--dlg-fondo'), (1 - 92 / 692).toFixed(3), 'el fondo se aclara según baja');
+
+    // Se para y lo suelta: 92 px de 692 no llegan al cuarto.
+    tirar('pointerup', titulo, 250, t + 200);
+    assert.equal(dlg.open, true);
+    assert.equal(dlg.hasAttribute('data-cerrando'), false, 'vuelve a su sitio');
+    assert.equal(dlg.hasAttribute('data-arrastrando'), false, 'con la transición de abrir');
+    assert.equal(dlg.style.transform, '', 'que sale de donde lo dejó el dedo: manda otra vez la hoja de estilos');
+    assert.equal(dlg.style.getPropertyValue('--dlg-fondo'), '');
+  } finally {
+    delete dlg.getBoundingClientRect;
+    if (dlg.open) dlg.close();
+  }
+});
+
+test('soltado pasado un cuarto de su alto se cierra, y baja desde donde lo dejó el dedo', async () => {
+  const dlg = $('#dlg-settings');
+  const titulo = $('#panel-titulo');
+  // jsdom no anima: la transición de mentira apunta cómo estaba el diálogo al
+  // arrancarla, que es de donde sale en un navegador de verdad.
+  let alArrancar = null;
+  let llegar = () => {};
+  dlg.getAnimations = () => {
+    if (!dlg.hasAttribute('data-cerrando')) return [];
+    alArrancar = {
+      transform: dlg.style.transform,
+      fondo: dlg.style.getPropertyValue('--dlg-fondo'),
+      arrastrando: dlg.hasAttribute('data-arrastrando'),
+    };
+    return [{ finished: new Promise((r) => { llegar = r; }) }];
+  };
+  dlg.getBoundingClientRect = () => MENU_MOVIL;
+  try {
+    panels.openSettings();
+    tirar('pointerdown', titulo, 150, 0);
+    let t = recorrer(titulo, 150, 350, 0);
+    assert.equal(desplazado(dlg), 192);
+    tirar('pointerup', titulo, 350, t + 16);
+    assert.equal(dlg.hasAttribute('data-cerrando'), true, '192 de 692 pasa del cuarto: se va');
+    assert.deepEqual(alArrancar, { transform: '', fondo: '', arrastrando: false },
+      'el dedo se suelta en el mismo paso que se cierra: la transición arranca desde donde estaba');
+    assert.equal(dlg.open, true, 'mientras baja sigue abierto');
+    llegar();
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(dlg.open, false, 'y al llegar abajo se cierra');
+
+    // Con la quietud pedida no hay transición que esperar: se cierra en el acto.
+    delete dlg.getAnimations;
+    panels.openSettings();
+    tirar('pointerdown', titulo, 150, 2000);
+    t = recorrer(titulo, 150, 350, 2000);
+    tirar('pointerup', titulo, 350, t + 16);
+    assert.equal(dlg.open, false, 'sin transición, en el acto');
+  } finally {
+    delete dlg.getAnimations;
+    delete dlg.getBoundingClientRect;
+    if (dlg.open) dlg.close();
+  }
+});
+
+test('un tirón rápido lo cierra aunque baje poco, recogerlo al final lo deja, y hacia arriba se resiste', () => {
+  const dlg = $('#dlg-settings');
+  const titulo = $('#panel-titulo');
+  dlg.getBoundingClientRect = () => MENU_MOVIL;
+  try {
+    panels.openSettings();
+    // 50 px en 30 ms: lejos del cuarto, pero va lanzado.
+    tirar('pointerdown', titulo, 150, 0);
+    tirar('pointermove', titulo, 160, 8);
+    tirar('pointermove', titulo, 180, 16);
+    tirar('pointermove', titulo, 200, 24);
+    tirar('pointerup', titulo, 200, 30);
+    assert.equal(dlg.open, false, 'de un tirón se va');
+
+    // Baja de sobra y, justo antes de soltarlo, se lo lleva hacia arriba.
+    panels.openSettings();
+    tirar('pointerdown', titulo, 150, 1000);
+    let t = recorrer(titulo, 150, 450, 1000);
+    for (const y of [430, 410, 390]) tirar('pointermove', titulo, y, t += 16);
+    assert.ok(desplazado(dlg) > MENU_MOVIL.height / 4, 'aún está pasado el cuarto');
+    tirar('pointerup', titulo, 390, t + 4);
+    assert.equal(dlg.open, true, 'se lo llevaba para arriba: se queda');
+    assert.equal(dlg.hasAttribute('data-cerrando'), false);
+
+    // Hacia arriba no se va: cede un poco, cada vez menos, y el fondo sigue entero.
+    tirar('pointerdown', titulo, 300, 3000);
+    t = recorrer(titulo, 300, 200, 3000);
+    const poco = desplazado(dlg);
+    t = recorrer(titulo, 200, 0, t);
+    const mucho = desplazado(dlg);
+    assert.ok(poco < 0 && mucho < poco, `sube algo, y más cuanto más se tira (${poco} y ${mucho} px)`);
+    assert.ok(mucho > -24, `pero ni de lejos lo que el dedo: ${mucho} px por casi 300`);
+    assert.equal(dlg.style.getPropertyValue('--dlg-fondo'), '1.000');
+    tirar('pointerup', titulo, 0, t + 100);
+    assert.equal(dlg.open, true);
+    assert.equal(dlg.style.transform, '', 'y al soltarlo vuelve abajo, a su sitio');
+  } finally {
+    delete dlg.getBoundingClientRect;
+    if (dlg.open) dlg.close();
+  }
+});
+
+test('un toque en la ✕ o en una pestaña sigue siendo un toque, y el clic que deja un arrastre no cierra nada', async () => {
+  const dlg = $('#dlg-settings');
+  const cruz = $('#dlg-settings .dlg-head [data-close]');
+  const pestana = $('#tab-records');
+  const clic = (el, y) => el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, clientX: 180, clientY: y }));
+  dlg.getBoundingClientRect = () => MENU_MOVIL;
+  try {
+    panels.openSettings();
+    // Apoyar y levantar con un temblor de nada: es un toque, y llega su clic.
+    tirar('pointerdown', pestana, 160, 0);
+    tirar('pointermove', pestana, 163, 16);
+    tirar('pointerup', pestana, 163, 60);
+    clic(pestana, 163);
+    assert.equal(panels.section, 'records', 'la pestaña cambia de sección');
+    assert.equal(dlg.hasAttribute('data-arrastrando'), false);
+
+    // Se tira desde la ✕ hacia arriba y se suelta con el ratón por encima del
+    // cajón. El clic que manda el navegador detrás cae en el propio diálogo y
+    // fuera de su caja, que es justo lo que cuenta como un toque en el fondo.
+    tirar('pointerdown', cruz, 140, 1000);
+    let t = recorrer(cruz, 140, 60, 1000);
+    tirar('pointerup', dlg, 60, t + 100);
+    clic(dlg, 60);
+    assert.equal(dlg.open, true, 'soltar no es tocar el fondo');
+
+    // Y si el arrastre acaba encima de la ✕, tampoco es pulsarla.
+    tirar('pointerdown', cruz, 140, 3000);
+    t = recorrer(cruz, 140, 200, 3000);
+    t = recorrer(cruz, 200, 140, t);
+    tirar('pointerup', cruz, 140, t + 100);
+    clic(cruz, 140);
+    assert.equal(dlg.open, true, 'el arrastre que acaba en la ✕ no la pulsa');
+
+    // Con el dedo no llega ese clic. El siguiente, aunque sea del teclado, ya es de verdad.
+    tirar('pointerdown', cruz, 140, 5000);
+    t = recorrer(cruz, 140, 200, 5000);
+    tirar('pointerup', cruz, 200, t + 100);
+    await new Promise((r) => setTimeout(r, 0));
+    cruz.click();
+    assert.equal(dlg.open, false, 'y un toque en la ✕ lo cierra');
+  } finally {
+    delete dlg.getBoundingClientRect;
+    if (dlg.open) dlg.close();
+  }
+});
+
+test('desde el cuerpo no se tira, un segundo dedo no cuenta, y si el sistema se queda el dedo vuelve a su sitio', () => {
+  const dlg = $('#dlg-settings');
+  const titulo = $('#panel-titulo');
+  const perderCaptura = (el) => {
+    const ev = new window.Event('lostpointercapture', { bubbles: true });
+    Object.defineProperty(ev, 'pointerId', { value: 1 });
+    el.dispatchEvent(ev);
+  };
+  dlg.getBoundingClientRect = () => MENU_MOVIL;
+  try {
+    panels.openSettings();
+    // El cuerpo es para desplazarse: por mucho que baje el dedo, el cajón no se mueve.
+    const tarjeta = $('#tarjeta-nombre');
+    tirar('pointerdown', tarjeta, 300, 0);
+    let t = recorrer(tarjeta, 300, 600, 0);
+    assert.equal(dlg.hasAttribute('data-arrastrando'), false, 'desde el cuerpo no se tira');
+    assert.equal(dlg.style.transform, '');
+    tirar('pointerup', tarjeta, 600, t + 16);
+    assert.equal(dlg.open, true);
+
+    tirar('pointerdown', titulo, 150, 1000);
+    t = recorrer(titulo, 150, 450, 1000);
+    const abajo = dlg.style.transform;
+    // Cuando el diálogo se queda la captura, el título suelta la suya: no es soltar el cajón.
+    perderCaptura(titulo);
+    assert.equal(dlg.hasAttribute('data-arrastrando'), true, 'la captura que suelta el título no cuenta');
+    // Un segundo dedo ni empieza otro arrastre ni mueve este.
+    tirar('pointerdown', titulo, 500, t + 4, { id: 2 });
+    tirar('pointermove', titulo, 700, t + 8, { id: 2 });
+    tirar('pointerup', titulo, 700, t + 12, { id: 2 });
+    assert.equal(dlg.style.transform, abajo, 'el segundo dedo no lo mueve');
+    assert.equal(dlg.hasAttribute('data-arrastrando'), true, 'ni lo suelta');
+    // El sistema se queda el dedo para un gesto suyo: vuelve aunque hubiera pasado el cuarto.
+    tirar('pointercancel', dlg, 450, t + 16);
+    assert.equal(dlg.open, true);
+    assert.equal(dlg.hasAttribute('data-cerrando'), false, 'cancelar no cierra nunca');
+    assert.equal(dlg.style.transform, '');
+
+    // Escape a media arrastrada lo cierra, y no se queda nada colgado del dedo.
+    tirar('pointerdown', titulo, 150, 3000);
+    t = recorrer(titulo, 150, 250, 3000);
+    dlg.dispatchEvent(new window.Event('cancel', { cancelable: true }));
+    assert.equal(dlg.open, false);
+    assert.equal(dlg.hasAttribute('data-arrastrando'), false);
+    assert.equal(dlg.style.transform, '');
+    tirar('pointermove', titulo, 300, t + 16);
+    assert.equal(dlg.style.transform, '', 'el dedo que sigue moviéndose ya no tira de nada');
+  } finally {
+    delete dlg.getBoundingClientRect;
+    if (dlg.open) dlg.close();
+  }
+});
+
+test('los carteles del móvil también se cierran tirando de su tirador, y solo de él', () => {
+  const dlg = $('#dlg-stuck');
+  const tirador = $('#dlg-stuck > .dlg-tirador');
+  const boton = $('#dlg-stuck [data-action="restart"]');
+  dlg.getBoundingClientRect = () => ({ left: 0, right: 375, top: 572, bottom: 812, width: 375, height: 240, x: 0, y: 572 });
+  try {
+    dlg.showModal();
+    // Desde los botones no se tira: son para pulsarlos.
+    tirar('pointerdown', boton, 760, 0);
+    let t = recorrer(boton, 760, 800, 0);
+    tirar('pointerup', boton, 800, t + 100);
+    assert.equal(dlg.open, true);
+    assert.equal(dlg.style.transform, '', 'desde un botón no se mueve');
+    // Desde el tirador sí: 72 px de 240 pasan del cuarto.
+    tirar('pointerdown', tirador, 590, 1000);
+    t = recorrer(tirador, 590, 670, 1000);
+    assert.equal(desplazado(dlg), 72);
+    tirar('pointerup', tirador, 670, t + 100);
+    assert.equal(dlg.open, false, 'se cierra');
+  } finally {
+    delete dlg.getBoundingClientRect;
+    if (dlg.open) dlg.close();
+  }
+});
+
+test('cogido a media subida, el cajón sale de donde va y no salta a su sitio', () => {
+  const dlg = $('#dlg-settings');
+  const titulo = $('#panel-titulo');
+  const original = window.getComputedStyle;
+  // A media subida el navegador da el transform de ese instante, en forma de matriz.
+  window.getComputedStyle = (el, ...resto) => (el === dlg
+    ? { transform: 'matrix(1, 0, 0, 1, 0, 200)' }
+    : original.call(window, el, ...resto));
+  dlg.getBoundingClientRect = () => MENU_MOVIL;
+  try {
+    panels.openSettings();
+    tirar('pointerdown', titulo, 150, 0);
+    tirar('pointermove', titulo, 158, 16);
+    assert.equal(desplazado(dlg), 200, 'arranca donde estaba');
+    tirar('pointermove', titulo, 178, 32);
+    assert.equal(desplazado(dlg), 220, 'y desde ahí sigue al dedo');
+    tirar('pointerup', titulo, 178, 300);
+    assert.equal(dlg.open, false, 'soltado tan abajo, se va');
+  } finally {
+    window.getComputedStyle = original;
+    delete dlg.getBoundingClientRect;
+    if (dlg.open) dlg.close();
+  }
+});
+
 test('el marcador se lee sobre el tapete en los dos temas', () => {
   const base = variables(':root');
   const claro = { ...base, ...variables('html[data-theme="light"]') };

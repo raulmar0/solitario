@@ -128,18 +128,24 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   mesa a la vista por encima: en el móvil a todo lo ancho, y en pantalla ancha
   centrado y con su ancho de siempre (antes ahí era una tarjeta en el centro).
   Sube entero desde debajo del borde, opaco y con lo de dentro ya puesto, con la
-  curva de las hojas de iOS, en 480 ms; al cerrarse —con la ✕, con Escape o
-  tocando la mesa— baja por el mismo sitio en 300 ms y solo al llegar se cierra
-  de verdad. Antes la salida se le dejaba al navegador y solo Chrome la sabía
-  animar: en Safari el menú se esfumaba en el sitio. Si se vuelve a pedir a
-  medio camino, sube desde donde iba. Tocar el propio cajón —el margen junto a
-  las pestañas— ya no lo cierra: solo la mesa de alrededor. El único botón de
-  salida es la ✕ de la cabecera: el «Listo» del pie hacía lo mismo y era un
-  segundo botón dorado junto al principal de cada sección (en el reto, «Jugar el
-  reto de hoy»). Lo que pasa dentro se cuenta dentro: la validación del reparto,
-  exportar, importar o borrar escriben en el propio diálogo, no en un cartel que
-  queda tapado detrás. Los récords enseñan además la evolución de tus últimas
-  veinte partidas.
+  curva de las hojas de iOS, en 480 ms; al cerrarse —con la ✕, con Escape,
+  tocando la mesa o tirando de él hacia abajo— baja por el mismo sitio en 300 ms
+  y solo al llegar se cierra de verdad. Antes la salida se le dejaba al navegador
+  y solo Chrome la sabía animar: en Safari el menú se esfumaba en el sitio. Si se
+  vuelve a pedir a medio camino, sube desde donde iba. Se baja con el dedo o con
+  el ratón como un cajón de verdad: desde la rayita de arriba, la cabecera o las
+  pestañas va pegado al dedo y el fondo se aclara según baja; soltado pasado un
+  cuarto de su alto, o de un tirón, sigue bajando desde donde se dejó, y si no
+  vuelve a su sitio. Hacia arriba solo cede un poco. Los carteles del móvil se
+  bajan igual, desde su franja de arriba. Del cuerpo no se tira, que se tiene que
+  seguir desplazando, y un toque en la ✕ o en una pestaña sigue siendo un toque.
+  Tocar el propio cajón —el margen junto a las pestañas— ya no lo cierra: solo la
+  mesa de alrededor. El único botón de salida es la ✕ de la cabecera: el «Listo»
+  del pie hacía lo mismo y era un segundo botón dorado junto al principal de cada
+  sección (en el reto, «Jugar el reto de hoy»). Lo que pasa dentro se cuenta
+  dentro: la validación del reparto, exportar, importar o borrar escriben en el
+  propio diálogo, no en un cartel que queda tapado detrás. Los récords enseñan
+  además la evolución de tus últimas veinte partidas.
 - **El menú, por tarjetas**: cada grupo de ajustes es una tarjeta de filas —el
   título encima, el rótulo a la izquierda y el control o la cifra a la derecha—,
   como las hojas de ajustes de Peloton, Quizlet o Tinder. Antes eran rótulos
@@ -238,7 +244,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.19.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.20.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -323,7 +329,7 @@ Lo que está decidido y aún no está hecho vive en [`docs/TODO.md`](docs/TODO.m
 npm test
 ```
 
-447 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+455 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, el recomendador (que ninguna partida entre en
 bucle siguiendo sus consejos, que no mire cartas tapadas y que pista y toque no se

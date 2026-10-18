@@ -936,7 +936,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   pointer-events: none;                /* lo que se va ya no se toca */
 }
 .dlg-wide { width: min(94vw, 720px); }
-/* El fondo se oscurece al paso del diálogo y se aclara con él. */
+/* El fondo se oscurece al paso del diálogo y se aclara con él. Mientras se tira
+   del cajón, `--dlg-fondo` (lo pone panels.js) dice cuánto queda de él: se va
+   aclarando según baja. */
 .dlg::backdrop {
   background: rgba(0, 0, 0, .55);
   backdrop-filter: blur(2px);
@@ -944,7 +946,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   opacity: 0;
 }
 .dlg[open]::backdrop {
-  opacity: 1;
+  opacity: var(--dlg-fondo, 1);
 }
 @starting-style {
   .dlg[open]::backdrop {
@@ -954,6 +956,51 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .dlg[open][data-cerrando]::backdrop {
   opacity: 0;
 }
+/* El cajón también se cierra tirando de él hacia abajo. El tirador es la rayita
+   de arriba que lo dice, y solo la llevan los cajones: el menú siempre, los
+   carteles en el móvil (los enciende la regla del móvil, al final); en pantalla
+   ancha los carteles son tarjetas en el centro y no hay de qué tirar.
+   El dedo solo engancha arriba: el tirador y, en el menú, la cabecera y las
+   pestañas. Ahí, y solo ahí, el navegador no se queda el gesto para desplazar
+   (`touch-action: none`), porque el cuerpo del menú se tiene que seguir
+   desplazando. Un toque en la ✕ o en una pestaña sigue siendo un toque: el
+   arrastre no empieza hasta que el dedo baja unos píxeles. */
+.dlg-tirador {
+  display: none;
+  position: absolute;
+  top: 0; right: 0; left: 0;
+  /* Por encima de lo que cubre: los palos apagados del cartel de bloqueo llevan
+     opacidad, y eso los pinta en la capa de lo posicionado, encima del tirador. */
+  z-index: 1;
+  cursor: grab;
+}
+/* Ni desplazar ni seleccionar: Chrome vuelve a hacer seleccionable el texto de
+   un diálogo modal abierto, aunque el body diga que no, y tirar con el ratón
+   desde el título lo iba subrayando entero. */
+.dlg-tirador,
+#dlg-settings :is(.dlg-head, #panel-tabs) {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.dlg-tirador::before {
+  content: '';
+  position: absolute;
+  top: 6px; left: 50%;
+  width: 36px; height: 5px;
+  margin-left: -18px;
+  border-radius: 999px;
+  background: var(--panel-ink-soft);
+  opacity: .4;
+}
+/* En el menú es solo la rayita: se tira de la cabecera entera, que la tiene
+   debajo. Que no reciba el dedo, porque taparía la ✕: con la pantalla tumbada
+   la cabecera se aprieta y la ✕ sube hasta el borde. */
+#dlg-settings .dlg-tirador { display: block; height: 0; pointer-events: none; }
+/* Mientras se tira, el cajón va pegado al dedo: ninguna transición por medio,
+   ni en él ni en el fondo. Al soltar se quita y la transición sale de ahí. */
+.dlg[data-arrastrando] { transition: none; cursor: grabbing; }
+.dlg[data-arrastrando]::backdrop { transition: none; }
 .dlg h2 { margin: 0 0 4px; font-size: 19px; }
 .dlg h3 { margin: 18px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: .8px; color: var(--panel-ink-soft); }
 .dlg p { margin: 6px 0; }
@@ -961,8 +1008,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
 /* Los carteles que se cierran con la ✕ la llevan sobre el contenido, en la
    esquina: no tienen barra, y una fila entera para un solo botón desequilibraría
-   el centrado. Cerrar ya no ocupa sitio entre los botones de verdad. */
-.dlg-cerrar { position: absolute; top: 8px; right: 8px; }
+   el centrado. Cerrar ya no ocupa sitio entre los botones de verdad. Va por
+   encima del tirador, que en el móvil ocupa toda esa franja. */
+.dlg-cerrar { position: absolute; top: 8px; right: 8px; z-index: 2; }
 /* Una salida manda: la principal a lo ancho y las otras dos debajo, a medias.
    Eran cuatro botones que se partían en dos filas desparejas. */
 :is(.dlg-win, .dlg-stuck) .dlg-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1839,6 +1887,11 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
     border-bottom: 0;
     border-radius: 14px 14px 0 0;
   }
+  /* Los carteles no tienen cabecera: su tirador es una franja a lo ancho que
+     cubre el aire de arriba y la fila de palos de adorno (20 px de relleno y
+     una línea de casi 50), y acaba justo antes del título. La ✕ de la esquina
+     queda por encima, así que se sigue pulsando. */
+  .dlg-tirador { display: block; height: 70px; }
   /* El menú conserva su alto, así que arriba queda una franja de mesa. Sin pie
      ni «Listo»: se cierra con la ✕ de la cabecera. */
   #dlg-settings {
