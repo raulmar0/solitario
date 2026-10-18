@@ -10,6 +10,12 @@
   --flip-speed: 280ms;    /* el volteo al destapar, un pelo más corto que el vuelo */
   --vuelo: cubic-bezier(.35, .12, .65, .88); /* acelera y frena sin saltar al salir */
   --volteo: cubic-bezier(.15, .45, .85, .55);  /* corre al salir y se frena en el canto */
+  /* El cajón: la curva de las hojas de iOS, que sale con ganas y se posa sin
+     rebote. Abrir dura más que una transición de botón porque recorre la
+     pantalla entera; cerrar, menos, porque quien cierra ya ha terminado. */
+  --cajon-curva: cubic-bezier(.32, .72, 0, 1);
+  --cajon-abre: 480ms;
+  --cajon-cierra: 300ms;
 
   --felt-1: #14663f;
   --felt-2: #0b3f28;
@@ -882,7 +888,21 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 
 /* ---------- diálogos ---------- */
 
+/* Cómo entra y cómo se va un diálogo, en cinco variables. La tarjeta del centro
+   aparece desde un pelo más pequeña y transparente; el cajón —el menú siempre, y
+   en el móvil todos— sube entero desde el borde de abajo y se va por el mismo
+   sitio, opaco de principio a fin, como un cajón de verdad.
+   Cerrar es abrir al revés: `panels.js` pone `data-cerrando`, que lo devuelve a
+   su sitio de reposo, y no lo cierra de verdad hasta que llega. Antes la salida
+   se le dejaba al navegador con `overlay` y `display` en la transición, y eso
+   solo lo sabe hacer Chrome: en Safari el menú se esfumaba en el sitio. */
 .dlg {
+  --dlg-fuera: scale(.96);             /* dónde está cuando no está */
+  --dlg-fuera-opacidad: 0;
+  --dlg-curva: cubic-bezier(0.16, 1, 0.3, 1);
+  --dlg-abre: var(--speed);
+  --dlg-cierra: var(--speed);
+  --dlg-dura: var(--dlg-abre);
   border: 1px solid var(--panel-line);
   border-radius: 14px;
   background: var(--panel);
@@ -895,25 +915,32 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   overflow-y: auto;
   overscroll-behavior: contain;
   box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
-  transition: var(--quieto, opacity var(--speed) ease-out, transform var(--speed) cubic-bezier(0.16, 1, 0.3, 1), overlay var(--speed) allow-discrete, display var(--speed) allow-discrete);
-  opacity: 0;
-  transform: scale(0.96);
+  transition: var(--quieto, opacity var(--dlg-dura) ease-out, transform var(--dlg-dura) var(--dlg-curva));
+  opacity: var(--dlg-fuera-opacidad);
+  transform: var(--dlg-fuera);
 }
 .dlg[open] {
   opacity: 1;
-  transform: scale(1);
+  transform: none;
 }
 @starting-style {
   .dlg[open] {
-    opacity: 0;
-    transform: scale(0.96);
+    opacity: var(--dlg-fuera-opacidad);
+    transform: var(--dlg-fuera);
   }
 }
+.dlg[open][data-cerrando] {
+  --dlg-dura: var(--dlg-cierra);
+  opacity: var(--dlg-fuera-opacidad);
+  transform: var(--dlg-fuera);
+  pointer-events: none;                /* lo que se va ya no se toca */
+}
 .dlg-wide { width: min(94vw, 720px); }
+/* El fondo se oscurece al paso del diálogo y se aclara con él. */
 .dlg::backdrop {
   background: rgba(0, 0, 0, .55);
   backdrop-filter: blur(2px);
-  transition: var(--quieto, opacity var(--speed) linear, overlay var(--speed) allow-discrete, display var(--speed) allow-discrete);
+  transition: var(--quieto, opacity var(--dlg-dura) var(--dlg-curva));
   opacity: 0;
 }
 .dlg[open]::backdrop {
@@ -923,6 +950,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   .dlg[open]::backdrop {
     opacity: 0;
   }
+}
+.dlg[open][data-cerrando]::backdrop {
+  opacity: 0;
 }
 .dlg h2 { margin: 0 0 4px; font-size: 19px; }
 .dlg h3 { margin: 18px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: .8px; color: var(--panel-ink-soft); }
@@ -1084,17 +1114,29 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    desplaza, así que las pestañas, el aviso y el cierre siguen al alcance por
    larga que sea la sección. Las medidas salen de una escala corta y no de un
    número distinto en cada regla: apretado dentro de un grupo, generoso entre
-   grupos, y siempre más aire encima de un título que debajo. */
+   grupos, y siempre más aire encima de un título que debajo.
+   Y es un cajón en cualquier ancho: pegado al borde de abajo, sube entero al
+   abrirse y baja por el mismo sitio al cerrarse. En pantalla ancha va centrado
+   y con su ancho de siempre, con la mesa a la vista por encima. */
 #dlg-settings {
   --menu-pad: 20px;    /* el aire lateral del marco */
   --menu-1: 8px;       /* entre un control y su explicación */
   --menu-2: 16px;      /* entre dos controles del mismo grupo */
   --menu-3: 28px;      /* entre dos grupos */
+  --dlg-fuera: translateY(100%);
+  --dlg-fuera-opacidad: 1;
+  --dlg-curva: var(--cajon-curva);
+  --dlg-abre: var(--cajon-abre);
+  --dlg-cierra: var(--cajon-cierra);
+  margin: auto auto 0;
   padding: 0;
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
   height: min(88vh, 760px);
   height: min(88dvh, 760px);
   max-width: calc(100vw - 24px - var(--safe-left) - var(--safe-right));
-  max-height: calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom));
+  /* La zona segura de abajo va dentro, en el relleno del cuerpo. */
+  max-height: calc(100dvh - 24px - var(--safe-top));
   overflow: hidden;
 }
 #dlg-settings[open] { display: flex; flex-direction: column; }
@@ -1129,7 +1171,9 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .menu-body {
   flex: 1;
   min-height: 0;
-  padding: var(--menu-3) var(--menu-pad) var(--menu-3);
+  /* El último renglón queda por encima de la zona segura: el cajón llega al
+     borde de la pantalla. */
+  padding: var(--menu-3) var(--menu-pad) calc(var(--menu-3) + var(--safe-bottom));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -1151,11 +1195,13 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 }
 
 /* Al cambiar de sección el cuerpo se posa; el estado de reposo es el visible,
-   así que si se pide quietud no se mueve nada y se ve igual. */
+   así que si se pide quietud no se mueve nada y se ve igual. Solo al cambiar
+   (la clase la pone panels.js): al abrir, lo de dentro sube con el cajón y no
+   aparece aparte, a medio camino y transparente. */
 @keyframes menu-entra {
   from { opacity: 0; transform: translateY(7px); }
 }
-#dlg-settings .panel:not([hidden]) {
+#dlg-settings .panel.entra:not([hidden]) {
   animation: var(--quieto, menu-entra 240ms cubic-bezier(0.16, 1, 0.3, 1));
 }
 
@@ -1751,7 +1797,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
      regla: así el ritmo de dentro se encoge entero y no a trozos. */
   #dlg-settings { --menu-2: 12px; --menu-3: 18px; }
   #dlg-settings .dlg-head { padding-top: 4px; padding-bottom: 0; }
-  #dlg-settings .menu-body { padding-top: 12px; padding-bottom: 12px; }
+  #dlg-settings .menu-body { padding-top: 12px; padding-bottom: calc(12px + var(--safe-bottom)); }
   #dlg-settings .fila { min-height: 42px; padding-top: 8px; padding-bottom: 8px; }
   /* Una sola fila, con la barra de progreso pegada al borde de abajo. */
   .topbar {
@@ -1778,32 +1824,29 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   /* En el móvil el menú y los carteles son una hoja pegada al borde de abajo, a
      todo lo ancho, y la mesa se sigue viendo encima: detrás de «La partida está
      cerrada» quedan a la vista las cartas que ya no tienen jugada. El modal va
-     con inset 0; el margen de arriba en auto lo deja caer. Sube al abrirse en
-     vez de crecer desde el centro. */
+     con inset 0; el margen de arriba en auto lo deja caer. Todos son cajones:
+     suben al abrirse en vez de crecer desde el centro, y bajan al cerrarse. */
   .dlg {
+    --dlg-fuera: translateY(100%);
+    --dlg-fuera-opacidad: 1;
+    --dlg-curva: var(--cajon-curva);
+    --dlg-abre: var(--cajon-abre);
+    --dlg-cierra: var(--cajon-cierra);
     width: 100%;
     max-width: none;
     margin: auto 0 0;
     padding-bottom: calc(20px + var(--safe-bottom));
     border-bottom: 0;
     border-radius: 14px 14px 0 0;
-    transform: translateY(100%);
-  }
-  .dlg[open] { transform: none; }
-  @starting-style {
-    .dlg[open] { transform: translateY(100%); }
   }
   /* El menú conserva su alto, así que arriba queda una franja de mesa. Sin pie
-     ni «Listo»: se cierra con la ✕ de la cabecera, y el cuerpo llega hasta abajo
-     con su último renglón por encima de la zona segura. */
+     ni «Listo»: se cierra con la ✕ de la cabecera. */
   #dlg-settings {
     --menu-pad: 16px;
     --menu-3: 24px;
     height: min(92dvh, 760px);
     max-width: none;
-    max-height: calc(100dvh - 24px - var(--safe-top));
   }
-  #dlg-settings .menu-body { padding-bottom: calc(var(--menu-3) + var(--safe-bottom)); }
   #dlg-settings .dlg-head h2 { font-size: 20px; }
   #panel-tabs { margin-right: var(--menu-pad); margin-left: var(--menu-pad); }
   #panel-tabs .tab { font-size: 12px; }

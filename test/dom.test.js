@@ -1087,7 +1087,11 @@ test('en el móvil el menú y los carteles son una hoja pegada abajo que se cier
   assert.match(hoja, /margin:\s*auto 0 0/, 'pegada al borde de abajo');
   assert.match(hoja, /border-radius:\s*14px 14px 0 0/, 'redondeada solo por arriba');
   assert.match(hoja, /padding-bottom:[^;]*var\(--safe-bottom\)/, 'con la zona segura dentro');
-  assert.match(movil, /#dlg-settings \.menu-body \{[^}]*var\(--safe-bottom\)/, 'el menú también la guarda');
+  // El menú la guarda en el cuerpo en cualquier ancho: es un cajón también en
+  // pantalla ancha. Y con la pantalla tumbada, que aprieta el relleno, también.
+  assert.match(regla('.menu-body').style.getPropertyValue('padding'), /var\(--safe-bottom\)/, 'el menú también la guarda');
+  const tumbada = /@media \(max-height: 520px\) \{([\s\S]*?)\n\}/.exec(css)[1];
+  assert.match(tumbada, /#dlg-settings \.menu-body \{[^}]*padding-bottom:[^;]*var\(--safe-bottom\)/, 'también con la pantalla tumbada');
 
   // Cerrar es la ✕: ni «Listo» al pie del menú ni «Cerrar» entre los botones.
   assert.equal($('#dlg-settings .dlg-foot'), null, 'el menú ya no tiene pie');
@@ -1105,6 +1109,115 @@ test('en el móvil el menú y los carteles son una hoja pegada abajo que se cier
   $('#dlg-win').showModal();
   $('#dlg-win .dlg-cerrar').click();
   assert.equal($('#dlg-win').open, false, 'y la ✕ cierra de verdad');
+});
+
+test('el menú es un cajón en cualquier ancho: sube desde el borde de abajo y baja por el mismo sitio', () => {
+  const menu = regla('#dlg-settings').style;
+  assert.equal(menu.getPropertyValue('--dlg-fuera').trim(), 'translateY(100%)', 'cerrado, está debajo del borde');
+  assert.equal(menu.getPropertyValue('--dlg-fuera-opacidad').trim(), '1', 'y opaco: un cajón no se desvanece');
+  assert.match(menu.getPropertyValue('margin'), /^auto auto 0(px)?$/, 'pegado abajo y centrado también en pantalla ancha');
+  assert.match(menu.getPropertyValue('border-radius'), /^14px 14px 0(px)? 0(px)?$/, 'redondeado solo por arriba');
+  assert.equal(menu.getPropertyValue('--dlg-abre').trim(), 'var(--cajon-abre)');
+  assert.equal(menu.getPropertyValue('--dlg-cierra').trim(), 'var(--cajon-cierra)');
+  // En el móvil, los carteles son el mismo cajón.
+  const movil = /@media \(max-width: 640px\) \{([\s\S]*?)\n\}/.exec(css)[1];
+  const hoja = /\n {2}\.dlg \{([\s\S]*?)\}/.exec(movil)?.[1] ?? '';
+  assert.match(hoja, /--dlg-fuera:\s*translateY\(100%\)/, 'en el móvil todos bajan');
+  assert.match(hoja, /--dlg-cierra:\s*var\(--cajon-cierra\)/);
+
+  // Abrir y cerrar son la misma transición, con la quietud por delante, y la
+  // salida ya no depende de `overlay`, que solo sabe animar Chrome.
+  const tr = regla('.dlg').style.getPropertyValue('transition');
+  assert.match(apretado(tr), /^var\(--quieto,/);
+  assert.match(apretado(tr), /transformvar\(--dlg-dura\)var\(--dlg-curva\)/);
+  assert.doesNotMatch(tr, /allow-discrete|overlay/);
+  const cerrando = regla('.dlg[open][data-cerrando]').style;
+  assert.equal(cerrando.getPropertyValue('transform').trim(), 'var(--dlg-fuera)', 'al cerrarse vuelve por donde vino');
+  assert.equal(cerrando.getPropertyValue('--dlg-dura').trim(), 'var(--dlg-cierra)');
+  assert.equal(regla('.dlg[open][data-cerrando]::backdrop').style.getPropertyValue('opacity').trim(), '0',
+    'y el fondo se aclara con él');
+  const raiz = variables(':root');
+  assert.ok(parseFloat(raiz['--cajon-cierra']) < parseFloat(raiz['--cajon-abre']), 'cerrar dura menos que abrir');
+});
+
+test('cerrar espera a que el cajón llegue abajo, y pedirlo a medio camino lo hace volver', async () => {
+  const dlg = $('#dlg-settings');
+  const cruz = $('#dlg-settings .dlg-head [data-close]');
+  const vuelta = () => new Promise((r) => setTimeout(r, 0));
+  // jsdom no anima nada: se le da una transición de mentira que acaba cuando se diga.
+  let llegar = () => {};
+  dlg.getAnimations = () => (dlg.hasAttribute('data-cerrando')
+    ? [{ finished: new Promise((r) => { llegar = r; }) }]
+    : []);
+  try {
+    panels.openSettings();
+    cruz.click();
+    assert.equal(dlg.open, true, 'mientras baja sigue abierto');
+    assert.equal(dlg.hasAttribute('data-cerrando'), true, 'y la hoja de estilos lo lleva abajo');
+    cruz.click();                      // un segundo toque no empieza otro cierre
+    llegar();
+    await vuelta();
+    assert.equal(dlg.open, false, 'al llegar se cierra de verdad');
+    assert.equal(dlg.hasAttribute('data-cerrando'), false);
+
+    panels.openSettings();
+    cruz.click();
+    const llegarPrimero = llegar;
+    panels.openStats();
+    assert.equal(dlg.hasAttribute('data-cerrando'), false, 'vuelve a subir desde donde iba');
+    assert.equal(panels.section, 'records', 'y por la sección que se ha pedido');
+    llegarPrimero();
+    await vuelta();
+    assert.equal(dlg.open, true, 'el cierre que se quedó a medias ya no lo cierra');
+
+    // Escape también lo baja en vez de quitarlo de golpe.
+    const escape = new window.Event('cancel', { cancelable: true });
+    dlg.dispatchEvent(escape);
+    assert.equal(escape.defaultPrevented, true);
+    assert.equal(dlg.hasAttribute('data-cerrando'), true);
+    llegar();
+    await vuelta();
+    assert.equal(dlg.open, false);
+  } finally {
+    delete dlg.getAnimations;
+    if (dlg.open) dlg.close();
+  }
+
+  // Sin nada en marcha (quietud pedida) se cierra en el acto, y lo mismo los carteles.
+  $('#dlg-stuck').showModal();
+  $('#dlg-stuck .dlg-cerrar').click();
+  assert.equal($('#dlg-stuck').open, false);
+  assert.equal($('#dlg-stuck').hasAttribute('data-cerrando'), false);
+});
+
+test('un toque en el propio cajón no lo cierra: solo en el fondo', () => {
+  const dlg = $('#dlg-settings');
+  // jsdom no mide: el cajón va de 120 px hasta abajo, y encima queda la mesa.
+  dlg.getBoundingClientRect = () => ({ left: 0, right: 375, top: 120, bottom: 812, width: 375, height: 692, x: 0, y: 120 });
+  const toque = (y) => dlg.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, clientX: 8, clientY: y }));
+  try {
+    panels.openSettings();
+    toque(170);     // el margen junto a las pestañas: el clic da en el propio diálogo
+    assert.equal(dlg.open, true, 'el relleno también es el cajón');
+    toque(60);      // la franja de mesa que queda por encima
+    assert.equal(dlg.open, false, 'el fondo sí lo cierra');
+  } finally {
+    delete dlg.getBoundingClientRect;
+    if (dlg.open) dlg.close();
+  }
+});
+
+test('lo de dentro sube con el cajón y solo se posa aparte al cambiar de sección', () => {
+  panels.openSettings();
+  assert.equal($('#panel-ajustes').classList.contains('entra'), false, 'al abrir no se anima por su cuenta');
+  $('#tab-records').click();
+  assert.equal($('#panel-records').classList.contains('entra'), true, 'al cambiar de pestaña, sí');
+  assert.equal($('#panel-ajustes').classList.contains('entra'), false);
+  $('#dlg-settings').close();
+  panels.openHelp();
+  assert.equal($('#panel-ayuda').classList.contains('entra'), false, 'abrir por otra sección tampoco');
+  $('#dlg-settings').close();
+  assert.match(regla('#dlg-settings .panel.entra:not([hidden])').style.getPropertyValue('animation'), /\bmenu-entra\b/);
 });
 
 test('el marcador se lee sobre el tapete en los dos temas', () => {

@@ -52,10 +52,68 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   const dlgInvita = $('#dlg-reto-invita');
   let statsMode = null;
 
+  // ---------- abrir y cerrar ----------
+
+  // Un diálogo no desaparece de golpe: vuelve por donde vino —el cajón baja, la
+  // tarjeta se encoge— y solo al llegar se cierra de verdad. `data-cerrando` lo
+  // manda a su sitio de reposo (dónde está eso lo dice la hoja de estilos) y aquí
+  // se espera a que llegue. Sin nada en marcha —quietud pedida, o jsdom en las
+  // pruebas— se cierra en el acto.
+  const RESERVA_CIERRE_MS = 1000;   // por si el navegador no llega a acabarla (pestaña oculta)
+  const cierres = new Map();        // diálogo → su cierre en curso
+
+  function cerrarDialogo(dlg) {
+    if (!dlg.open || cierres.has(dlg)) return;
+    const cierre = {};
+    cierres.set(dlg, cierre);
+    dlg.dataset.cerrando = '';
+    const acabar = () => {
+      if (cierres.get(dlg) !== cierre) return;    // lo volvieron a abrir por el camino
+      cierres.delete(dlg);
+      dlg.close();
+      delete dlg.dataset.cerrando;                // ya cerrado: quitarlo no mueve nada
+    };
+    // Pedir las animaciones obliga al navegador a recalcular el estilo, así que
+    // la transición que acaba de encender `data-cerrando` ya sale aquí.
+    const enMarcha = dlg.getAnimations?.() ?? [];
+    if (!enMarcha.length) { acabar(); return; }
+    Promise.allSettled(enMarcha.map((a) => a.finished)).then(acabar);
+    setTimeout(acabar, RESERVA_CIERRE_MS);
+  }
+
+  /** Si se estaba yendo, se queda: vuelve a subir desde donde iba. */
+  function retener(dlg) {
+    if (!cierres.delete(dlg)) return false;
+    delete dlg.dataset.cerrando;
+    return true;
+  }
+
+  /** El clic es en el fondo y no en el diálogo: su relleno también es suyo. */
+  function enElFondo(dlg, event) {
+    if (event.target !== dlg) return false;
+    const caja = dlg.getBoundingClientRect();
+    return event.clientX < caja.left || event.clientX > caja.right
+      || event.clientY < caja.top || event.clientY > caja.bottom;
+  }
+
   for (const dlg of [dlgWin, dlgStuck, dlgSettings, dlgInvita]) {
+    // Antes bastaba con que el clic diera en el propio diálogo, y eso es también
+    // su relleno: el margen junto a las pestañas o el pie de una hoja cerraban.
     dlg.addEventListener('click', (event) => {
-      if (event.target.closest('[data-close]')) dlg.close();
-      else if (event.target === dlg) dlg.close();   // clic en el fondo
+      if (event.target.closest('[data-close]') || enElFondo(dlg, event)) cerrarDialogo(dlg);
+    });
+    // Escape, y el gesto de atrás en Android, también lo bajan en vez de quitarlo.
+    dlg.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      cerrarDialogo(dlg);
+    });
+    // Cerrado por donde sea, no queda un cierre a medias para la próxima vez. El
+    // evento llega en otra vuelta: si para entonces ya se ha vuelto a abrir, no
+    // es de este cierre.
+    dlg.addEventListener('close', () => {
+      if (dlg.open) return;
+      cierres.delete(dlg);
+      delete dlg.dataset.cerrando;
     });
   }
 
@@ -117,6 +175,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       pestana.setAttribute('aria-selected', String(activa));
       pestana.tabIndex = activa ? 0 : -1;   // el tabulador entra una vez; dentro, flechas
       panel.hidden = !activa;
+      // Se posa al cambiar de sección con el menú delante; al abrirlo, sube con el cajón.
+      panel.classList.toggle('entra', activa && seccion !== anterior && dlgSettings.open);
       if (activa) $('#panel-titulo').textContent = t(`dlg.titulo.${id}`);
     }
     if (seccion === 'records') renderStats();
@@ -165,6 +225,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (cual === 'records') statsMode = { scoring: game.prefs.scoring, drawCount: game.prefs.drawCount };
     mostrarSeccion(cual);
     onOpenSettings();
+    if (retener(dlgSettings)) return;
     if (!dlgSettings.open) {
       dlgSettings.showModal();
       // Después de abrir y no antes: con el diálogo cerrado el cuerpo no tiene
@@ -495,8 +556,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     avisoPanel(null);        // el error ya está corregido: quien escucha no debe seguir oyéndolo
     if (game.status === 'playing' && game.moves > 0 && !confirm(t('confirm.reparto'))) return;
     game.newGame(seed);
-    dlgSettings.close();
-    // El panel ya está cerrado: esto se cuenta fuera, en el banner del tablero.
+    cerrarDialogo(dlgSettings);
+    // El panel se va: esto se cuenta fuera, en el banner del tablero.
     onMessage(isKnownSolvable(seed) ? 'msg.reparto.nuevo.comprobado' : 'msg.reparto.nuevo', { n: seed });
   });
 
@@ -685,7 +746,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (!esJugable(clave)) return;
     if (game.status === 'playing' && game.moves > 0 && !confirm(t('confirm.reparto'))) return;
     game.newGame(semillaDelDia(clave), { dia: clave });
-    dlgSettings.close();
+    cerrarDialogo(dlgSettings);
     onMessage('msg.reto.nuevo', { fecha: fechaCorta(fechaDeClave(clave)) });
   }
 
@@ -1251,8 +1312,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
 
   dlgWin.addEventListener('click', (event) => {
     const accion = event.target.closest('[data-action]')?.dataset.action;
-    if (accion === 'new') { detenerCascada(); dlgWin.close(); game.newGame(); }
-    if (accion === 'stats') { detenerCascada(); dlgWin.close(); api.openStats(); }
+    if (accion === 'new') { detenerCascada(); cerrarDialogo(dlgWin); game.newGame(); }
+    if (accion === 'stats') { detenerCascada(); cerrarDialogo(dlgWin); api.openStats(); }
     if (accion === 'share') compartir();
   });
   dlgWin.addEventListener('close', detenerCascada);
@@ -1279,7 +1340,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   dlgStuck.addEventListener('click', (event) => {
     const accion = event.target.closest('[data-action]')?.dataset.action;
     if (!accion) return;
-    dlgStuck.close();
+    cerrarDialogo(dlgStuck);
     if (accion === 'undo') game.undo();
     if (accion === 'restart') game.restart();
     if (accion === 'new') game.newGame();
@@ -1327,7 +1388,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
 
   dlgInvita.addEventListener('click', (event) => {
     if (!event.target.closest('[data-action="jugar"]')) return;
-    dlgInvita.close();
+    cerrarDialogo(dlgInvita);
     jugarReto(claveDia());
   });
 

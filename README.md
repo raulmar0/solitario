@@ -124,14 +124,22 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   los móviles que lo permiten.
 - **Un solo panel, que sube desde abajo**: reto, ajustes, récords y ayuda están en
   el mismo sitio, en cuatro secciones. Antes eran tres diálogos y tres botones
-  distintos. En el móvil el panel es una hoja pegada al borde de abajo, a todo lo
-  ancho, con una franja de la mesa a la vista por encima; en pantalla ancha sigue
-  siendo una tarjeta centrada. Se cierra con la ✕ de su cabecera: el «Listo» del
-  pie hacía lo mismo y era un segundo botón dorado junto al principal de cada
-  sección (en el reto, «Jugar el reto de hoy»). Lo que pasa dentro se cuenta
-  dentro: la validación del reparto, exportar, importar o borrar escriben en el
-  propio diálogo, no en un cartel que queda tapado detrás. Los récords enseñan
-  además la evolución de tus últimas veinte partidas.
+  distintos. El panel es un cajón pegado al borde de abajo, con una franja de la
+  mesa a la vista por encima: en el móvil a todo lo ancho, y en pantalla ancha
+  centrado y con su ancho de siempre (antes ahí era una tarjeta en el centro).
+  Sube entero desde debajo del borde, opaco y con lo de dentro ya puesto, con la
+  curva de las hojas de iOS, en 480 ms; al cerrarse —con la ✕, con Escape o
+  tocando la mesa— baja por el mismo sitio en 300 ms y solo al llegar se cierra
+  de verdad. Antes la salida se le dejaba al navegador y solo Chrome la sabía
+  animar: en Safari el menú se esfumaba en el sitio. Si se vuelve a pedir a
+  medio camino, sube desde donde iba. Tocar el propio cajón —el margen junto a
+  las pestañas— ya no lo cierra: solo la mesa de alrededor. El único botón de
+  salida es la ✕ de la cabecera: el «Listo» del pie hacía lo mismo y era un
+  segundo botón dorado junto al principal de cada sección (en el reto, «Jugar el
+  reto de hoy»). Lo que pasa dentro se cuenta dentro: la validación del reparto,
+  exportar, importar o borrar escriben en el propio diálogo, no en un cartel que
+  queda tapado detrás. Los récords enseñan además la evolución de tus últimas
+  veinte partidas.
 - **El menú, por tarjetas**: cada grupo de ajustes es una tarjeta de filas —el
   título encima, el rótulo a la izquierda y el control o la cifra a la derecha—,
   como las hojas de ajustes de Peloton, Quizlet o Tinder. Antes eran rótulos
@@ -149,7 +157,9 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   que son los mismos que cuenta el juego. El calendario lleva al pie la leyenda
   de sus puntos.
 - **Los carteles, también desde abajo**: la victoria, la partida cerrada y la
-  invitación al reto suben en el móvil como la misma hoja, y la mesa se sigue
+  invitación al reto suben en el móvil como el mismo cajón, y bajan al cerrarse
+  (en pantalla ancha siguen siendo una tarjeta en el centro, que al cerrarse se
+  encoge y se apaga), y la mesa se sigue
   viendo encima: detrás de «La partida está cerrada» quedan las cartas que ya no
   tienen jugada, y detrás de «¡Ganaste!», el rastro de la cascada. Una salida
   manda: la principal va a lo ancho («Otra partida», «Deshacer la última», «Jugar
@@ -228,7 +238,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.18.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.19.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -313,7 +323,7 @@ Lo que está decidido y aún no está hecho vive en [`docs/TODO.md`](docs/TODO.m
 npm test
 ```
 
-443 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+447 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, el recomendador (que ninguna partida entre en
 bucle siguiendo sus consejos, que no mire cartas tapadas y que pista y toque no se

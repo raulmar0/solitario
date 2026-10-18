@@ -68,10 +68,15 @@ Object.defineProperty(globalThis, 'navigator', { value: navegador, configurable:
 window.localStorage.setItem('solitario.v1.prefs', JSON.stringify({ lang: 'es' }));
 // Con una partida ya apuntada, el juego no abre solo la ayuda de bienvenida.
 window.localStorage.setItem('solitario.v1.stats', JSON.stringify({ 'standard-1': { played: 1, won: 0 } }));
+// Pero sí la invitación al reto del día, medio segundo después de arrancar, y
+// eso cae en mitad de alguna prueba: según lo que tarde cada vuelta, se ponía
+// delante justo antes que el cartel de bloqueo y la prueba de ese cartel fallaba
+// de vez en cuando. Se deja apuntada como ya enseñada hoy, como en dom.test.js.
+const { claveDia, fechaDeClave, semillaDelDia } = await import('../src/reto.js');
+window.localStorage.setItem('solitario.v1.retoInvitado', JSON.stringify(claveDia()));
 
 await import('../src/main.js');
 const { game, board, panels, refresh, store, i18n } = globalThis.solitario;
-const { claveDia, fechaDeClave, semillaDelDia } = await import('../src/reto.js');
 const { t } = i18n;
 
 /**
