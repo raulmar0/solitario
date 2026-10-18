@@ -154,6 +154,8 @@ export default {
   'reto.mes.siguiente': '다음 달',
   'reto.sin.jugar': '아직 안 함',
   'reto.futuro': '아직 오지 않은 날',
+  'reto.leyenda.ganado': '승리',
+  'reto.leyenda.jugado': '해봤지만 못 이김',
   'reto.hecho.ganada': '승리 · {modo} · {puntos} · {tiempo} · {jugadas}번 이동',
   'reto.hecho.perdida': '해봤지만 못 이김 · {modo} · {puntos} · {tiempo} · {jugadas}번 이동',
   'reto.invita.titulo': '오늘의 도전',
@@ -278,7 +280,13 @@ export default {
   'help.tecla.cancelar': 'Esc',
   'help.atajo.cancelar': '끌기 취소',
   'help.puntuacion': '점수',
-  'help.puntuacion.detalle': '<strong>표준:</strong> 파운데이션에 카드를 올리면 +10점, 카드를 뒤집거나 버린 더미에서 열로 가져오면 +5점, 파운데이션에서 카드를 내리면 −15점, 한 장씩 뽑는 중에 덱을 다시 돌리면 −100점. <strong>베가스:</strong> 시작할 때 $52를 내고 올리는 카드마다 $5를 받아요. 잔고는 판이 바뀌어도 이어져요.',
+  'help.puntos.subir': '파운데이션에 카드 올리기',
+  'help.puntos.destapar': '카드 뒤집기, 버린 더미에서 열로 가져오기',
+  'help.puntos.bajar': '파운데이션에서 카드 내리기',
+  'help.puntos.reciclar': '한 장씩 뽑을 때 덱 다시 돌리기',
+  'help.puntos.entrada': '참가비',
+  'help.puntos.carta': '올리는 카드 한 장마다',
+  'help.puntos.saldo': '잔고는 판이 바뀌어도 이어져요.',
   'help.privacidad': '모든 건 이 브라우저, 내 기기에만 저장돼요. 서버로 나가는 건 하나도 없어요.',
 
   // carta — nombres de rango y palo (accesibilidad y pistas)

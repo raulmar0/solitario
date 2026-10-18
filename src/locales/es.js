@@ -154,6 +154,8 @@ export default {
   'reto.mes.siguiente': 'Mes siguiente',
   'reto.sin.jugar': 'sin jugar',
   'reto.futuro': 'ese día aún no ha llegado',
+  'reto.leyenda.ganado': 'Ganado',
+  'reto.leyenda.jugado': 'Jugado sin ganar',
   'reto.hecho.ganada': 'ganada · {modo} · {puntos} · {tiempo} · {jugadas} jugadas',
   'reto.hecho.perdida': 'jugada sin ganarla · {modo} · {puntos} · {tiempo} · {jugadas} jugadas',
   'reto.invita.titulo': 'Reto del día',
@@ -278,7 +280,13 @@ export default {
   'help.tecla.cancelar': 'Esc',
   'help.atajo.cancelar': 'cancelar el arrastre',
   'help.puntuacion': 'Puntuación',
-  'help.puntuacion.detalle': '<strong>Estándar:</strong> +10 por carta a las pilas de arriba, +5 al destapar una carta o traer una del descarte a una columna, −15 al bajar una carta de arriba, −100 al reciclar el mazo robando de una. <strong>Vegas:</strong> pagas 52 $ de entrada y cobras 5 $ por cada carta que subas; el saldo se acumula entre partidas.',
+  'help.puntos.subir': 'Carta a las pilas de arriba',
+  'help.puntos.destapar': 'Destapar una carta o traer una del descarte a una columna',
+  'help.puntos.bajar': 'Bajar una carta de arriba',
+  'help.puntos.reciclar': 'Reciclar el mazo robando de una',
+  'help.puntos.entrada': 'Entrada',
+  'help.puntos.carta': 'Cada carta que subes',
+  'help.puntos.saldo': 'El saldo se acumula entre partidas.',
   'help.privacidad': 'Todo se guarda en este navegador, en tu equipo. No sale nada a ningún servidor.',
 
   // carta — nombres de rango y palo (accesibilidad y pistas)

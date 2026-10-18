@@ -132,6 +132,22 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   dentro: la validación del reparto, exportar, importar o borrar escriben en el
   propio diálogo, no en un cartel que queda tapado detrás. Los récords enseñan
   además la evolución de tus últimas veinte partidas.
+- **El menú, por tarjetas**: cada grupo de ajustes es una tarjeta de filas —el
+  título encima, el rótulo a la izquierda y el control o la cifra a la derecha—,
+  como las hojas de ajustes de Peloton, Quizlet o Tinder. Antes eran rótulos
+  sueltos separados por la misma raya que separaba los grupos, y un grupo no se
+  distinguía de un campo. Nada va plegado: «Penalizar pistas» vivía sola detrás
+  de un desplegable al final, y buscar actualización, exportar e importar detrás
+  de otro; ahora son filas a la vista, y «Borrar todo» va aparte, en rojo y sobre
+  el panel, que en el relleno de la tarjeta no llegaba al contraste mínimo. Tu
+  nombre encabeza los ajustes en vez de ir delante de las cifras de Récords, que
+  dejan la rejilla de tres columnas —los rótulos largos partían en dos líneas y
+  descolocaban las cifras de su fila— por una fila por cifra, con la cifra al
+  final. Igual el día elegido del reto, que era una frase de números sin rótulo
+  («3000 · 05:00 · 110 jugadas»), y la puntuación de la ayuda, que era un
+  párrafo: una jugada por fila con sus puntos al final, y una prueba comprueba
+  que son los mismos que cuenta el juego. El calendario lleva al pie la leyenda
+  de sus puntos.
 - **Los carteles, también desde abajo**: la victoria, la partida cerrada y la
   invitación al reto suben en el móvil como la misma hoja, y la mesa se sigue
   viendo encima: detrás de «La partida está cerrada» quedan las cartas que ya no
@@ -148,7 +164,7 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
   Ahora cada partida es un bloque que cabe entero: el puesto, los puntos y el
   resultado arriba; la fecha y cómo se jugó (pistas penalizadas o no, crono)
   debajo, y al pie el tiempo, las jugadas, las pistas y el reparto, cada uno con
-  su rótulo encima, como en las casillas de arriba. La modalidad ya no se repite
+  su rótulo encima. La modalidad ya no se repite
   en cada partida: la eligen las pestañas. La lista corre con el desplazamiento
   del menú, sin una caja con scroll propio dentro, y sus columnas son de la lista
   entera, así que el tiempo de una partida cae justo debajo del de la anterior.
@@ -212,7 +228,7 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.17.0`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.18.0`.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -297,7 +313,7 @@ Lo que está decidido y aún no está hecho vive en [`docs/TODO.md`](docs/TODO.m
 npm test
 ```
 
-428 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+443 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, el recomendador (que ninguna partida entre en
 bucle siguiendo sus consejos, que no mire cartas tapadas y que pista y toque no se

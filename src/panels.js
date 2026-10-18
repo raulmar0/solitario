@@ -276,6 +276,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     ];
     $('#stats-grid').replaceChildren(...campos.map(([clave, dd]) => {
       const wrap = document.createElement('div');
+      wrap.className = 'fila valor';
       const k = document.createElement('dt');
       const v = document.createElement('dd');
       k.textContent = t(clave);
@@ -556,9 +557,10 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   }
 
   /**
-   * Cómo quedó ese día: lo que se enseña bajo el calendario y en cada casilla.
-   * La libreta entera se pasa por parámetro: pintar un mes son treinta y una
-   * casillas, y leerla del almacén en cada una son treinta y un JSON.parse.
+   * Cómo quedó ese día, en una frase: es lo que oye el lector de pantalla en
+   * cada casilla del calendario. La libreta entera se pasa por parámetro: pintar
+   * un mes son treinta y una casillas, y leerla del almacén en cada una son
+   * treinta y un JSON.parse.
    */
   function resumenDeDia(clave, retos = store.getRetos()) {
     const r = retos[clave];
@@ -571,6 +573,34 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       tiempo: formatTime(r.timeMs ?? 0),
       jugadas: r.moves ?? 0,
     });
+  }
+
+  /**
+   * Cómo quedó ese día, dato a dato y cada uno con su rótulo: lo que se enseña
+   * bajo el calendario. En una frase los números iban sueltos («3000 · 05:00 ·
+   * 110 jugadas») y había que adivinar cuál era la puntuación y cuál el tiempo.
+   */
+  function filasDeDia(clave, retos) {
+    const fila = (rotulo, valor, clase = '') => {
+      const div = document.createElement('div');
+      div.className = 'fila valor';
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = t(rotulo);
+      dd.textContent = valor;
+      if (clase) dd.className = clase;
+      div.append(dt, dd);
+      return div;
+    };
+    const r = retos[clave];
+    if (!r) return [fila('stats.col.resultado', t(esFuturo(clave) ? 'reto.futuro' : 'reto.sin.jugar'))];
+    return [
+      fila('stats.col.resultado', t(r.won ? 'stats.ganada' : 'stats.perdida'), r.won ? 'win' : ''),
+      fila('stats.col.modo', modoRetoTexto(r)),
+      fila('stats.col.puntos', formatScore(r.scoring ?? 'standard', r.score ?? 0)),
+      fila('stats.col.tiempo', formatTime(r.timeMs ?? 0)),
+      fila('stats.col.jugadas', String(r.moves ?? 0)),
+    ];
   }
 
   function renderReto() {
@@ -639,7 +669,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     $('#cal-prev').disabled = !esJugable(ultimoDelMes(-1), hoy);
 
     const jugable = esJugable(diaElegido, hoy);
-    $('#reto-detalle').textContent = `${fechaLarga(fechaDeClave(diaElegido))} · ${resumenDeDia(diaElegido, retos)}`;
+    $('#reto-fecha').textContent = fechaLarga(fechaDeClave(diaElegido));
+    $('#reto-datos').replaceChildren(...filasDeDia(diaElegido, retos));
     const jugar = $('#btn-reto-jugar');
     jugar.disabled = !jugable;
     jugar.textContent = t(diaElegido === hoy ? 'reto.jugar.hoy' : 'reto.jugar');

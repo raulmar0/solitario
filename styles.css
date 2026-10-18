@@ -997,38 +997,6 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .field-error { margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--danger); }
 .row { display: flex; gap: 8px; }
 
-.settings-group {
-  margin: 0 0 18px;
-  padding: 0 0 14px;
-  border-bottom: 1px solid var(--panel-line);
-}
-.settings-group > h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .65px; }
-.settings-group .field { margin: 14px 0; }
-.settings-group .field:first-of-type { margin-top: 8px; }
-.settings-details {
-  margin: 12px 0;
-  border-top: 1px solid var(--panel-line);
-  border-bottom: 1px solid var(--panel-line);
-}
-.settings-details summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 44px;
-  padding: 6px 0;
-  color: var(--panel-ink);
-  font-size: 14px;
-  font-weight: 650;
-  cursor: pointer;
-  list-style: none;
-}
-.settings-details summary::-webkit-details-marker { display: none; }
-.settings-details summary::after { content: '+'; color: var(--panel-ink-soft); font-size: 20px; font-weight: 400; }
-.settings-details[open] summary::after { content: '−'; }
-.settings-details-body { padding: 0 0 10px; }
-.settings-details-body .switch:first-child { margin-top: 0; }
-.records-profile { max-width: 360px; margin-top: 0; }
-
 /* Envuelve: en francés «Automatique / Clair / Sombre» pide 275 px y en una
    pantalla de 320 el grupo se salía del diálogo y sacaba barra horizontal. */
 .seg { display: inline-flex; flex-wrap: wrap; background: var(--fill); border: 1px solid var(--panel-line); border-radius: 9px; padding: 3px; gap: 3px; }
@@ -1208,22 +1176,100 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 #dlg-settings .field-label { font-size: 14px; font-weight: 600; margin-bottom: var(--menu-1); }
 #dlg-settings .hint-text { font-size: 13px; line-height: 1.55; }
 
-#dlg-settings .settings-group { margin: 0 0 var(--menu-3); padding: 0 0 var(--menu-3); }
-#dlg-settings .settings-group .field { margin: 0; padding: var(--menu-2) 0; }
-#dlg-settings .settings-group .field + .field { border-top: 1px solid var(--panel-line); }
-
-/* Interruptores dibujados. La casilla del navegador no es de esta interfaz: se
-   apaga con appearance y se dibuja el carril y la bola con los mismos tokens
-   que el resto, que además funcionan en los dos temas. */
-#dlg-settings .switch {
+/* Cada grupo es una tarjeta de filas, como en las hojas de ajustes de Peloton,
+   Quizlet o Tinder: el título encima, el rótulo a la izquierda y el control o la
+   cifra a la derecha, y las notas debajo de la tarjeta. Antes eran rótulos
+   sueltos separados por la misma raya que separaba los grupos, y un grupo no se
+   distinguía de un campo. La tarjeta es la de la casa —la de la fila de instalar
+   y la de las mejores partidas— y la raya entre filas empieza donde empieza el
+   texto, no en el borde. */
+#dlg-settings .settings-group { margin: var(--menu-3) 0 0; padding: 0; }
+#dlg-settings .tarjeta {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--panel-2);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+}
+#dlg-settings .tarjeta + .tarjeta { margin-top: var(--menu-2); }
+#dlg-settings .fila {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   min-height: 48px;
-  margin: 0;
-  padding: 12px 0;
+  margin: 0 0 0 14px;
+  padding: 12px 14px 12px 0;
+  border-top: 1px solid var(--panel-line);
 }
-#dlg-settings .switch + .switch { border-top: 1px solid var(--panel-line); }
+#dlg-settings .tarjeta > .fila:first-child,
+#dlg-settings .tarjeta > .filas:first-child > .fila:first-child { border-top: 0; }
+#dlg-settings .filas { margin: 0; }
+#dlg-settings .fila.campo { display: block; }
+#dlg-settings .fila.campo .hint-text { margin-top: var(--menu-1); }
+#dlg-settings .fila.cabeza { font-weight: 650; }
+/* La nota de una tarjeta va debajo y entra a la altura de su texto. */
+#dlg-settings .nota-tarjeta { margin: var(--menu-1) 14px 0; }
+
+/* Cifras: el rótulo a la izquierda y la cifra al final de su fila, como las
+   estadísticas de (Not Boring) Camera o los valores de Forest y Tiimo. Los dos
+   pueden partirse —en Ayuda el rótulo es largo y en el Reto lo es el modo—, pero
+   nunca por debajo de su palabra más larga: con `min-width: 0` la versión se
+   salía de su fila. */
+#dlg-settings .fila.valor > :is(dt, span) { flex: 1 1 auto; font-size: 14px; }
+#dlg-settings .fila.valor > :is(dd, strong) {
+  flex: 0 1 auto;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+#dlg-settings .fila.valor dd.win { color: var(--ok); }
+/* «sin jugar» viene en minúscula porque antes iba a media frase. */
+#dlg-settings .fila.valor dd::first-letter { text-transform: uppercase; }
+#dlg-settings .fila-texto { display: grid; gap: 2px; }
+#dlg-settings .fila-texto .hint-text { margin: 0; }
+
+#dlg-settings .fila-nombre > span { flex: 0 0 auto; }
+#dlg-settings .fila-nombre .text-input { flex: 0 1 58%; max-width: 320px; }
+
+/* Acciones: la fila entera se pulsa y lleva la punta de la casa, como las filas
+   de soporte de ClickUp o de Forest. */
+#dlg-settings button.fila {
+  width: calc(100% - 14px);
+  font: inherit;
+  color: var(--panel-ink);
+  text-align: left;
+  background: none;
+  border-width: 1px 0 0;
+  border-style: solid;
+  border-color: var(--panel-line);
+  border-radius: 0;
+  cursor: pointer;
+  transition: var(--quieto, color var(--speed) linear);
+}
+#dlg-settings .tarjeta > button.fila:first-child { border-top-width: 0; }
+#dlg-settings button.fila::after {
+  content: '';
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-right: 1.5px solid var(--panel-ink-soft);
+  border-bottom: 1.5px solid var(--panel-ink-soft);
+  transform: rotate(-45deg);
+}
+#dlg-settings button.fila:hover:not(:disabled) { color: var(--accent); }
+#dlg-settings button.fila:disabled { opacity: .4; cursor: default; }
+/* Borrar todo va fuera de la tarjeta: el rojo sobre su relleno no llega al 4,5:1
+   en el tema oscuro y sobre el panel sí. */
+#dlg-settings .borrar-datos { margin-top: var(--menu-2); }
+
+/* Interruptores dibujados. La casilla del navegador no es de esta interfaz: se
+   apaga con appearance y se dibuja el carril y la bola con los mismos tokens
+   que el resto, que además funcionan en los dos temas. La fila la pone `.fila`. */
 #dlg-settings .switch input {
   appearance: none;
   -webkit-appearance: none;
@@ -1283,7 +1329,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 /* La flecha del desplegable la pintaba el navegador, con su gris y su forma. Va
    trazada, no en una imagen: la política de contenido no admite `data:` en
    `img-src` y no se va a abrir por una flecha. Con bordes sale gratis, hereda la
-   tinta del tema y es la misma punta que abre «Opciones avanzadas». */
+   tinta del tema y es la misma punta que llevan las filas de acción. */
 .select-wrap { position: relative; display: flex; min-width: 0; }
 .select-wrap::after {
   content: '';
@@ -1303,61 +1349,39 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   -webkit-appearance: none;
   padding-right: 36px;
 }
-#dlg-settings .settings-group :is(.text-input, .select-wrap),
-#dlg-settings .records-profile .text-input { width: 100%; }
+#dlg-settings .settings-group .fila.campo :is(.text-input, .select-wrap) { width: 100%; }
 #dlg-settings .text-input::placeholder { opacity: 1; }
 
-#dlg-settings .settings-details { margin: 0; border-top: 0; }
-#dlg-settings .settings-details summary { min-height: 52px; gap: 16px; }
-#dlg-settings .settings-details summary::after {
-  content: '';
-  width: 8px; height: 8px;
-  margin-right: 4px;
-  flex: 0 0 8px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg);
-  transition: var(--quieto, transform var(--speed) ease-out);
-}
-#dlg-settings .settings-details[open] summary::after { transform: rotate(225deg); }
-#dlg-settings .settings-details-body { padding-bottom: var(--menu-2); }
-
-#dlg-settings :is(.tab, summary, .switch input, .cal-dia, .seg-btn):focus-visible {
+#dlg-settings :is(.tab, .switch input, .cal-dia, .seg-btn):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* La fila de acción toca los bordes de su tarjeta: el anillo va por dentro. */
+#dlg-settings button.fila:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 #dlg-settings .app-row, #dlg-settings .bank-row { flex-wrap: wrap; }
 #dlg-settings .app-row .btn { flex: 0 1 auto; max-width: 100%; }
 /* El texto corrido se lee a una anchura, no a la que dé el diálogo: a lo ancho
    del panel las reglas y la explicación de la puntuación pasaban de cien
-   caracteres por línea y el ojo perdía el renglón al volver. */
-#dlg-settings :is(#panel-ayuda, #panel-reto) :is(p, ul):not(.empty),
+   caracteres por línea y el ojo perdía el renglón al volver. Las tarjetas y sus
+   filas quedan fuera: una raya entre filas que se corta antes del borde parece
+   un fallo. */
+#dlg-settings :is(#panel-ayuda, #panel-reto) :is(p, ul):not(.empty, .tarjeta, .fila),
 #dlg-settings .keys { max-width: 68ch; }
-#dlg-settings .rules { line-height: 1.6; }
-#dlg-settings .rules li { margin: 10px 0; }
-#dlg-settings .rules li::marker { color: var(--panel-ink-soft); }
+/* Las reglas, una por fila de su tarjeta, como las de Rush en Vocabulary. */
+#dlg-settings .rules.tarjeta { margin-top: var(--menu-2); line-height: 1.5; }
+#dlg-settings .rules.tarjeta .fila { display: block; }
 
 @media (min-width: 641px) {
-  #dlg-settings .settings-group .field {
+  #dlg-settings .settings-group .fila.campo {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
     gap: 4px 24px;
     align-items: center;
   }
-  #dlg-settings .settings-group .field-label { grid-column: 1; margin: 0; }
-  #dlg-settings .settings-group .hint-text { grid-column: 1; grid-row: 2; margin: 0; }
-  #dlg-settings .settings-group :is(.seg, .text-input, .select-wrap) { grid-column: 2; grid-row: 1 / 3; }
+  #dlg-settings .settings-group .fila.campo .field-label { grid-column: 1; margin: 0; }
+  #dlg-settings .settings-group .fila.campo .hint-text { grid-column: 1; grid-row: 2; margin: 0; }
+  #dlg-settings .settings-group .fila.campo :is(.seg, .select-wrap) { grid-column: 2; grid-row: 1 / 3; }
 }
-
-/* Son nueve siempre: en tres columnas salen tres filas llenas. Con `auto-fit`
-   la última fila quedaba coja y con un hueco a la derecha. */
-.grid-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
-.grid-stats > div {
-  background: var(--panel-2); border: 1px solid var(--panel-line);
-  border-radius: 10px; padding: 9px 11px;
-}
-.grid-stats dt { font-size: 11px; color: var(--panel-ink-soft); text-transform: uppercase; letter-spacing: .5px; }
-.grid-stats dd { margin: 2px 0 0; font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
 
 /* La evolución de las últimas partidas: una línea sin ejes ni números, que aquí
    solo interesa la forma. */
@@ -1547,17 +1571,37 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
 .cal-dia.ganado::after { background: var(--ok); opacity: 1; }
 .cal-dia.elegido.ganado::after { background: var(--accent-ink); }
 
-.reto-detalle {
-  margin: 12px 0;
-  padding: 9px 12px;
-  background: var(--panel-2);
-  border: 1px solid var(--panel-line);
-  border-radius: 10px;
-  font-size: 13.5px;
+/* El mes, en su tarjeta, y al pie la leyenda de los puntos, como el calendario
+   de Centr. Los puntos de la leyenda son los mismos de las casillas. */
+#dlg-settings .cal-tarjeta { margin-top: var(--menu-2); padding: 4px 12px 12px; }
+#dlg-settings .cal-tarjeta .cal-nav { margin: 0 0 6px; }
+.cal-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding: 10px 2px 0;
+  border-top: 1px solid var(--panel-line);
+  font-size: 13px;
+  color: var(--panel-ink-soft);
 }
-/* «sábado, 29 de agosto» empieza en minúscula en español y en mayúscula en
-   inglés: se iguala por la primera letra, no por palabra. */
-.reto-detalle::first-letter { text-transform: uppercase; }
+.dlg .cal-leyenda { margin: 12px 0 0; }   /* `.dlg p` le pondría el suyo */
+.cal-leyenda span { display: inline-flex; align-items: center; gap: 7px; }
+.cal-leyenda span::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--panel-ink);
+  opacity: .45;
+}
+.cal-leyenda .ganado::before { background: var(--ok); opacity: 1; }
+
+/* El día elegido: la fecha encima de su tarjeta. «sábado, 29 de agosto» empieza
+   en minúscula en español y en mayúscula en inglés: se iguala por la primera
+   letra, no por palabra. */
+.reto-fecha::first-letter { text-transform: uppercase; }
+#dlg-settings #panel-reto > .row.wrap { margin-top: var(--menu-2); }
+#dlg-settings .tarjeta-reparto { margin-top: var(--menu-3); }
 
 .dlg-win { text-align: center; width: min(94vw, 400px); }
 .win-art { font-size: 34px; letter-spacing: 8px; margin-bottom: 6px; }
@@ -1708,7 +1752,7 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
   #dlg-settings { --menu-2: 12px; --menu-3: 18px; }
   #dlg-settings .dlg-head { padding-top: 4px; padding-bottom: 0; }
   #dlg-settings .menu-body { padding-top: 12px; padding-bottom: 12px; }
-  #dlg-settings .switch { min-height: 42px; padding: 6px 0; }
+  #dlg-settings .fila { min-height: 42px; padding-top: 8px; padding-bottom: 8px; }
   /* Una sola fila, con la barra de progreso pegada al borde de abajo. */
   .topbar {
     grid-template-areas: "marca marcador izq chip der";

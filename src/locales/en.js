@@ -153,6 +153,8 @@ export default {
   'reto.mes.siguiente': 'Next month',
   'reto.sin.jugar': 'not played yet',
   'reto.futuro': 'that day hasn’t come round yet',
+  'reto.leyenda.ganado': 'Won',
+  'reto.leyenda.jugado': 'Played, not won',
   'reto.hecho.ganada': 'won · {modo} · {puntos} · {tiempo} · {jugadas} moves',
   'reto.hecho.perdida': 'played, not won · {modo} · {puntos} · {tiempo} · {jugadas} moves',
   'reto.invita.titulo': 'Daily challenge',
@@ -277,7 +279,13 @@ export default {
   'help.tecla.cancelar': 'Esc',
   'help.atajo.cancelar': 'cancel the drag',
   'help.puntuacion': 'Scoring',
-  'help.puntuacion.detalle': '<strong>Standard:</strong> +10 per card sent up to the foundations, +5 for flipping a card or bringing one from the waste to a column, −15 for taking a card back down, −100 for recycling the stock when you draw one at a time. <strong>Vegas:</strong> you pay $52 to sit down and earn $5 for every card you send up; the balance carries over between games.',
+  'help.puntos.subir': 'Card sent up to the foundations',
+  'help.puntos.destapar': 'Flipping a card or bringing one from the waste to a column',
+  'help.puntos.bajar': 'Taking a card back down',
+  'help.puntos.reciclar': 'Recycling the stock when you draw one at a time',
+  'help.puntos.entrada': 'Buy-in',
+  'help.puntos.carta': 'Each card you send up',
+  'help.puntos.saldo': 'The balance carries over between games.',
   'help.privacidad': 'Everything is saved in this browser, on your device. Nothing goes out to any server.',
 
   // carta — nombres de rango y palo (accesibilidad y pistas)

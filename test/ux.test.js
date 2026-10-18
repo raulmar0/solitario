@@ -506,6 +506,9 @@ test('el calendario del reto se abre por hoy, marca lo jugado y no deja tocar el
     if (b.dataset.dia > hoy) assert.equal(b.disabled, true, `${b.dataset.dia} aún no ha llegado`);
   }
   assert.match($('#reto-detalle').textContent, new RegExp(t('reto.sin.jugar')), 'y se cuenta cómo fue el día elegido');
+  assert.equal($$('#reto-datos .fila').length, 1, 'de un día sin jugar no hay más dato que ese');
+  // Lo que quiere decir cada punto del calendario, al pie del mes.
+  assert.deepEqual($$('.cal-leyenda span').map((s) => s.textContent), [t('reto.leyenda.ganado'), t('reto.leyenda.jugado')]);
   $('#dlg-settings').close();
 });
 
@@ -521,6 +524,13 @@ test('elegir un día cuenta cómo fue, y jugarlo reparte la mano de esa fecha', 
   // El calendario se vuelve a pintar entero, así que hay que preguntar de nuevo.
   assert.equal($('#cal .cal-dia.elegido').dataset.dia, anteayer);
   assert.match($('#reto-detalle').textContent, /120/, 'la puntuación de aquel día');
+  // Cada dato en su fila y con su rótulo: en una frase, «120 · 01:00 · 40» no
+  // decía cuál era la puntuación y cuál el tiempo.
+  assert.deepEqual(
+    $$('#reto-datos dt').map((dt) => dt.textContent),
+    ['stats.col.resultado', 'stats.col.modo', 'stats.col.puntos', 'stats.col.tiempo', 'stats.col.jugadas'].map((k) => t(k)),
+  );
+  assert.equal($('#reto-datos dt + dd').textContent, t('stats.perdida'), 'aquel día no salió');
 
   $('#btn-reto-jugar').click();
   assert.equal($('#dlg-settings').open, false, 'se reparte y se cierra el panel');

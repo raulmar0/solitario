@@ -153,6 +153,8 @@ export default {
   'reto.mes.siguiente': 'Mês seguinte',
   'reto.sin.jugar': 'por jogar',
   'reto.futuro': 'esse dia ainda não chegou',
+  'reto.leyenda.ganado': 'Ganho',
+  'reto.leyenda.jugado': 'Jogado sem ganhar',
   'reto.hecho.ganada': 'ganha · {modo} · {puntos} · {tiempo} · {jugadas} jogadas',
   'reto.hecho.perdida': 'jogada sem ganhar · {modo} · {puntos} · {tiempo} · {jugadas} jogadas',
   'reto.invita.titulo': 'Desafio do dia',
@@ -277,7 +279,13 @@ export default {
   'help.tecla.cancelar': 'Esc',
   'help.atajo.cancelar': 'cancelar o arrasto',
   'help.puntuacion': 'Pontuação',
-  'help.puntuacion.detalle': '<strong>Padrão:</strong> +10 por carta que sobe às fundações, +5 ao virar uma carta ou trazer uma do descarte para uma coluna, −15 ao baixar uma carta das fundações, −100 ao reciclar o monte virando uma de cada vez. <strong>Vegas:</strong> paga 52 $ de entrada e recebe 5 $ por cada carta que subir; o saldo acumula-se entre partidas.',
+  'help.puntos.subir': 'Carta que sobe às fundações',
+  'help.puntos.destapar': 'Virar uma carta ou trazer uma do descarte para uma coluna',
+  'help.puntos.bajar': 'Baixar uma carta das fundações',
+  'help.puntos.reciclar': 'Reciclar o monte virando uma de cada vez',
+  'help.puntos.entrada': 'Entrada',
+  'help.puntos.carta': 'Cada carta que sobe',
+  'help.puntos.saldo': 'O saldo acumula-se entre partidas.',
   'help.privacidad': 'Fica tudo guardado neste navegador, no seu dispositivo. Não sai nada para nenhum servidor.',
 
   // carta — nombres de rango y palo (accesibilidad y pistas)

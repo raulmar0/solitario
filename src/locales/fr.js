@@ -153,6 +153,8 @@ export default {
   'reto.mes.siguiente': 'Mois suivant',
   'reto.sin.jugar': 'pas encore jouée',
   'reto.futuro': 'ce jour n’est pas encore arrivé',
+  'reto.leyenda.ganado': 'Gagné',
+  'reto.leyenda.jugado': 'Joué sans gagner',
   'reto.hecho.ganada': 'gagnée · {modo} · {puntos} · {tiempo} · {jugadas} coups',
   'reto.hecho.perdida': 'jouée sans la gagner · {modo} · {puntos} · {tiempo} · {jugadas} coups',
   'reto.invita.titulo': 'Défi du jour',
@@ -277,7 +279,13 @@ export default {
   'help.tecla.cancelar': 'Échap',
   'help.atajo.cancelar': 'abandonner le déplacement',
   'help.puntuacion': 'Score',
-  'help.puntuacion.detalle': '<strong>Standard :</strong> +10 par carte montée sur les fondations, +5 pour retourner une carte ou amener une carte de la défausse vers une colonne, −15 pour redescendre une carte des fondations, −100 pour recycler la pioche quand on pioche carte par carte. <strong>Vegas :</strong> vous payez 52 $ d’entrée et touchez 5 $ par carte montée ; le solde se cumule d’une partie à l’autre.',
+  'help.puntos.subir': 'Carte montée sur les fondations',
+  'help.puntos.destapar': 'Retourner une carte ou amener une carte de la défausse vers une colonne',
+  'help.puntos.bajar': 'Redescendre une carte des fondations',
+  'help.puntos.reciclar': 'Recycler la pioche quand on pioche carte par carte',
+  'help.puntos.entrada': 'Entrée',
+  'help.puntos.carta': 'Chaque carte montée',
+  'help.puntos.saldo': 'Le solde se cumule d’une partie à l’autre.',
   'help.privacidad': 'Tout est enregistré dans ce navigateur, sur votre appareil. Rien ne part vers un serveur.',
 
   // carta — nombres de rango y palo (accesibilidad y pistas)

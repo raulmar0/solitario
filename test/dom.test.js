@@ -9,6 +9,7 @@ import { COLUMNA, VUELO_POR_DEFECTO, MARGEN_ANIM } from '../src/ui.js';
 // prueba sigue valiendo aunque se retoque la redacción de un mensaje.
 import { t } from '../src/i18n.js';
 import { claveDia } from '../src/reto.js';
+import { getMode, formatScore } from '../src/scoring.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
@@ -73,6 +74,7 @@ const { game, board, panels, refresh, instalador, VERSION } = globalThis.solitar
 game.newGame(1);          // reparto fijo: las pruebas de interacción deben ser repetibles
 board.cancel();           // sin la animación de reparto por medio
 const $ = (sel) => window.document.querySelector(sel);
+const $$ = (sel) => [...window.document.querySelectorAll(sel)];
 const cssVar = (name) => parseFloat(window.document.documentElement.style.getPropertyValue(name));
 
 function puntero(tipo, target, x, y) {
@@ -338,6 +340,12 @@ test('el panel de récords se rellena', () => {
   assert.equal(activa.getAttribute('aria-controls'), 'stats-panel');
   assert.equal($('#stats-grid').children.length, 9);
   assert.match($('#stats-grid').textContent, /Partidas/);
+  // Una cifra por fila y la cifra al final: en la rejilla de tres columnas los
+  // rótulos largos partían en dos líneas y descolocaban las cifras de su fila.
+  for (const fila of $('#stats-grid').children) {
+    assert.equal(fila.classList.contains('fila'), true, 'cada cifra es una fila de la tarjeta');
+    assert.deepEqual([...fila.children].map((n) => n.tagName), ['DT', 'DD'], 'el rótulo primero y la cifra al final');
+  }
   $('#dlg-settings').close();
 });
 
@@ -462,21 +470,77 @@ test('el menú se abre por el principio de la sección aunque se cerrara desplaz
   }
 });
 
-test('los ajustes están agrupados y las acciones ocasionales viven fuera de Ajustes', () => {
+test('los ajustes van en grupos, cada uno en su tarjeta y ninguno plegado', () => {
   assert.ok($('#settings-group-partida'), 'falta el grupo de partida');
   assert.ok($('#settings-group-interfaz'), 'falta el grupo de interfaz');
   assert.ok($('#settings-advanced'), 'falta el grupo de opciones avanzadas');
-  assert.equal($('#settings-advanced').open, false, 'las opciones avanzadas empiezan plegadas');
   assert.equal($('#settings-advanced input[data-pref="penalizeHints"]') != null, true);
   assert.equal($('#settings-group-partida .seg-btn[data-pref="dealBias"]') != null, true);
   assert.equal($('#settings-group-partida input[data-pref="timed"]') != null, true);
   assert.equal($('#settings-group-partida input[data-pref="autoSafe"]') != null, true);
   assert.equal($('#seed-input').closest('#panel-reto') != null, true,
     'el reparto concreto pertenece al reto');
-  assert.equal($('#pref-name').closest('#panel-records') != null, true,
-    'el nombre pertenece a los récords');
   assert.ok($('#settings-tools'), 'falta el grupo de aplicación y datos');
-  assert.equal($('#settings-tools').open, false, 'aplicación y datos empiezan plegados');
+  // «Penalizar pistas» vivía sola detrás de un desplegable al final, y los datos
+  // detrás de otro: ahora se ve todo sin abrir nada.
+  assert.equal($('#panel-ajustes details'), null, 'nada plegado en Ajustes');
+  for (const grupo of $$('#panel-ajustes .settings-group')) {
+    assert.ok(grupo.querySelector(':scope > h3 + .tarjeta'), `${grupo.id}: el título encima y su tarjeta debajo`);
+  }
+  for (const control of $$('#panel-ajustes .tarjeta :is(.seg, input[type="checkbox"], select)')) {
+    assert.ok(control.closest('.fila'), `${control.dataset.pref ?? control.id}: cada control va en una fila de su tarjeta`);
+  }
+});
+
+test('el nombre encabeza los ajustes y Récords empieza por las cifras', () => {
+  assert.equal($('#pref-name').closest('#tarjeta-nombre') != null, true);
+  assert.equal($('#pref-name').closest('#panel-ajustes') != null, true, 'el nombre vive arriba de los ajustes');
+  assert.equal($('#panel-records #pref-name'), null, 'ya no está delante de las cifras');
+  assert.equal($('#panel-records').firstElementChild, $('#stats-tabs'), 'Récords abre por las modalidades');
+  // Se sigue guardando como antes: es la misma preferencia en otro sitio.
+  panels.openSettings();
+  const campo = $('#pref-name');
+  campo.value = 'Ana';
+  campo.dispatchEvent(new window.Event('change', { bubbles: true }));
+  assert.equal(game.prefs.playerName, 'Ana');
+  campo.value = '';
+  campo.dispatchEvent(new window.Event('change', { bubbles: true }));
+  $('#dlg-settings').close();
+});
+
+test('aplicación y datos son filas de acción, y borrar va aparte', () => {
+  for (const id of ['#btn-update', '#btn-export', '#btn-import']) {
+    assert.equal($(id).classList.contains('fila'), true, `${id} es una fila`);
+    assert.ok($(id).closest('#settings-tools .tarjeta'), `${id} va en una tarjeta de aplicación y datos`);
+  }
+  // Lo único sin vuelta atrás no va entre lo demás, y su rojo va sobre el panel:
+  // sobre el relleno de la tarjeta no llega al contraste mínimo en oscuro.
+  assert.equal($('#btn-wipe').closest('.tarjeta'), null, 'borrar no va dentro de una tarjeta');
+  assert.equal($('#btn-wipe').closest('#settings-tools') != null, true, 'pero sigue en aplicación y datos');
+  assert.equal($('#btn-wipe').classList.contains('danger'), true, 'y se distingue');
+  assert.ok($('#app-version').closest('.fila.valor'), 'la versión es la cifra de su fila');
+});
+
+test('la puntuación de la ayuda va por filas y dice lo mismo que cuenta el juego', () => {
+  const filas = [...$$('#panel-ayuda .tarjeta .fila.valor')];
+  assert.equal(filas.length, 6, 'cuatro jugadas del estándar y dos de Vegas');
+  for (const fila of filas) {
+    assert.deepEqual([...fila.children].map((n) => n.tagName), ['DT', 'DD'], 'la jugada primero y los puntos al final');
+  }
+  const valores = filas.map((f) => f.querySelector('dd').textContent);
+  // Las cifras están escritas en el HTML: si la puntuación cambia en scoring.js,
+  // esta prueba avisa de que la ayuda se ha quedado contando otra cosa.
+  const estandar = getMode('standard');
+  const vegas = getMode('vegas');
+  const conSigno = (n) => `${n < 0 ? '−' : '+'}${Math.abs(n)}`;
+  assert.deepEqual(valores, [
+    conSigno(estandar.delta({ type: 'move', from: 'waste', to: 'foundation' })),
+    conSigno(estandar.delta({ type: 'flip' })),
+    conSigno(estandar.delta({ type: 'move', from: 'foundation', to: 'tableau' })),
+    conSigno(estandar.delta({ type: 'recycle', recycles: 1 }, { drawCount: 1 })),
+    formatScore('vegas', vegas.initialScore),
+    formatScore('vegas', vegas.delta({ type: 'move', from: 'waste', to: 'foundation' })),
+  ]);
 });
 
 test('la ayuda muestra controles táctiles en móvil y atajos en escritorio', () => {
@@ -980,6 +1044,24 @@ test('el texto de los diálogos se lee en los dos temas', () => {
     const acento = sobre(v['--accent'], panel);
     const tintaAcento = sobre(v['--accent-ink'], acento);
     assert.ok(contraste(tintaAcento, acento) >= 4.5, `${tema}: botón principal ${contraste(tintaAcento, acento).toFixed(2)}:1`);
+  }
+});
+
+test('lo que va sobre las tarjetas del menú se lee en los dos temas', () => {
+  // Las notas, los segmentos sin elegir y el verde de «Ganada» pasaron del panel
+  // al relleno de las tarjetas (--panel-2): hay que volver a medirlos ahí. El rojo
+  // de borrar se mide sobre el panel, que es donde va.
+  const base = variables(':root');
+  const claro = { ...base, ...variables('html[data-theme="light"]') };
+  for (const [tema, v] of [['oscuro', base], ['claro', claro]]) {
+    const panel = hex(v['--panel']);
+    const tarjeta = hex(v['--panel-2']);
+    const suaveVar = v['--panel-ink-soft'] === 'var(--ink-soft)' ? v['--ink-soft'] : v['--panel-ink-soft'];
+    const segmento = sobre(v['--fill'], tarjeta);
+    assert.ok(contraste(sobre(suaveVar, tarjeta), tarjeta) >= 4.5, `${tema}: notas de las tarjetas ${contraste(sobre(suaveVar, tarjeta), tarjeta).toFixed(2)}:1`);
+    assert.ok(contraste(sobre(suaveVar, segmento), segmento) >= 4.5, `${tema}: opciones sin elegir ${contraste(sobre(suaveVar, segmento), segmento).toFixed(2)}:1`);
+    assert.ok(contraste(sobre(v['--ok'], tarjeta), tarjeta) >= 4.5, `${tema}: «Ganada» en la tarjeta ${contraste(sobre(v['--ok'], tarjeta), tarjeta).toFixed(2)}:1`);
+    assert.ok(contraste(sobre(v['--danger'], panel), panel) >= 4.5, `${tema}: borrar todo ${contraste(sobre(v['--danger'], panel), panel).toFixed(2)}:1`);
   }
 });
 
@@ -1916,8 +1998,8 @@ test('la fila de instalar aparece solo cuando el navegador la ofrece', () => {
   panels.openSettings();
   const fila = $('#install-row');
   assert.equal(fila.hidden, true, 'sin oferta no se enseña nada');
-  assert.equal(fila.parentElement, $('#panel-ajustes'), 'la instalación vive fuera de los desplegables');
-  assert.equal(fila.nextElementSibling, $('#settings-group-partida'), 'la instalación aparece al principio de Ajustes');
+  assert.equal(fila.parentElement, $('#panel-ajustes'), 'la instalación vive fuera de los grupos');
+  assert.equal($('#panel-ajustes').firstElementChild, fila, 'la instalación aparece al principio de Ajustes');
   assert.equal(instalador.puede, false);
 
   const evento = new window.Event('beforeinstallprompt', { cancelable: true });

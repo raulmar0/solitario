@@ -195,31 +195,44 @@
   <section class="panel" id="panel-reto" role="tabpanel" aria-labelledby="tab-reto" tabindex="0" hidden>
     <p data-i18n="reto.intro">Cada día tiene su reparto, el mismo para todo el mundo. Juega el de hoy o vuelve a cualquier día del último año.</p>
 
-    <div class="cal-nav">
-      <button class="icon-btn" type="button" id="cal-prev" data-i18n-aria-label="reto.mes.anterior" aria-label="Mes anterior"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button>
-      <strong class="cal-titulo" id="cal-titulo" aria-live="polite"></strong>
-      <button class="icon-btn" type="button" id="cal-next" data-i18n-aria-label="reto.mes.siguiente" aria-label="Mes siguiente"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button>
+    <!-- El mes va en su tarjeta, y al pie lo que quiere decir cada punto: un
+         punto no es un idioma, pero tampoco se adivina. -->
+    <div class="tarjeta cal-tarjeta">
+      <div class="cal-nav">
+        <button class="icon-btn" type="button" id="cal-prev" data-i18n-aria-label="reto.mes.anterior" aria-label="Mes anterior"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg></button>
+        <strong class="cal-titulo" id="cal-titulo" aria-live="polite"></strong>
+        <button class="icon-btn" type="button" id="cal-next" data-i18n-aria-label="reto.mes.siguiente" aria-label="Mes siguiente"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg></button>
+      </div>
+      <div class="cal" id="cal" role="grid" aria-labelledby="cal-titulo"></div>
+      <p class="cal-leyenda"><span class="ganado" data-i18n="reto.leyenda.ganado">Ganado</span><span data-i18n="reto.leyenda.jugado">Jugado sin ganar</span></p>
     </div>
-    <div class="cal" id="cal" role="grid" aria-labelledby="cal-titulo"></div>
 
-    <p class="reto-detalle" id="reto-detalle" role="status" aria-live="polite"></p>
+    <!-- El día elegido: la fecha encima y cada dato en su fila, con su rótulo.
+         Era una frase de cifras sueltas («3000 · 05:00 · 110 jugadas») en la que
+         había que adivinar cuál era la puntuación y cuál el tiempo. -->
+    <div class="reto-detalle" id="reto-detalle" role="status" aria-live="polite">
+      <h3 class="reto-fecha" id="reto-fecha"></h3>
+      <dl class="tarjeta" id="reto-datos"></dl>
+    </div>
     <div class="row wrap">
       <button class="btn primary" type="button" id="btn-reto-jugar" data-i18n="reto.jugar">Jugar este reto</button>
       <button class="btn" type="button" id="btn-reto-hoy" data-i18n="reto.hoy">Ir a hoy</button>
       <button class="btn" type="button" id="btn-reto-share" data-i18n="reto.compartir">Compartir</button>
     </div>
 
-    <div class="field">
-      <label class="field-label" for="seed-input" data-i18n="settings.reparto">Jugar un reparto concreto</label>
-      <div class="row">
-        <input id="seed-input" class="text-input" type="number" aria-describedby="seed-error" min="1" max="999999" placeholder="p. ej. 1234" inputmode="numeric" data-i18n-placeholder="settings.reparto.placeholder">
-        <button class="btn" id="btn-seed-go" data-i18n="settings.reparto.boton">Repartir</button>
+    <div class="tarjeta tarjeta-reparto">
+      <div class="fila campo">
+        <label class="field-label" for="seed-input" data-i18n="settings.reparto">Jugar un reparto concreto</label>
+        <div class="row">
+          <input id="seed-input" class="text-input" type="number" aria-describedby="seed-error" min="1" max="999999" placeholder="p. ej. 1234" inputmode="numeric" data-i18n-placeholder="settings.reparto.placeholder">
+          <button class="btn" id="btn-seed-go" data-i18n="settings.reparto.boton">Repartir</button>
+        </div>
+        <p class="field-error" id="seed-error" hidden></p>
+        <p class="hint-text" data-i18n="settings.reparto.nota">El mismo número reparte siempre las mismas cartas. Útil para competir con alguien.</p>
       </div>
-      <p class="field-error" id="seed-error" hidden></p>
-      <p class="hint-text" data-i18n="settings.reparto.nota">El mismo número reparte siempre las mismas cartas. Útil para competir con alguien.</p>
     </div>
 
-    <p class="hint-text" data-i18n="reto.nota">Se guarda tu mejor intento de cada día. El reparto no cambia: puedes repetirlo hasta que te salga.</p>
+    <p class="hint-text nota-tarjeta" data-i18n="reto.nota">Se guarda tu mejor intento de cada día. El reparto no cambia: puedes repetirlo hasta que te salga.</p>
   </section>
 
   <section class="panel" id="panel-ajustes" role="tabpanel" aria-labelledby="tab-ajustes" tabindex="0">
@@ -231,122 +244,134 @@
       <button class="btn small primary" id="btn-install" type="button" data-i18n="app.install.boton">Instalar</button>
     </div>
 
+    <!-- El nombre va lo primero: es lo único de aquí que habla de quien juega. En
+         Récords estaba delante de las cifras, que es lo que se va a mirar allí. -->
+    <div class="tarjeta" id="tarjeta-nombre">
+      <label class="fila fila-nombre" for="pref-name">
+        <span data-i18n="settings.nombre">Tu nombre</span>
+        <input id="pref-name" class="text-input" data-pref="playerName" type="text" maxlength="24" placeholder="Anónimo" data-i18n-placeholder="settings.nombre.placeholder">
+      </label>
+    </div>
+    <p class="hint-text nota-tarjeta" data-i18n="settings.nombre.nota">Se guarda con cada récord.</p>
+
+    <!-- Cada grupo es una tarjeta de filas: el título encima, el rótulo a la
+         izquierda y el control a la derecha. Antes eran rótulos sueltos separados
+         por la misma línea que separaba los grupos, y los grupos no se leían. -->
     <div class="settings-group" id="settings-group-partida">
       <h3 data-i18n="settings.grupo.partida">Partida</h3>
-
-      <div class="field">
-        <span class="field-label" data-i18n="settings.robo">Cartas por robo</span>
-        <div class="seg" role="radiogroup" aria-label="Cartas por robo" data-i18n-aria-label="settings.robo">
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="1" data-i18n="settings.robo.1">De una</button>
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="3" data-i18n="settings.robo.3">De tres</button>
+      <div class="tarjeta">
+        <div class="fila campo">
+          <span class="field-label" data-i18n="settings.robo">Cartas por robo</span>
+          <div class="seg" role="radiogroup" aria-label="Cartas por robo" data-i18n-aria-label="settings.robo">
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="1" data-i18n="settings.robo.1">De una</button>
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="drawCount" data-value="3" data-i18n="settings.robo.3">De tres</button>
+          </div>
+          <p class="hint-text" data-i18n="settings.robo.nota">De tres es la variante difícil: en Vegas solo permite tres pasadas al mazo.</p>
         </div>
-        <p class="hint-text" data-i18n="settings.robo.nota">De tres es la variante difícil: en Vegas solo permite tres pasadas al mazo.</p>
-      </div>
 
-      <div class="field">
-        <span class="field-label" data-i18n="settings.puntuacion">Puntuación</span>
-        <div class="seg" role="radiogroup" aria-label="Puntuación" data-i18n-aria-label="settings.puntuacion">
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="standard" data-i18n="modo.standard">Estándar</button>
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="vegas" data-i18n="modo.vegas">Vegas</button>
+        <div class="fila campo">
+          <span class="field-label" data-i18n="settings.puntuacion">Puntuación</span>
+          <div class="seg" role="radiogroup" aria-label="Puntuación" data-i18n-aria-label="settings.puntuacion">
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="standard" data-i18n="modo.standard">Estándar</button>
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="scoring" data-value="vegas" data-i18n="modo.vegas">Vegas</button>
+          </div>
+          <p class="hint-text" id="scoring-hint"></p>
         </div>
-        <p class="hint-text" id="scoring-hint"></p>
-      </div>
 
-      <div class="field">
-        <span class="field-label" data-i18n="settings.manos">Manos resolubles</span>
-        <div class="seg" role="radiogroup" aria-label="Manos resolubles" data-i18n-aria-label="settings.manos">
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="random" data-i18n="settings.reparto.azar">Al azar</button>
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="balanced" data-i18n="settings.reparto.equilibrado">Equilibrado</button>
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="solvable" data-i18n="settings.reparto.solubles">Solo resolubles</button>
+        <div class="fila campo">
+          <span class="field-label" data-i18n="settings.manos">Manos resolubles</span>
+          <div class="seg" role="radiogroup" aria-label="Manos resolubles" data-i18n-aria-label="settings.manos">
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="random" data-i18n="settings.reparto.azar">Al azar</button>
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="balanced" data-i18n="settings.reparto.equilibrado">Equilibrado</button>
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="dealBias" data-value="solvable" data-i18n="settings.reparto.solubles">Solo resolubles</button>
+          </div>
+          <p class="hint-text" data-i18n="settings.manos.nota">«Equilibrado» reparte la mayoría de manos con solución comprobada y deja alguna al azar.</p>
         </div>
-        <p class="hint-text" data-i18n="settings.manos.nota">«Equilibrado» reparte la mayoría de manos con solución comprobada y deja alguna al azar.</p>
-      </div>
 
-      <label class="switch"><input type="checkbox" data-pref="timed"><span data-i18n="settings.contrarreloj">Contrarreloj</span></label>
-      <label class="switch"><input type="checkbox" data-pref="autoSafe"><span data-i18n="settings.autosubir">Subir automáticamente</span></label>
+        <label class="switch fila"><input type="checkbox" data-pref="timed"><span data-i18n="settings.contrarreloj">Contrarreloj</span></label>
+        <label class="switch fila"><input type="checkbox" data-pref="autoSafe"><span data-i18n="settings.autosubir">Subir automáticamente</span></label>
+      </div>
     </div>
 
     <div class="settings-group" id="settings-group-interfaz">
       <h3 data-i18n="settings.grupo.interfaz">Interfaz y accesibilidad</h3>
-
-      <div class="field">
-        <span class="field-label" data-i18n="settings.tema">Tema</span>
-        <div class="seg" role="radiogroup" aria-label="Tema" data-i18n-aria-label="settings.tema">
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="auto" data-i18n="settings.tema.auto">Automático</button>
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="light" data-i18n="settings.tema.claro">Claro</button>
-          <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="dark" data-i18n="settings.tema.oscuro">Oscuro</button>
+      <div class="tarjeta">
+        <div class="fila campo">
+          <span class="field-label" data-i18n="settings.tema">Tema</span>
+          <div class="seg" role="radiogroup" aria-label="Tema" data-i18n-aria-label="settings.tema">
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="auto" data-i18n="settings.tema.auto">Automático</button>
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="light" data-i18n="settings.tema.claro">Claro</button>
+            <button type="button" role="radio" aria-checked="false" class="seg-btn" data-pref="theme" data-value="dark" data-i18n="settings.tema.oscuro">Oscuro</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Los nombres de los idiomas van en su propio idioma: quien se ha perdido
-           en una lengua que no entiende reconoce el suyo igual. -->
-      <div class="field">
-        <label class="field-label" for="pref-lang" data-i18n="settings.idioma">Idioma</label>
-        <div class="select-wrap">
-          <select id="pref-lang" class="text-input" data-pref="lang">
-            <option value="auto" data-i18n="settings.idioma.auto">Automático</option>
-            <option value="es">Español</option>
-            <option value="en">English</option>
-            <option value="fr">Français</option>
-            <option value="pt">Português</option>
-            <option value="ko">한국어</option>
-          </select>
+        <!-- Los nombres de los idiomas van en su propio idioma: quien se ha perdido
+             en una lengua que no entiende reconoce el suyo igual. -->
+        <div class="fila campo">
+          <label class="field-label" for="pref-lang" data-i18n="settings.idioma">Idioma</label>
+          <div class="select-wrap">
+            <select id="pref-lang" class="text-input" data-pref="lang">
+              <option value="auto" data-i18n="settings.idioma.auto">Automático</option>
+              <option value="es">Español</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+              <option value="pt">Português</option>
+              <option value="ko">한국어</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <label class="switch"><input type="checkbox" data-pref="animations"><span data-i18n="settings.animaciones">Animaciones</span></label>
-      <label class="switch"><input type="checkbox" data-pref="sound"><span data-i18n="settings.sonidos">Sonidos</span></label>
-      <label class="switch"><input type="checkbox" data-pref="haptics"><span data-i18n="settings.vibracion">Vibración</span></label>
-      <label class="switch"><input type="checkbox" data-pref="fourColor"><span data-i18n="settings.cuatroColores">Cuatro colores</span></label>
+        <label class="switch fila"><input type="checkbox" data-pref="animations"><span data-i18n="settings.animaciones">Animaciones</span></label>
+        <label class="switch fila"><input type="checkbox" data-pref="sound"><span data-i18n="settings.sonidos">Sonidos</span></label>
+        <label class="switch fila"><input type="checkbox" data-pref="haptics"><span data-i18n="settings.vibracion">Vibración</span></label>
+        <label class="switch fila"><input type="checkbox" data-pref="fourColor"><span data-i18n="settings.cuatroColores">Cuatro colores</span></label>
+      </div>
     </div>
 
-    <details class="settings-details" id="settings-advanced">
-      <summary data-i18n="settings.grupo.avanzado">Opciones avanzadas</summary>
-      <div class="settings-details-body">
-        <label class="switch"><input type="checkbox" data-pref="penalizeHints"><span data-i18n="settings.penalizarPistas">Penalizar pistas</span></label>
+    <!-- Nada plegado: «Penalizar pistas» vivía sola detrás de un desplegable al
+         final, y es una regla de la puntuación como el contrarreloj. -->
+    <div class="settings-group" id="settings-advanced">
+      <h3 data-i18n="settings.grupo.avanzado">Opciones avanzadas</h3>
+      <div class="tarjeta">
+        <label class="switch fila"><input type="checkbox" data-pref="penalizeHints"><span data-i18n="settings.penalizarPistas">Penalizar pistas</span></label>
       </div>
-    </details>
+    </div>
 
-    <details class="settings-details" id="settings-tools">
-      <summary data-i18n="settings.grupo.aplicacionDatos">Aplicación y datos</summary>
-      <div class="settings-details-body">
-        <div class="field">
-          <span class="field-label" data-i18n="settings.aplicacion">Aplicación</span>
-
-          <div class="app-row">
-            <div class="app-row-info">
-              <strong id="app-version">v—</strong>
-              <p class="hint-text" id="update-hint" data-i18n="app.update.nota">Se instala en el dispositivo y funciona sin conexión.</p>
-            </div>
-            <button class="btn small" id="btn-update" type="button" data-i18n="app.update.buscar">Buscar actualización</button>
-          </div>
-
+    <!-- Lo que se hace aquí son acciones, y cada una es una fila entera con su
+         punta. Borrar va aparte, en rojo y sobre el panel: es lo único de aquí que
+         no tiene vuelta atrás, y el rojo sobre el relleno de la tarjeta se quedaba
+         en 4,1:1 en el tema oscuro; sobre el panel llega a 4,9:1. -->
+    <div class="settings-group" id="settings-tools">
+      <h3 data-i18n="settings.grupo.aplicacionDatos">Aplicación y datos</h3>
+      <div class="tarjeta">
+        <div class="fila valor">
+          <span class="fila-texto">
+            <span data-i18n="settings.aplicacion">Aplicación</span>
+            <span class="hint-text" id="update-hint" data-i18n="app.update.nota">Se instala en el dispositivo y funciona sin conexión.</span>
+          </span>
+          <strong id="app-version">v—</strong>
         </div>
-
-        <div class="field">
-          <span class="field-label" data-i18n="settings.datos">Tus datos</span>
-          <p class="hint-text" data-i18n="settings.datos.nota">Los récords y los ajustes viven en este navegador, en tu equipo. Aquí puedes llevártelos o borrarlos.</p>
-          <div class="row wrap">
-            <button class="btn small" id="btn-export" data-i18n="settings.datos.exportar">Exportar</button>
-            <button class="btn small" id="btn-import" data-i18n="settings.datos.importar">Importar</button>
-            <button class="btn small danger" id="btn-wipe" data-i18n="settings.datos.borrar">Borrar todo</button>
-            <input type="file" id="import-file" accept="application/json" hidden>
-          </div>
-        </div>
+        <button class="fila accion" id="btn-update" type="button" data-i18n="app.update.buscar">Buscar actualización</button>
       </div>
-    </details>
+      <div class="tarjeta">
+        <p class="fila cabeza" data-i18n="settings.datos">Tus datos</p>
+        <button class="fila accion" id="btn-export" type="button" data-i18n="settings.datos.exportar">Exportar</button>
+        <button class="fila accion" id="btn-import" type="button" data-i18n="settings.datos.importar">Importar</button>
+        <input type="file" id="import-file" accept="application/json" hidden>
+      </div>
+      <button class="btn danger ghost borrar-datos" id="btn-wipe" type="button" data-i18n="settings.datos.borrar">Borrar todo</button>
+      <p class="hint-text nota-tarjeta" data-i18n="settings.datos.nota">Los récords y los ajustes viven en este navegador, en tu equipo. Aquí puedes llevártelos o borrarlos.</p>
+    </div>
   </section>
 
   <section class="panel" id="panel-records" role="tabpanel" aria-labelledby="tab-records" tabindex="0" hidden>
-    <div class="field records-profile">
-      <label class="field-label" for="pref-name" data-i18n="settings.nombre">Tu nombre</label>
-      <input id="pref-name" class="text-input" data-pref="playerName" type="text" maxlength="24" placeholder="Anónimo" data-i18n-placeholder="settings.nombre.placeholder">
-      <p class="hint-text" data-i18n="settings.nombre.nota">Se guarda con cada récord.</p>
-    </div>
     <div class="tabs" id="stats-tabs" role="tablist" aria-label="Modalidad" data-i18n-aria-label="stats.modalidad"></div>
 
     <div id="stats-panel" role="tabpanel" tabindex="0">
-      <dl class="grid-stats" id="stats-grid"></dl>
+      <!-- Una fila por cifra, con la cifra al final: en la rejilla de tres
+           columnas los rótulos largos partían en dos líneas y las cifras de una
+           misma fila quedaban a distinta altura. -->
+      <dl class="tarjeta" id="stats-grid"></dl>
 
       <!-- La línea de puntuaciones dice de un vistazo si uno está mejorando;
            con menos de tres partidas no dice nada y se queda escondida. -->
@@ -375,13 +400,13 @@
 
   <section class="panel" id="panel-ayuda" role="tabpanel" aria-labelledby="tab-ayuda" tabindex="0" hidden>
     <p data-i18n="help.objetivo">Sube las 52 cartas a las cuatro pilas de arriba, cada una de un palo y del as al rey.</p>
-    <ul class="rules">
-      <li data-i18n-html="help.regla.orden">En las columnas se apila en orden <strong>descendente</strong> y <strong>alternando color</strong>.</li>
-      <li data-i18n-html="help.regla.hueco">En un hueco vacío solo entra un <strong>rey</strong> (con toda su secuencia detrás).</li>
-      <li data-i18n-html="help.regla.toque"><strong>Pica una carta</strong> y va sola a donde pueda: primero a su pila de arriba y, si no, a la columna que le venga.</li>
-      <li data-i18n-html="help.regla.arrastre"><strong>Arrástrala</strong> cuando quieras elegir tú el sitio, por ejemplo entre dos huecos libres.</li>
-      <li data-i18n="help.regla.voltear">Al destapar una carta se le da la vuelta sola.</li>
-      <li data-i18n-html="help.regla.reto">El <strong>reto diario</strong> reparte las mismas cartas para todo el mundo cada día: quien juegue hoy a tu lado tendrá tu misma mano.</li>
+    <ul class="rules tarjeta">
+      <li class="fila" data-i18n-html="help.regla.orden">En las columnas se apila en orden <strong>descendente</strong> y <strong>alternando color</strong>.</li>
+      <li class="fila" data-i18n-html="help.regla.hueco">En un hueco vacío solo entra un <strong>rey</strong> (con toda su secuencia detrás).</li>
+      <li class="fila" data-i18n-html="help.regla.toque"><strong>Pica una carta</strong> y va sola a donde pueda: primero a su pila de arriba y, si no, a la columna que le venga.</li>
+      <li class="fila" data-i18n-html="help.regla.arrastre"><strong>Arrástrala</strong> cuando quieras elegir tú el sitio, por ejemplo entre dos huecos libres.</li>
+      <li class="fila" data-i18n="help.regla.voltear">Al destapar una carta se le da la vuelta sola.</li>
+      <li class="fila" data-i18n-html="help.regla.reto">El <strong>reto diario</strong> reparte las mismas cartas para todo el mundo cada día: quien juegue hoy a tu lado tendrá tu misma mano.</li>
     </ul>
     <h3 data-i18n="help.controles">Controles</h3>
     <p id="help-mobile" hidden data-i18n="help.controles.movil">Toca una carta para moverla automáticamente, arrástrala para elegir el sitio y toca el mazo para robar.</p>
@@ -401,8 +426,27 @@
         <div><dt data-i18n="help.tecla.cancelar">Esc</dt><dd data-i18n="help.atajo.cancelar">cancelar el arrastre</dd></div>
       </dl>
     </div>
+    <!-- Una jugada por fila y sus puntos al final, como las cifras de Récords.
+         Era un párrafo gris con los números metidos en la frase. Las cantidades
+         van escritas como las escribe el juego en todos los idiomas (`formatScore`). -->
     <h3 data-i18n="help.puntuacion">Puntuación</h3>
-    <p class="hint-text" data-i18n-html="help.puntuacion.detalle"><strong>Estándar:</strong> +10 por carta a las pilas de arriba, +5 al destapar una carta o traer una del descarte a una columna, −15 al bajar una carta de arriba, −100 al reciclar el mazo robando de una. <strong>Vegas:</strong> pagas 52 $ de entrada y cobras 5 $ por cada carta que subas; el saldo se acumula entre partidas.</p>
+    <div class="tarjeta">
+      <p class="fila cabeza" data-i18n="modo.standard">Estándar</p>
+      <dl class="filas">
+        <div class="fila valor"><dt data-i18n="help.puntos.subir">Carta a las pilas de arriba</dt><dd>+10</dd></div>
+        <div class="fila valor"><dt data-i18n="help.puntos.destapar">Destapar una carta o traer una del descarte a una columna</dt><dd>+5</dd></div>
+        <div class="fila valor"><dt data-i18n="help.puntos.bajar">Bajar una carta de arriba</dt><dd>−15</dd></div>
+        <div class="fila valor"><dt data-i18n="help.puntos.reciclar">Reciclar el mazo robando de una</dt><dd>−100</dd></div>
+      </dl>
+    </div>
+    <div class="tarjeta">
+      <p class="fila cabeza" data-i18n="modo.vegas">Vegas</p>
+      <dl class="filas">
+        <div class="fila valor"><dt data-i18n="help.puntos.entrada">Entrada</dt><dd>−52 $</dd></div>
+        <div class="fila valor"><dt data-i18n="help.puntos.carta">Cada carta que subes</dt><dd>+5 $</dd></div>
+      </dl>
+      <p class="fila hint-text" data-i18n="help.puntos.saldo">El saldo se acumula entre partidas.</p>
+    </div>
     <p class="hint-text" data-i18n="help.privacidad">Todo se guarda en este navegador, en tu equipo. No sale nada a ningún servidor.</p>
   </section>
 
