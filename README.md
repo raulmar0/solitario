@@ -374,6 +374,10 @@ gh api -X POST repos/:owner/solitario/pages \
 O, sin API: **Settings → Pages → Source: Deploy from a branch → `main` / `/ (root)`**.
 Queda en `https://<usuario>.github.io/solitario/` en un par de minutos.
 
+Esta copia vive en **https://solitario.raulmar.com/**: el fichero `CNAME` de la
+raíz le dice a Pages qué dominio servir, y `raulmar0.github.io/solitario/`
+redirige ahí.
+
 Dos cosas a tener en cuenta:
 
 - Pages **necesita que el repositorio sea público** (con repo privado hace falta
