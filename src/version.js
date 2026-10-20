@@ -1,2 +1,2 @@
 // Lo escribe `npm run version` a partir de package.json. No editar a mano.
-export const VERSION = '1.20.3';
+export const VERSION = '1.20.4';

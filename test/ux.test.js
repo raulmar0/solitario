@@ -6,6 +6,7 @@
 import test from 'node:test';
 import * as engine from '../src/engine.js';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { MARGEN_ANIM } from '../src/ui.js';
@@ -899,10 +900,33 @@ test('al pie de Ajustes se dice quién lo hace, con la marca enlazada y en minú
   assert.equal(punto.getAttribute('aria-hidden'), 'true', 'el punto se ve y no se lee');
   assert.equal(enlace.lastChild, punto, 'detrás de la marca y dentro del enlace');
 
+  // Y con su logo delante, dibujado aquí: ni se lee, ni lo pisa el tabulador, ni
+  // trae otra tinta que la del enlace.
+  const logo = enlace.querySelector('.creditos-logo');
+  assert.ok(logo, 'la marca lleva su logo');
+  assert.equal(logo.namespaceURI, 'http://www.w3.org/2000/svg', 'en línea: ni un fichero más ni una imagen que bloquear');
+  assert.equal(enlace.firstChild, logo, 'delante de la marca y dentro del enlace');
+  assert.equal(logo.nextSibling.nodeValue, 'apolar', 'pegado a la «a»');
+  assert.equal(logo.getAttribute('aria-hidden'), 'true', 'el logo se ve y no se lee');
+  assert.equal(logo.getAttribute('focusable'), 'false');
+  assert.equal(logo.getAttribute('fill'), 'currentColor', 'la tinta del enlace, y el acento al pasar por encima');
+  assert.equal(logo.getAttribute('viewBox'), '0 0 100 100');
+  assert.equal(logo.querySelector('title'), null, 'sin título: el enlace no cambia de nombre');
+  assert.equal(logo.querySelectorAll('path').length, 1);
+  // El trazo es el que mandó apolar, tal cual: se compara su huella para que
+  // el dibujo siga escrito en un solo sitio, el HTML.
+  const trazo = logo.querySelector('path').getAttribute('d');
+  assert.equal(createHash('sha256').update(trazo).digest('hex').slice(0, 16), '6f78b2eb016f5ae9',
+    'el trazo del logo de apolar, sin retocar');
+  assert.equal(logo.querySelector('path').hasAttribute('fill'), false, 'el trazo hereda currentColor');
+  assert.equal([logo, ...logo.querySelectorAll('*')].some((n) => n.hasAttribute('style')), false,
+    'sin atributo style: la política de seguridad no lo dejaría pasar');
+
   try {
     for (const { code } of i18n.IDIOMAS) {
       cambiarIdioma(code);
       assert.equal(creditos.querySelector('a'), enlace, `${code}: el mismo enlace, recolocado y no rehecho`);
+      assert.equal(enlace.firstChild, logo, `${code}: con su logo dentro, delante`);
       assert.equal(enlace.lastChild, punto, `${code}: con su punto dentro`);
       assert.equal(leido(enlace), 'apolar', `${code}: la marca ni se traduce ni lleva mayúscula`);
       // La frase entera y en su orden: en coreano la marca va delante.
@@ -944,12 +968,22 @@ test('la marca va con la letra de apolar, servida desde aquí y precargada para 
   const marca = regla('#dlg-settings .creditos a').style;
   assert.equal(marca.getPropertyValue('font-family').split(',')[0].trim(), `"${familia}"`);
   assert.deepEqual(
-    Object.fromEntries(['font-size', 'font-weight', 'letter-spacing', 'line-height', 'color', 'text-decoration']
+    Object.fromEntries(['font-size', 'font-weight', 'letter-spacing', 'line-height', 'color', 'text-decoration', 'white-space']
       .map((p) => [p, marca.getPropertyValue(p)])),
-    { 'font-size': '1.15em', 'font-weight': '700', 'letter-spacing': '-0.085em', 'line-height': '1', color: 'var(--panel-ink)', 'text-decoration': 'none' },
+    // Sin cortes: el logo es una pieza suelta y la línea podría dejarlo solo.
+    { 'font-size': '1.15em', 'font-weight': '700', 'letter-spacing': '-0.085em', 'line-height': '1', color: 'var(--panel-ink)', 'text-decoration': 'none', 'white-space': 'nowrap' },
   );
   assert.equal(regla('#dlg-settings .creditos-punto').style.getPropertyValue('font-size'), '0.74em', 'el punto, como en apolar.co');
   assert.equal(regla('#dlg-settings .creditos a:hover').style.getPropertyValue('color'), 'var(--accent)', 'al pasar por encima, el acento');
+  // El logo, en ems de la marca: lo alto de la «l», a su distancia de la «a» y
+  // asentado en la línea base, un pelo por debajo como la «o». Sin recortar lo
+  // que el ajuste al píxel saque de la caja, y sin tinta propia.
+  const logo = regla('#dlg-settings .creditos-logo').style;
+  assert.deepEqual(
+    Object.fromEntries(['width', 'height', 'margin-inline-end', 'position', 'top', 'overflow', 'vertical-align', 'fill', 'color']
+      .map((p) => [p, logo.getPropertyValue(p)])),
+    { width: '0.72em', height: '0.72em', 'margin-inline-end': '0.16em', position: 'relative', top: '0.01em', overflow: 'visible', 'vertical-align': '', fill: '', color: '' },
+  );
 });
 
 

@@ -246,14 +246,16 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.20.3`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.20.4`.
 - **Quién lo hace**: al pie de Ajustes, «Hecho por apolar», y la marca lleva a
   https://apolar.co/ en otra pestaña. La frase va con la letra de las notas y la
-  marca, como en apolar.co: en negrita, apretada, con su punto detrás y en la
-  tinta del texto, sin subrayado; el punto no se lee, así que el enlace se llama
-  «apolar». La frase es de cada idioma y la marca no se traduce: va en minúscula
-  y el enlace se escribe una sola vez, en el HTML. Es un enlace corriente, así
-  que lo de no hablar con ningún servidor sigue en pie.
+  marca, como en apolar.co: con su logo delante —el círculo partido—, en
+  negrita, apretada, con su punto detrás y en la tinta del texto, sin subrayado;
+  ni el logo ni el punto se leen, así que el enlace se llama «apolar». El logo va
+  dibujado en el HTML, con la tinta del enlace: ni es un fichero más ni hay que
+  precargarlo. La frase es de cada idioma y la marca no se traduce: va en
+  minúscula y el enlace se escribe una sola vez, en el HTML. Es un enlace
+  corriente, así que lo de no hablar con ningún servidor sigue en pie.
   La letra es un recorte de 1 KB de Space Grotesk —solo «apolar» y el punto—,
   en `src/fonts/` con su licencia, la SIL Open Font License 1.1, y se precarga.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
