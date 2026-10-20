@@ -192,8 +192,9 @@ test('todo lo que carga la página está en la precarga', () => {
     .filter((r) => !r.startsWith('data:') && !r.startsWith('http') && !r.startsWith('#'));
   for (const r of referidos) assert.ok(enSw.has(r), `${r} sale en el HTML pero no se precarga`);
 
-  // Y todos los módulos que importa el juego.
-  for (const fichero of ficherosDelApp().filter((f) => f.startsWith('src/'))) {
+  // Y todos los módulos que importa el juego (en src/ también va la letra de la
+  // marca, que no es un módulo).
+  for (const fichero of ficherosDelApp().filter((f) => f.startsWith('src/') && f.endsWith('.js'))) {
     for (const [, rel] of leer(fichero).matchAll(/from '\.\/([^']+)'/g)) {
       assert.ok(enSw.has(`src/${rel}`), `src/${rel} se importa desde ${fichero} y no se precarga`);
     }

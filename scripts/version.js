@@ -29,6 +29,9 @@ export function ficherosDelApp(raiz = RAIZ) {
     ...listar('icons', (f) => /\.(svg|png)$/.test(f)),
     ...listar('src', (f) => f.endsWith('.js')),
     ...listar('src/locales', (f) => f.endsWith('.js')),
+    // La letra de la marca de apolar, que pide styles.css. Su licencia va al
+    // lado pero no se precarga: para pintar el pie no hace falta.
+    ...listar('src/fonts', (f) => f.endsWith('.woff2')),
   ];
 }
 

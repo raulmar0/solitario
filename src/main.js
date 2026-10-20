@@ -82,7 +82,7 @@ const instalador = crearInstalador({ onCambio: () => pintarAjustesApp() });
  * «Hecho por apolar». La frase es de cada idioma y el enlace, del HTML: cada
  * diccionario dice con su {marca} dónde cae —en coreano, delante—. `t` deja tal
  * cual un marcador sin valor, y por ahí se parte la frase. Se recoloca el mismo
- * <a>, sin rehacerlo.
+ * <a>, sin rehacerlo, y el punto de la marca va dentro con él.
  */
 function pintarCreditos() {
   const parrafo = $('#creditos');

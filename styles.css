@@ -1361,22 +1361,43 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    en el tema oscuro y sobre el panel sí. */
 #dlg-settings .borrar-datos { margin-top: var(--menu-2); }
 
-/* Quién lo hace, al pie de Ajustes y con la letra de las notas. Va sobre el panel
+/* La letra de la marca de apolar, la de apolar.co: Space Grotesk fijada en 700 y
+   recortada a lo que escribe, «a», «l», «o», «p», «r» y el punto (•). Pesa 1 KB y
+   va con su licencia al lado (SIL OFL 1.1). La ruta es relativa a esta hoja, así
+   que vale igual en la raíz del dominio que en /solitario/, y el worker la
+   precarga: sin conexión el pie se ve igual. Mientras llega, la de reserva. */
+@font-face {
+  font-family: "apolar wordmark";
+  src: url("src/fonts/apolar-wordmark.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Quién lo hace, al pie de Ajustes: la frase con la letra de las notas y la marca
+   con la suya, como en apolar.co —negrita, apretada y con su punto— y en la tinta
+   del texto y no en la suave, como su logo de tinta sobre papel. Va sobre el panel
    y no en una tarjeta porque al pasar por encima la marca toma el acento, como
    las filas de acción, y en el tema claro el acento llega a 4,9:1 sobre el panel
    pero se queda en 4,4 sobre el relleno de la tarjeta. Centrado, se lee como el
-   pie de la sección y no como otra nota de lo de encima. La marca se distingue
-   por el subrayado, no por un color más, y el foco lleva el anillo de la casa.
-   Su objetivo de dedo crece por fuera de la letra, como el del reparto de la
-   cabecera: a 13 px la palabra sola no da para un dedo. */
+   pie de la sección y no como otra nota de lo de encima. Que es un enlace lo dice
+   su letra, no un subrayado ni un color más, y el foco lleva el anillo de la casa.
+   Con el interlineado a 1 la marca, más grande, no le da altura a la línea. Su
+   objetivo de dedo crece por fuera de la letra, como el del reparto de la
+   cabecera: a este tamaño la palabra sola no da para un dedo. */
 #dlg-settings .creditos { margin: var(--menu-3) 0 0; text-align: center; }
 #dlg-settings .creditos a {
   position: relative;
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-family: "apolar wordmark", "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-size: 1.15em;
+  font-weight: 700;
+  letter-spacing: -0.085em;
+  line-height: 1;
+  color: var(--panel-ink);
+  text-decoration: none;
   transition: var(--quieto, color var(--speed) linear);
 }
+#dlg-settings .creditos-punto { font-size: 0.74em; }
 #dlg-settings .creditos a::after { content: ''; position: absolute; inset: -14px -10px; }
 #dlg-settings .creditos a:hover { color: var(--accent); }
 #dlg-settings .creditos a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }

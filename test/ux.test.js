@@ -6,7 +6,7 @@
 import test from 'node:test';
 import * as engine from '../src/engine.js';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { MARGEN_ANIM } from '../src/ui.js';
 
@@ -867,6 +867,13 @@ test('un idioma que no conocemos vuelve a la detección automática', () => {
   assert.equal(store.getPrefs().lang, 'es');
 });
 
+/** Lo que se lee de un nodo: su texto sin lo que lleva aria-hidden. */
+const leido = (nodo) => {
+  const copia = nodo.cloneNode(true);
+  for (const oculto of copia.querySelectorAll('[aria-hidden="true"]')) oculto.remove();
+  return copia.textContent;
+};
+
 test('al pie de Ajustes se dice quién lo hace, con la marca enlazada y en minúscula en los cinco idiomas', () => {
   for (const d of window.document.querySelectorAll('dialog')) d.close();
   panels.openSettings();
@@ -884,18 +891,65 @@ test('al pie de Ajustes se dice quién lo hace, con la marca enlazada y en minú
   assert.match(regla('#dlg-settings .creditos a:focus-visible').style.getPropertyValue('outline'), /solid var\(--accent\)/,
     'el foco se ve, con el anillo del resto del menú');
 
+  // La marca se escribe como en apolar.co, con su punto detrás. El punto es
+  // dibujo: el lector de pantalla no lo canta y el enlace se sigue llamando «apolar».
+  const punto = enlace.querySelector('.creditos-punto');
+  assert.ok(punto, 'la marca lleva su punto');
+  assert.equal(punto.textContent, '•');
+  assert.equal(punto.getAttribute('aria-hidden'), 'true', 'el punto se ve y no se lee');
+  assert.equal(enlace.lastChild, punto, 'detrás de la marca y dentro del enlace');
+
   try {
     for (const { code } of i18n.IDIOMAS) {
       cambiarIdioma(code);
       assert.equal(creditos.querySelector('a'), enlace, `${code}: el mismo enlace, recolocado y no rehecho`);
-      assert.equal(enlace.textContent, 'apolar', `${code}: la marca ni se traduce ni lleva mayúscula`);
+      assert.equal(enlace.lastChild, punto, `${code}: con su punto dentro`);
+      assert.equal(leido(enlace), 'apolar', `${code}: la marca ni se traduce ni lleva mayúscula`);
       // La frase entera y en su orden: en coreano la marca va delante.
-      assert.equal(creditos.textContent, t('app.creditos', { marca: 'apolar' }), `${code}: «${creditos.textContent}»`);
+      assert.equal(leido(creditos), t('app.creditos', { marca: 'apolar' }), `${code}: «${leido(creditos)}»`);
     }
   } finally {
     cambiarIdioma('es');
     $('#dlg-settings').close();
   }
+});
+
+test('la marca va con la letra de apolar, servida desde aquí y precargada para verse igual sin conexión', () => {
+  // Una sola letra propia, con la ruta relativa a la hoja: así vale igual en la
+  // raíz del dominio que en /solitario/.
+  const caras = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]);
+  assert.equal(caras.length, 1, 'una sola letra propia, la de la marca');
+  const [cara] = caras;
+  const familia = /font-family:\s*"([^"]+)"/.exec(cara)?.[1];
+  const ruta = /src:\s*url\("([^"]+)"\)\s*format\("woff2"\)/.exec(cara)?.[1];
+  assert.ok(familia && ruta, cara);
+  assert.match(cara, /font-weight:\s*700;/, 'la negrita de apolar.co, la única que trae el recorte');
+  assert.match(cara, /font-display:\s*swap;/, 'mientras llega, el pie se lee con la de reserva');
+  assert.equal(/^(?:\/|[a-z]+:)/i.test(ruta), false, `${ruta}: relativa a la hoja, ni absoluta ni de otro sitio`);
+
+  // El worker la precarga, existe y lleva su licencia al lado (SIL OFL 1.1).
+  const base = 'https://raulmar0.github.io/solitario/';
+  const enLaRaiz = new URL(ruta, `${base}styles.css`).href.replace(base, '');
+  const precarga = [...readFileSync(new URL('../sw.js', import.meta.url), 'utf8').matchAll(/^\s{2}'([^']+)',$/gm)].map((m) => m[1]);
+  assert.ok(precarga.includes(enLaRaiz), `${enLaRaiz} no se precarga: sin conexión la marca saldría con otra letra`);
+  const fichero = new URL(`../${enLaRaiz}`, import.meta.url);
+  assert.ok(existsSync(fichero), `${enLaRaiz} no existe`);
+  assert.ok(existsSync(new URL('Space-Grotesk-LICENSE.txt', fichero)), 'la licencia de la letra va con ella');
+
+  // Con default-src 'none' y sin font-src, el navegador la descarta sin decir nada.
+  assert.match(/Content-Security-Policy" content="([^"]+)"/.exec(html)[1], /font-src 'self'/);
+
+  // El enlace la pide la primera, con la tinta del texto —ni la suave de las
+  // notas ni el acento— y sin subrayado: que es un enlace lo dice la letra.
+  const marca = regla('#dlg-settings .creditos a').style;
+  assert.equal(marca.getPropertyValue('font-family').split(',')[0].trim(), `"${familia}"`);
+  assert.deepEqual(
+    Object.fromEntries(['font-size', 'font-weight', 'letter-spacing', 'line-height', 'color', 'text-decoration']
+      .map((p) => [p, marca.getPropertyValue(p)])),
+    { 'font-size': '1.15em', 'font-weight': '700', 'letter-spacing': '-0.085em', 'line-height': '1', color: 'var(--panel-ink)', 'text-decoration': 'none' },
+  );
+  assert.equal(regla('#dlg-settings .creditos-punto').style.getPropertyValue('font-size'), '0.74em', 'el punto, como en apolar.co');
+  assert.equal(regla('#dlg-settings .creditos a:hover').style.getPropertyValue('color'), 'var(--accent)', 'al pasar por encima, el acento');
 });
 
 
