@@ -78,8 +78,23 @@ const pwa = registrarServiceWorker({
 });
 const instalador = crearInstalador({ onCambio: () => pintarAjustesApp() });
 
+/**
+ * «Hecho por apolar». La frase es de cada idioma y el enlace, del HTML: cada
+ * diccionario dice con su {marca} dónde cae —en coreano, delante—. `t` deja tal
+ * cual un marcador sin valor, y por ahí se parte la frase. Se recoloca el mismo
+ * <a>, sin rehacerlo.
+ */
+function pintarCreditos() {
+  const parrafo = $('#creditos');
+  const marca = parrafo.querySelector('a');
+  const [antes, despues = ''] = t('app.creditos').split('{marca}');
+  if (parrafo.textContent === antes + marca.textContent + despues) return;
+  parrafo.replaceChildren(...[antes, marca, despues].filter((trozo) => trozo !== ''));
+}
+
 function pintarAjustesApp() {
   $('#app-version').textContent = t('app.version', { version: VERSION });
+  pintarCreditos();
   const fila = $('#install-row');
   const boton = $('#btn-install');
   const noInstalada = !esStandalone();

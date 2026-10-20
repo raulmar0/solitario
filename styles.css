@@ -1361,6 +1361,26 @@ html[data-deck="4"] .card[data-suit="C"] .face { color: var(--card-club); }
    en el tema oscuro y sobre el panel sí. */
 #dlg-settings .borrar-datos { margin-top: var(--menu-2); }
 
+/* Quién lo hace, al pie de Ajustes y con la letra de las notas. Va sobre el panel
+   y no en una tarjeta porque al pasar por encima la marca toma el acento, como
+   las filas de acción, y en el tema claro el acento llega a 4,9:1 sobre el panel
+   pero se queda en 4,4 sobre el relleno de la tarjeta. Centrado, se lee como el
+   pie de la sección y no como otra nota de lo de encima. La marca se distingue
+   por el subrayado, no por un color más, y el foco lleva el anillo de la casa.
+   Su objetivo de dedo crece por fuera de la letra, como el del reparto de la
+   cabecera: a 13 px la palabra sola no da para un dedo. */
+#dlg-settings .creditos { margin: var(--menu-3) 0 0; text-align: center; }
+#dlg-settings .creditos a {
+  position: relative;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: var(--quieto, color var(--speed) linear);
+}
+#dlg-settings .creditos a::after { content: ''; position: absolute; inset: -14px -10px; }
+#dlg-settings .creditos a:hover { color: var(--accent); }
+#dlg-settings .creditos a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
 /* Interruptores dibujados. La casilla del navegador no es de esta interfaz: se
    apaga con appearance y se dibuja el carril y la bola con los mismos tokens
    que el resto, que además funcionan en los dos temas. La fila la pone `.fila`. */

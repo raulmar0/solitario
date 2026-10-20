@@ -246,7 +246,12 @@ juego nunca ha hablado con ningún servidor.
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
   «Añadir a pantalla de inicio».
-- **Versión**: Ajustes enseña la que está corriendo, `v1.20.1`.
+- **Versión**: Ajustes enseña la que está corriendo, `v1.20.2`.
+- **Quién lo hace**: al pie de Ajustes, con la letra de las notas, «Hecho por
+  apolar», y la marca lleva a https://apolar.co/ en otra pestaña. La frase es de
+  cada idioma y la marca no se traduce: va en minúscula y el enlace se escribe
+  una sola vez, en el HTML. Es un enlace corriente, así que lo de no hablar con
+  ningún servidor sigue en pie.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
   nueva mientras juegas, sale un aviso arriba con un botón para saltar a ella.
 
@@ -331,7 +336,7 @@ Lo que está decidido y aún no está hecho vive en [`docs/TODO.md`](docs/TODO.m
 npm test
 ```
 
-456 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
+457 pruebas con el runner de Node: reglas (incluido un buscador en profundidad que
 gana repartos de verdad y comprueba que la victoria se detecta), puntuación,
 persistencia, control de partida, el recomendador (que ninguna partida entre en
 bucle siguiendo sus consejos, que no mire cartas tapadas y que pista y toque no se

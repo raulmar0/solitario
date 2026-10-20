@@ -4,6 +4,7 @@ export default {
   'app.titulo': 'Solitaire',
   'app.union': ' · ',
   'app.version': 'v{version}',
+  'app.creditos': 'Créé par {marca}',
   'app.update.pill': 'Nouvelle version · Mettre à jour',
   'app.update.pill.corto': 'Mettre à jour',
   'app.update.buscar': 'Rechercher une mise à jour',

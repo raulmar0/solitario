@@ -867,6 +867,37 @@ test('un idioma que no conocemos vuelve a la detección automática', () => {
   assert.equal(store.getPrefs().lang, 'es');
 });
 
+test('al pie de Ajustes se dice quién lo hace, con la marca enlazada y en minúscula en los cinco idiomas', () => {
+  for (const d of window.document.querySelectorAll('dialog')) d.close();
+  panels.openSettings();
+  const creditos = $('#creditos');
+  assert.equal($('#panel-ajustes').lastElementChild, creditos, 'al pie de Ajustes');
+  assert.equal(creditos.classList.contains('hint-text'), true, 'con la letra de las notas: un pie, no un cartel');
+  assert.equal(creditos.closest('.tarjeta'), null, 'sobre el panel: en el relleno de una tarjeta el acento no llega al 4,5:1');
+
+  // Un enlace de verdad, uno solo, y sin nada más que la dirección.
+  assert.equal(creditos.querySelectorAll('a').length, 1);
+  const enlace = creditos.querySelector('a');
+  assert.equal(enlace.getAttribute('href'), 'https://apolar.co/', 'sin parámetros ni nada que rastree');
+  assert.equal(enlace.target, '_blank', 'se abre aparte y la partida se queda donde estaba');
+  assert.equal(enlace.rel, 'noopener');
+  assert.match(regla('#dlg-settings .creditos a:focus-visible').style.getPropertyValue('outline'), /solid var\(--accent\)/,
+    'el foco se ve, con el anillo del resto del menú');
+
+  try {
+    for (const { code } of i18n.IDIOMAS) {
+      cambiarIdioma(code);
+      assert.equal(creditos.querySelector('a'), enlace, `${code}: el mismo enlace, recolocado y no rehecho`);
+      assert.equal(enlace.textContent, 'apolar', `${code}: la marca ni se traduce ni lleva mayúscula`);
+      // La frase entera y en su orden: en coreano la marca va delante.
+      assert.equal(creditos.textContent, t('app.creditos', { marca: 'apolar' }), `${code}: «${creditos.textContent}»`);
+    }
+  } finally {
+    cambiarIdioma('es');
+    $('#dlg-settings').close();
+  }
+});
+
 
 // ---------- baraja, huecos y contador ----------
 

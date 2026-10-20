@@ -5,6 +5,7 @@ export default {
   'app.titulo': '솔리테어',
   'app.union': ' · ',
   'app.version': 'v{version}',
+  'app.creditos': '{marca} 제작',
   'app.update.pill': '새 버전 · 업데이트',
   'app.update.pill.corto': '업데이트',
   'app.update.buscar': '업데이트 확인',

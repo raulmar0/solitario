@@ -5,6 +5,7 @@ export default {
   'app.titulo': 'Solitario',
   'app.union': ' · ',
   'app.version': 'v{version}',
+  'app.creditos': 'Hecho por {marca}',
   'app.update.pill': 'Versión nueva · Actualizar',
   'app.update.pill.corto': 'Actualizar',
   'app.update.buscar': 'Buscar actualización',
