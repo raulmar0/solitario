@@ -287,7 +287,7 @@ export default {
   'help.puntos.entrada': 'Buy-in',
   'help.puntos.carta': 'Each card you send up',
   'help.puntos.saldo': 'The balance carries over between games.',
-  'help.privacidad': 'Everything is saved in this browser, on your device. Nothing goes out to any server.',
+  'help.privacidad': 'Records and the game in progress stay in this browser, on your device. Visits are counted anonymously with Simple Analytics, with no cookies and without your name.',
 
   // carta — nombres de rango y palo (accesibilidad y pistas)
   'carta.nombre': '{rango} of {palo}',

@@ -13,6 +13,8 @@ import { PILE } from './engine.js';
 import { VERSION } from './version.js';
 import { registrarServiceWorker, crearInstalador, esStandalone, esIos } from './pwa.js';
 import { crearSonidos } from './sonidos.js';
+import { esMovil } from './device.js';
+import * as analitica from './analitica.js';
 import * as i18n from './i18n.js';
 import * as motion from './motion.js';
 
@@ -35,7 +37,12 @@ const sonidos = crearSonidos({ activo: () => game.prefs.sound !== false });
 const game = createGame({
   store,
   onEvents: (eventos) => { sonarJugada(eventos); avisarPasadas(eventos); },
+  onResult: (resultado) => anotarResultado(resultado),
 });
+
+// Lo que acompaña a cada visita: ajustes y pantalla, no la mano. La mano va en
+// el evento concreto, con otras claves, para que esto no la pise al enviarse.
+analitica.definirContexto(() => contextoDeVisita());
 const board = createBoard({
   root: $('#board'),
   game,
@@ -110,6 +117,10 @@ function pintarAjustesApp() {
     fila.hidden = true;
     boton.hidden = true;
   }
+  if (!instalacionContada && noInstalada && (instalador.puede || instalador.pistaIos)) {
+    instalacionContada = true;
+    analitica.evento('instalar_disponible', { via: instalador.puede ? 'navegador' : 'ios' });
+  }
   $('#btn-update').disabled = !pwa.soportado;
   if (!pwa.soportado) $('#update-hint').textContent = t('app.update.nosoportado');
 }
@@ -127,12 +138,14 @@ async function buscarActualizacion(boton) {
   boton.textContent = t('app.update.buscando');
   try {
     const resultado = await pwa.actualizar();
+    analitica.evento('actualizar', { resultado, via: 'ajustes' });
     if (resultado === 'aldia') avisar('app.update.aldia', { version: VERSION });
     else if (resultado === 'primera-vez') avisar('app.update.primera');
     else if (resultado === 'instalando') avisar('app.update.instalando');
     else if (resultado === 'error') avisar('app.update.error', {}, 'err');
     // 'actualizando' recarga la página, no hace falta decir nada
   } catch {
+    analitica.evento('actualizar', { resultado: 'error', via: 'ajustes' });
     avisar('app.update.error', {}, 'err');
   } finally {
     boton.disabled = false;
@@ -147,6 +160,7 @@ $('#btn-update-pill').addEventListener('click', async (event) => {
   pill.disabled = true;
   game.flush();                       // la partida se guarda antes de recargar
   const resultado = await pwa.actualizar();
+  analitica.evento('actualizar', { resultado, via: 'aviso' });
   if (resultado === 'instalando') message('app.update.instalando');
   else if (resultado === 'error') { pill.disabled = false; message('app.update.error.saltar', {}, { aviso: true }); }
   else if (resultado !== 'actualizando') { pill.disabled = false; pill.hidden = true; }
@@ -154,11 +168,13 @@ $('#btn-update-pill').addEventListener('click', async (event) => {
 
 $('#btn-install').addEventListener('click', async () => {
   const salida = await instalador.instalar();
+  analitica.evento('instalar', { resultado: salida || 'nada' });
   if (salida === 'accepted') avisar('app.install.hecha');
   else if (salida === 'error') avisar('app.install.error', {}, 'err');
   pintarAjustesApp();
 });
 
+let instalacionContada = false;
 let bannerTimer = null;
 let bannerFijo = null;         // el aviso que no caduca, para reescribirlo si cambia el idioma
 let bannerVivo = null;         // el de paso que está puesto ahora, por el mismo motivo
@@ -363,13 +379,19 @@ function pintarBotonFinal() {
 }
 
 function autoCompletar() {
-  if (autoTimer) { detenerAuto(); return; }
+  if (autoTimer) {
+    analitica.evento('remate', { accion: 'parar' });
+    detenerAuto();
+    return;
+  }
   if (!game.canAutoComplete) {
     const subidas = game.autoSafe();
+    analitica.evento('autosubir', { n: subidas });
     if (subidas) message('msg.autosubir', { count: subidas, n: subidas });
     else message('msg.autosubir.ninguna');
     return;
   }
+  analitica.evento('remate', { accion: 'empezar' });
   // Una carta cada cuarto de vuelo: se solapan lo justo para que parezca una cascada.
   // Sin movimiento no hay cascada que espaciar y la partida se remata de golpe.
   const ritmo = motion.hayMovimiento(game.prefs) ? Math.round(board.flightMs / 4) : 0;
@@ -411,6 +433,7 @@ const confirmarSiEnJuego = (clave) =>
 $('#btn-new').addEventListener('click', () => {
   if (!confirmarSiEnJuego('confirm.nueva')) return;
   detenerAuto();
+  analitica.motivo('nueva');
   game.newGame();
   message('msg.nueva');
 });
@@ -418,6 +441,7 @@ $('#btn-new').addEventListener('click', () => {
 $('#btn-restart').addEventListener('click', () => {
   if (!confirmarSiEnJuego('confirm.repetir')) return;
   detenerAuto();
+  analitica.motivo('repetir');
   game.restart();
   message('msg.repetida');
 });
@@ -439,7 +463,13 @@ $('#btn-undo').addEventListener('click', deshacer);
  * que es otra cosa muy distinta y se dice como tal.
  */
 function pedirPista() {
+  const antes = game.hints;
   const rec = game.hint();
+  analitica.evento('pista', {
+    nueva: game.hints > antes,
+    motivo: rec?.reason ?? 'ninguna',
+    n: game.hints,
+  });
   if (!rec) {
     board.flashHint(null);
     message(sinSalida(), {}, { aviso: true, fijo: true });
@@ -467,16 +497,23 @@ async function compartirReparto() {
   const loc = globalThis.location;
   const reto = game.dia ? `&reto=${game.dia}` : '';
   const url = `${loc?.origin ?? ''}${loc?.pathname ?? ''}?seed=${semilla}${reto}`;
-  if (!globalThis.navigator?.clipboard?.writeText) { message('msg.reparto.url', { url }); return; }
+  const anotado = (ok) => analitica.evento('copiar_reparto', { ok, reto: !!game.dia, semilla });
+  if (!globalThis.navigator?.clipboard?.writeText) {
+    anotado(false);
+    message('msg.reparto.url', { url });
+    return;
+  }
   try {
     await navigator.clipboard.writeText(url);
   } catch {
     // El portapapeles se niega si el permiso está denegado o la página no tiene
     // el foco. Enseñar la URL deja al jugador con lo que venía a buscar; decirle
     // solo que no se pudo copiar lo deja sin nada.
+    anotado(false);
     message('msg.reparto.url', { url });
     return;
   }
+  anotado(true);
   const chip = $('#seed');
   chip.classList.add('copiado');
   clearTimeout(copiadoTimer);
@@ -625,22 +662,124 @@ function saludoInicial() {
   }, 500);
 }
 
+/** Aún no hay ninguna partida apuntada, en ninguna modalidad. */
+function esPrimeraVisita() {
+  return ['standard', 'vegas'].every((scoring) =>
+    [1, 3].every((draw) => !store.getStats(scoring, draw).played));
+}
+
+/** La visita y la mano con la que se abre. El observador entra después, para no contarla dos veces. */
+function anotarArranque(origen) {
+  analitica.evento('visita', { origen, primera: esPrimeraVisita() });
+  if (origen === 'retomada') analitica.eventoPartida('partida_retomada', game);
+  else analitica.eventoPartida('partida_nueva', game, { motivo: origen });
+  if (game.status === 'stuck') {
+    analitica.evento('partida_atascada', {
+      jugadas: game.moves,
+      pistas: game.hints,
+      rescate: game.hasAnyMove,
+      semilla: game.seed ?? undefined,
+      reto: !!game.dia,
+    });
+  }
+}
+
+/**
+ * Al cerrar una partida. El nombre se queda en el récord local y no se manda:
+ * aquí solo van cifras. `recordGame` ya ha corrido, así que las cuentas incluyen
+ * esta mano.
+ */
+function anotarResultado(r) {
+  const stats = store.getStats(r.scoring, r.drawCount);
+  analitica.eventoPartida(r.won ? 'partida_ganada' : 'partida_perdida', game, {
+    puntos: r.score,
+    segundos: Math.floor(r.timeMs / 1000),
+    jugadas: r.moves,
+    pistas: r.hints,
+    deshacer: r.undos,
+    robo: r.drawCount,
+    puntuacion: r.scoring,
+    contrarreloj: !!r.timed,
+    penalizar_pistas: !!r.penalizeHints,
+    reto: !!r.dia,
+    dia: r.dia || undefined,
+    semilla: r.seed,
+    partida: r.won ? 'won' : 'perdida',
+    partidas: stats.played,
+    ganadas: stats.won,
+    racha: stats.currentStreak,
+    mejor: r.score === stats.bestScore,
+    ...(r.scoring === 'vegas' ? { banca: store.getBank(r.drawCount) } : {}),
+  });
+}
+
+/** Ajustes y pantalla. No la mano: esa va en su evento, y estas claves no la pisan. */
+function contextoDeVisita() {
+  const prefs = game.prefs;
+  const nav = globalThis.navigator ?? {};
+  const red = nav.connection || nav.mozConnection || nav.webkitConnection;
+  return {
+    version: VERSION,
+    idioma: i18n.idioma(),
+    idioma_navegador: String(nav.language || '').slice(0, 16) || undefined,
+    pref_idioma: prefs.lang,
+    tema: document.documentElement?.dataset?.theme || prefs.theme,
+    pref_tema: prefs.theme,
+    pref_robo: prefs.drawCount,
+    pref_puntuacion: prefs.scoring,
+    pref_contrarreloj: prefs.timed !== false,
+    pref_manos: prefs.dealBias,
+    pref_autosubir: !!prefs.autoSafe,
+    pref_animaciones: prefs.animations !== false,
+    pref_sonidos: prefs.sound !== false,
+    pref_vibracion: prefs.haptics !== false,
+    pref_cuatro_colores: !!prefs.fourColor,
+    pref_penalizar_pistas: !!prefs.penalizeHints,
+    movimiento: globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches !== true,
+    instalada: esStandalone(),
+    tactil: esMovil(),
+    ancho: globalThis.innerWidth || 0,
+    alto: globalThis.innerHeight || 0,
+    dpr: globalThis.devicePixelRatio || 1,
+    red: typeof red?.effectiveType === 'string' ? red.effectiveType : undefined,
+    orientacion: globalThis.screen?.orientation?.type,
+  };
+}
+
 const semillaCompartida = semillaDeLaUrl();
 const retoCompartido = retoDeLaUrl();
 if (game.resume()) {
   // La partida a medias manda sobre el enlace: nadie quiere perderla por abrirlo.
+  anotarArranque('retomada');
   message('msg.retomada');
   saludoInicial();
 } else if (retoCompartido !== null) {
   game.newGame(semillaDelDia(retoCompartido), { dia: retoCompartido });
+  anotarArranque('url_reto');
   message('msg.reto.nuevo', { fecha: fechaCorta(fechaDeClave(retoCompartido)) });
   saludoInicial();
 } else if (semillaCompartida !== null) {
   game.newGame(semillaCompartida);
+  anotarArranque('url_semilla');
   message(isKnownSolvable(semillaCompartida) ? 'msg.reparto.nuevo.comprobado' : 'msg.reparto.nuevo', { n: semillaCompartida });
   saludoInicial();
 } else {
   game.newGame();
+  anotarArranque('nueva');
   saludoInicial();
 }
+// Después del reparto de arranque: lo que venga luego (otra mano, deshacer, atasco).
+analitica.observarPartida(game);
+analitica.alSalir(() => ({
+  partida: game.status,
+  jugadas: game.moves,
+  pistas: game.hints,
+  deshacer: game.undos,
+  segundos: Math.floor(game.elapsedMs / 1000),
+  puntos: game.score,
+  fundaciones: game.foundationCount,
+  reto: !!game.dia,
+  semilla: game.seed ?? undefined,
+}));
+analitica.montar();
 refresh();

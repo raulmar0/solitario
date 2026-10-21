@@ -16,6 +16,7 @@ import {
 } from './reto.js';
 import { esMovil } from './device.js';
 import { compartirPartida, datosDeTarjeta, prepararTarjeta } from './compartir.js';
+import * as analitica from './analitica.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -31,6 +32,16 @@ const modeName = ({ scoring, drawCount }) => t('modo.nombre', {
 });
 
 const AVISO_MS = 5000;          // lo que dura un aviso dentro del diálogo
+
+function anotarCompartir(estado, resultado, via) {
+  analitica.evento('compartir', {
+    estado: estado || 'error',
+    via,
+    reto: !!resultado?.dia,
+    ganado: resultado?.won !== false,
+  });
+}
+
 // Qué se le cuenta al jugador según por dónde haya salido el compartir. Lo miran
 // los dos sitios desde los que se comparte: el cartel de victoria y el calendario.
 const MENSAJE_COMPARTIR = {
@@ -350,6 +361,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     // Esto vale para cambiar de pestaña con el menú abierto. Con el menú cerrado
     // no surte efecto, porque el cuerpo no tiene caja: al abrir se encarga `abrir()`.
     if (seccion !== anterior) $('#menu-body').scrollTop = 0;
+    if (dlgSettings.open && seccion !== anterior) analitica.evento('panel', { seccion });
     if (foco) $(`#tab-${seccion}`).focus();
   }
 
@@ -383,6 +395,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
 
   /** Abre el panel por la sección que se pida. */
   function abrir(cual) {
+    const yaAbierto = dlgSettings.open;
     if (cual === 'records') statsMode = { scoring: game.prefs.scoring, drawCount: game.prefs.drawCount };
     mostrarSeccion(cual);
     onOpenSettings();
@@ -394,6 +407,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       // desplazamiento con que se cerró, aunque se abra por otra sección.
       $('#menu-body').scrollTop = 0;
     }
+    if (!yaAbierto) analitica.evento('panel', { seccion });
   }
 
   // ---------- récords ----------
@@ -449,6 +463,14 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     caja.hidden = false;
   }
 
+  function elegirModalidad(mode) {
+    if (!mode) return;
+    if (mode.scoring === statsMode?.scoring && mode.drawCount === statsMode?.drawCount) return;
+    statsMode = mode;
+    analitica.evento('records_modalidad', { puntuacion: mode.scoring, robo: mode.drawCount });
+    renderStats();
+  }
+
   function renderStats() {
     statsMode = statsMode ?? { scoring: game.prefs.scoring, drawCount: game.prefs.drawCount };
     const tabs = $('#stats-tabs');
@@ -466,7 +488,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       b.setAttribute('aria-selected', String(activo));
       b.tabIndex = activo ? 0 : -1;      // el tabulador entra una vez; dentro se navega con flechas
       if (activo) panel.setAttribute('aria-labelledby', b.id);
-      b.addEventListener('click', () => { statsMode = mode; renderStats(); });
+      b.addEventListener('click', () => elegirModalidad(mode));
       b.addEventListener('keydown', (event) => {
         const paso = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity }[event.key];
         if (paso === undefined) return;
@@ -474,8 +496,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
         const destino = paso === -Infinity ? 0
           : paso === Infinity ? MODES.length - 1
             : (i + paso + MODES.length) % MODES.length;
-        statsMode = MODES[destino];
-        renderStats();
+        elegirModalidad(MODES[destino]);
       });
       return b;
     }));
@@ -585,6 +606,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   $('#btn-reset-bank').addEventListener('click', () => {
     if (!confirm(t('confirm.banca'))) return;
     store.resetBank(statsMode.drawCount);
+    analitica.evento('banca_cero', { robo: statsMode.drawCount });
     renderStats();
   });
 
@@ -596,6 +618,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     a.download = `solitario-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    analitica.evento('exportar', { kb: Math.round(datos.length / 1024) });
     avisoPanel('msg.datos.exportados');
   });
 
@@ -611,14 +634,17 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
       recargarPrefs();
       renderStats();
       onPrefsChanged();
+      analitica.evento('importar', { ok: true, kb: Math.round(file.size / 1024) });
       avisoPanel('msg.datos.importados');
     } catch (err) {
+      analitica.evento('importar', { ok: false });
       alert(t('msg.datos.error', { error: err.message }));
     }
   });
 
   $('#btn-wipe').addEventListener('click', () => {
     if (!confirm(t('confirm.borrar'))) return;
+    analitica.evento('borrar_datos');
     store.resetAll();
     recargarPrefs();
     renderStats();
@@ -662,9 +688,11 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (!btn) return;
     const pref = btn.dataset.pref;
     const valor = pref === 'drawCount' ? Number(btn.dataset.value) : btn.dataset.value;
-    const cambiaReparto = (pref === 'drawCount' || pref === 'scoring') && game.prefs[pref] !== valor
-      && game.status === 'playing' && game.moves > 0;
-    if (cambiaReparto && !confirm(t('confirm.modalidad'))) return;
+    const redeal = (pref === 'drawCount' || pref === 'scoring') && game.prefs[pref] !== valor;
+    const enJuego = redeal && game.status === 'playing' && game.moves > 0;
+    if (enJuego && !confirm(t('confirm.modalidad'))) return;
+    if (game.prefs[pref] !== valor) analitica.ajuste(pref, valor);
+    if (redeal) analitica.motivo(pref === 'drawCount' ? 'robo' : 'puntuacion');
     game.setPrefs({ [pref]: valor });
     renderSettings();
     onPrefsChanged();
@@ -675,6 +703,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (!control) return;
     const pref = control.dataset.pref;
     const valor = control.type === 'checkbox' ? control.checked : control.value.trim();
+    const antes = pref === 'playerName' ? (game.prefs.playerName ?? '') : game.prefs[pref];
+    if (antes !== valor) analitica.ajuste(pref, valor);
     game.setPrefs({ [pref]: valor });
     if (pref === 'timed' && game.status !== 'idle' && game.moves > 0) {
       avisoPanel('msg.contrarreloj', {}, 'warn');
@@ -716,6 +746,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     pintarErrorReparto(null);
     avisoPanel(null);        // el error ya está corregido: quien escucha no debe seguir oyéndolo
     if (game.status === 'playing' && game.moves > 0 && !confirm(t('confirm.reparto'))) return;
+    analitica.motivo('semilla');
     game.newGame(seed);
     cerrarDialogo(dlgSettings);
     // El panel se va: esto se cuenta fuera, en el banner del tablero.
@@ -906,6 +937,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
   function jugarReto(clave) {
     if (!esJugable(clave)) return;
     if (game.status === 'playing' && game.moves > 0 && !confirm(t('confirm.reparto'))) return;
+    analitica.motivo('reto');
+    analitica.evento('reto_jugar', { dia: clave, hoy: clave === claveDia() });
     game.newGame(semillaDelDia(clave), { dia: clave });
     cerrarDialogo(dlgSettings);
     onMessage('msg.reto.nuevo', { fecha: fechaCorta(fechaDeClave(clave)) });
@@ -959,6 +992,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     // clic o Safari lo rechaza por haberse gastado el gesto.
     compartirPartida({ resultado, tarjeta: tarjetaDia })
       .then(({ estado, enlace }) => {
+        anotarCompartir(estado, resultado, 'reto');
         const clave = MENSAJE_COMPARTIR[estado];
         if (clave) avisoPanel(clave, { url: enlace });
       })
@@ -1442,6 +1476,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     // clic o Safari lo rechaza por haberse gastado el gesto.
     compartirPartida({ resultado: r, tarjeta })
       .then(({ estado, enlace }) => {
+        anotarCompartir(estado, r, 'victoria');
         const clave = MENSAJE_COMPARTIR[estado];
         if (clave) avisoCompartir(clave, { url: enlace });
       })
@@ -1473,7 +1508,7 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
 
   dlgWin.addEventListener('click', (event) => {
     const accion = event.target.closest('[data-action]')?.dataset.action;
-    if (accion === 'new') { detenerCascada(); cerrarDialogo(dlgWin); game.newGame(); }
+    if (accion === 'new') { detenerCascada(); cerrarDialogo(dlgWin); analitica.motivo('victoria'); game.newGame(); }
     if (accion === 'stats') { detenerCascada(); cerrarDialogo(dlgWin); api.openStats(); }
     if (accion === 'share') compartir();
   });
@@ -1503,8 +1538,8 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     if (!accion) return;
     cerrarDialogo(dlgStuck);
     if (accion === 'undo') game.undo();
-    if (accion === 'restart') game.restart();
-    if (accion === 'new') game.newGame();
+    if (accion === 'restart') { analitica.motivo('bloqueo_repetir'); game.restart(); }
+    if (accion === 'new') { analitica.motivo('bloqueo_nueva'); game.newGame(); }
   });
 
   // ---------- invitación al reto del día ----------
@@ -1547,6 +1582,19 @@ export function createPanels({ game, store, onMessage, onPrefsChanged, onOpenSet
     return true;
   }
 
+  // El clic se apunta antes de que el cierre —que puede esperar a la animación—
+  // borre el diálogo: así se distingue «jugar» de «ahora no» y de cerrarlo por fuera.
+  let clicInvita = null;
+  dlgInvita.addEventListener('click', (event) => { clicInvita = event.target; }, true);
+  dlgInvita.addEventListener('close', () => {
+    if (dlgInvita.open) return;
+    const nodo = clicInvita;
+    clicInvita = null;
+    const respuesta = nodo?.closest?.('[data-action="jugar"]') ? 'jugar'
+      : nodo?.closest?.('[data-close]') ? 'no'
+        : 'fuera';
+    analitica.evento('reto_invitacion', { respuesta });
+  });
   dlgInvita.addEventListener('click', (event) => {
     if (!event.target.closest('[data-action="jugar"]')) return;
     cerrarDialogo(dlgInvita);

@@ -287,7 +287,7 @@ export default {
   'help.puntos.entrada': 'Entrée',
   'help.puntos.carta': 'Chaque carte montée',
   'help.puntos.saldo': 'Le solde se cumule d’une partie à l’autre.',
-  'help.privacidad': 'Tout est enregistré dans ce navigateur, sur votre appareil. Rien ne part vers un serveur.',
+  'help.privacidad': 'Les records et la partie en cours restent dans ce navigateur, sur votre appareil. Les visites sont comptées de façon anonyme avec Simple Analytics, sans cookies et sans votre nom.',
 
   // carta — nombres de rango y palo (accesibilidad y pistas)
   'carta.nombre': '{rango} de {palo}',

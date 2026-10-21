@@ -17,7 +17,7 @@ const VERSION = '1.20.4';
  * anterior, y (b) un cambio de código sin subir la versión también renueve la
  * caché en vez de dejar a los ya instalados atrapados en lo viejo. */
 /* === generado: huella === */
-const BUILD = 'be666656';
+const BUILD = '9d90b7a2';
 /* === fin generado === */
 
 const CACHE = `solitario-v${VERSION}-${BUILD}`;
@@ -34,6 +34,7 @@ const FICHEROS = [
   'icons/icon.svg',
   'icons/maskable-512.png',
   'src/advisor.js',
+  'src/analitica.js',
   'src/cards.js',
   'src/compartir.js',
   'src/device.js',
@@ -101,7 +102,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;   // el juego no pide nada fuera
+  if (url.origin !== self.location.origin) return;   // Simple Analytics va por la red, sin caché ni bloqueo
 
   // Navegar siempre devuelve la portada: es una aplicación de una sola página.
   if (request.mode === 'navigate') {

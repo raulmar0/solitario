@@ -288,7 +288,7 @@ export default {
   'help.puntos.entrada': '참가비',
   'help.puntos.carta': '올리는 카드 한 장마다',
   'help.puntos.saldo': '잔고는 판이 바뀌어도 이어져요.',
-  'help.privacidad': '모든 건 이 브라우저, 내 기기에만 저장돼요. 서버로 나가는 건 하나도 없어요.',
+  'help.privacidad': '기록과 진행 중인 판은 이 브라우저와 내 기기에만 남아요. 방문은 Simple Analytics로 익명 집계되고, 쿠키와 이름은 나가지 않아요.',
 
   // carta — nombres de rango y palo (accesibilidad y pistas)
   'carta.nombre': '{palo} {rango}',

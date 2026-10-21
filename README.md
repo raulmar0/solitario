@@ -1,8 +1,8 @@
 # Solitario
 
 Klondike en el navegador, con puntuación, estadísticas y récords guardados en tu
-propio equipo. Sin cuentas, sin servidor, sin dependencias: HTML, CSS y JavaScript
-a secas (módulos ES nativos).
+propio equipo. Sin cuentas, sin servidor propio y sin dependencias: HTML, CSS y
+JavaScript a secas (módulos ES nativos). Las visitas se cuentan con Simple Analytics.
 
 ## Jugar
 
@@ -239,9 +239,10 @@ de Node. También vale abrir `index.html` con cualquier otro servidor estático
 ## Aplicación instalable (PWA)
 
 Se instala en el móvil o en el escritorio y funciona **sin conexión**: el service
-worker precarga los 34 ficheros que necesita la aplicación, así que después del
-primer arranque no hace falta internet para nada. Tampoco lo hacía antes: el
-juego nunca ha hablado con ningún servidor.
+worker precarga los 35 ficheros que necesita la aplicación, así que después del
+primer arranque no hace falta internet para jugar. Las visitas, cuando hay red,
+se cuentan con Simple Analytics; sin red el juego sigue igual y esa visita no
+se apunta.
 
 - **Instalar**: Ajustes → *Instalar en el dispositivo*. En iPhone o iPad no hay
   botón (Safari no lo permite), así que se explica el camino: Compartir →
@@ -255,7 +256,8 @@ juego nunca ha hablado con ningún servidor.
   dibujado en el HTML, con la tinta del enlace: ni es un fichero más ni hay que
   precargarlo. La frase es de cada idioma y la marca no se traduce: va en
   minúscula y el enlace se escribe una sola vez, en el HTML. Es un enlace
-  corriente, así que lo de no hablar con ningún servidor sigue en pie.
+  corriente: seguirlo no le pide nada a apolar. El clic, si hay red, sí se
+  cuenta, como el resto de las visitas.
   La letra es un recorte de 1 KB de Space Grotesk —solo «apolar» y el punto—,
   en `src/fonts/` con su licencia, la SIL Open Font License 1.1, y se precarga.
 - **Actualizar**: Ajustes → *Buscar actualización*. Y si aparece una versión
@@ -301,9 +303,18 @@ En `localStorage`, bajo el prefijo `solitario.v1.`:
 | `solitario.v1.vegasBank` | saldo acumulado de Vegas |
 | `solitario.v1.retos` | el mejor intento de cada reto diario |
 
-No sale nada del navegador. Si `localStorage` está bloqueado (modo privado,
-cuota llena), el juego sigue funcionando en memoria y solo se pierde el historial
-al cerrar.
+Los récords no salen del navegador. Las visitas —sin cookies y sin el nombre del
+jugador— se cuentan con Simple Analytics. Si `localStorage` está bloqueado
+(modo privado, cuota llena), el juego sigue funcionando en memoria y solo se
+pierde el historial al cerrar.
+
+El script (`latest.js`) solo se carga fuera de localhost, para que las pruebas
+y `npm run dev` no ensucien el panel. En el panel hay que dar de alta el dominio
+(`solitario.raulmar.com`). Se anota la visita con el tiempo en la página, el
+scroll y los parámetros `seed` y `reto`, y también la partida: empezar, retomar,
+ganar, perder, atascarse, pista, deshacer, remate, ajustes, reto, compartir,
+instalar y el enlace de apolar. El nombre del jugador no se envía. Quien tenga
+Do Not Track activo también cuenta: si no, se perdería esa parte del uso.
 
 ## Estructura
 
@@ -320,6 +331,7 @@ src/panels.js          diálogos (reto y calendario, récords, ajustes, ayuda, v
 src/compartir.js       compartir una partida: enlace, mensaje y los caminos según el navegador
 src/tarjeta.js         la tarjeta que se comparte, dibujada en un lienzo y servida en PNG
 src/main.js            arranque, cabecera y teclado
+src/analitica.js       visitas con Simple Analytics: script, eventos y metadatos
 src/i18n.js            traducción: detección, plural, interpolación y DOM
 src/locales/*.js       los cinco diccionarios (es, en, fr, pt, ko)
 src/fonts/             la letra de la marca de apolar (Space Grotesk recortada) y su licencia OFL
@@ -371,10 +383,9 @@ poco y no compite por la RAM de la máquina.
 
 ### GitHub Pages
 
-Vale tal cual: no hay build, todas las rutas son relativas (funciona igual en la
-raíz que en `usuario.github.io/solitario/`) y el juego no habla con ningún
-servidor. El `.nojekyll` que hay en la raíz evita que Pages intente pasarle
-Jekyll por encima.
+Vale tal cual: no hay build y todas las rutas son relativas (funciona igual en la
+raíz que en `usuario.github.io/solitario/`). El `.nojekyll` que hay en la raíz
+evita que Pages intente pasarle Jekyll por encima.
 
 ```bash
 gh auth login
@@ -397,7 +408,8 @@ Dos cosas a tener en cuenta:
 - Pages no deja poner cabeceras HTTP, así que la misma política de seguridad que
   sirve nginx va también en un `<meta http-equiv="Content-Security-Policy">` del
   `index.html`. Lo único que se pierde por el camino es `frame-ancestors`, que en
-  `meta` se ignora.
+  `meta` se ignora. Esa política deja pasar el script y el píxel de Simple
+  Analytics, y nada más de fuera.
 
 Los récords se guardan por origen: los de `github.io` y los del servidor propio
 son dos historiales distintos. El botón **Exportar datos** sirve para pasarlos de

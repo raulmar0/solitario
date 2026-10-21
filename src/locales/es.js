@@ -288,7 +288,7 @@ export default {
   'help.puntos.entrada': 'Entrada',
   'help.puntos.carta': 'Cada carta que subes',
   'help.puntos.saldo': 'El saldo se acumula entre partidas.',
-  'help.privacidad': 'Todo se guarda en este navegador, en tu equipo. No sale nada a ningún servidor.',
+  'help.privacidad': 'Los récords y la partida se quedan en este navegador, en tu equipo. Las visitas se cuentan de forma anónima con Simple Analytics, sin cookies y sin tu nombre.',
 
   // carta — nombres de rango y palo (accesibilidad y pistas)
   'carta.nombre': '{rango} de {palo}',

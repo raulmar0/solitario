@@ -19,7 +19,7 @@ export function formatTime(ms) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export function createGame({ store, now = () => Date.now(), onEvents = () => {} }) {
+export function createGame({ store, now = () => Date.now(), onEvents = () => {}, onResult = () => {} }) {
   const listeners = new Set();
 
   let prefs = store.getPrefs();
@@ -147,6 +147,8 @@ export function createGame({ store, now = () => Date.now(), onEvents = () => {} 
     };
     store.recordGame(lastResult);
     store.clearGame();
+    // Quien apunte el resultado (las visitas) no puede deshacer la partida ya guardada.
+    try { onResult(lastResult); } catch { /* el adorno nunca manda */ }
   }
 
   /** Abandonar (o dejar una partida muerta) cuenta como derrota: si no, se reiniciaría hasta ganar sin coste. */
