@@ -1,9 +1,9 @@
-// Simple Analytics: qué se manda, qué no, y que el script solo sale de local.
+// Simple Analytics: qué se manda, qué no, y que el script está en el HTML.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  ajuste, alSalir, debeMedir, definirContexto, esLocal, evento, eventoPartida,
+  ajuste, alSalir, definirContexto, evento, eventoPartida,
   limpiarMetadatos, montar, motivo, observarPartida,
 } from '../src/analitica.js';
 import es from '../src/locales/es.js';
@@ -22,16 +22,6 @@ function colaLimpia() {
 function encolados() {
   return globalThis.sa_event?.q ?? [];
 }
-
-test('local y los robots de prueba no cargan el script', () => {
-  for (const host of ['localhost', '127.0.0.1', '::1', '[::1]', '', 'app.localhost']) {
-    assert.equal(esLocal(host), true, host);
-    assert.equal(debeMedir({ hostname: host, userAgent: 'Mozilla' }), false, host);
-  }
-  assert.equal(debeMedir({ hostname: 'solitario.raulmar.com', userAgent: 'Mozilla' }), true);
-  assert.equal(debeMedir({ hostname: 'solitario.raulmar.com', userAgent: 'jsdom', webdriver: false }), false);
-  assert.equal(debeMedir({ hostname: 'solitario.raulmar.com', userAgent: 'Mozilla', webdriver: true }), false);
-});
 
 test('los metadatos tiran el nombre, el correo y lo que no se puede guardar', () => {
   assert.deepEqual(limpiarMetadatos({
@@ -167,50 +157,17 @@ test('la foto de la partida no incluye el nombre', () => {
   assert.equal(JSON.stringify(meta).includes('Nadie'), false);
 });
 
-function documentoFalso() {
-  const scripts = [];
-  return {
-    scripts,
-    head: { append(...nodos) { scripts.push(...nodos); } },
-    createElement() { return { src: '', async: true, dataset: {} }; },
-    querySelector(sel) {
-      if (!String(sel).includes('latest')) return null;
-      return scripts.find((s) => String(s.src).includes('latest')) ?? null;
-    },
-    addEventListener() {},
-  };
-}
-
-test('en local no se inyecta el script; en el sitio sí, con DNT y los parámetros de la mano', () => {
-  const destino = { addEventListener() {} };
-  const local = documentoFalso();
-  montar({ document: local, destino, hostname: 'localhost', userAgent: 'Mozilla', webdriver: false });
-  assert.equal(local.scripts.length, 0);
-
-  const sitio = documentoFalso();
-  const otroDestino = { addEventListener() {} };
-  montar({
-    document: sitio,
-    destino: otroDestino,
-    hostname: 'solitario.raulmar.com',
-    userAgent: 'Mozilla/5.0',
-    webdriver: false,
-  });
-  assert.equal(sitio.scripts.length, 1);
-  const script = sitio.scripts[0];
-  assert.equal(script.src, 'https://scripts.simpleanalyticscdn.com/latest.js');
-  assert.equal(script.async, true);
-  assert.equal(script.dataset.collectDnt, 'true');
-  assert.equal(script.dataset.allowParams, 'seed,reto');
-  assert.equal(script.dataset.metadataCollector, 'saMetadata');
-  montar({
-    document: sitio,
-    destino: { addEventListener() {} },
-    hostname: 'solitario.raulmar.com',
-    userAgent: 'Mozilla/5.0',
-    webdriver: false,
-  });
-  assert.equal(sitio.scripts.length, 1, 'cargar dos veces mandaría la visita por duplicado');
+test('el script está en el HTML, que es lo que mira el comprobador de Simple Analytics', () => {
+  const html = leer('index.html');
+  const etiqueta = /<script async src="https:\/\/scripts\.simpleanalyticscdn\.com\/latest\.js"[^>]*>/.exec(html)?.[0];
+  assert.ok(etiqueta, 'sin esta etiqueta el comprobador dice que no está instalado');
+  assert.match(etiqueta, /data-collect-dnt="true"/);
+  assert.match(etiqueta, /data-allow-params="seed,reto"/);
+  assert.match(etiqueta, /data-metadata-collector="saMetadata"/);
+  // Delante de la política el navegador todavía no la ha leído y bloquea el script.
+  const politica = html.indexOf('Content-Security-Policy');
+  const script = html.indexOf('scripts.simpleanalyticscdn.com/latest.js');
+  assert.ok(politica >= 0 && politica < script, 'la política tiene que ir antes que el script');
 });
 
 test('cerrar la pestaña manda la foto y un enlace externo se anota sin soltar el clic', () => {

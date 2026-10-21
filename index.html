@@ -13,6 +13,9 @@
      arriba y abajo las zonas seguras continúan la misma superficie, sin costuras.
      Lo reajusta `applyPrefs()` al cambiar de tema. -->
 <meta name="theme-color" content="#06452a">
+<!-- El comprobador de Simple Analytics lee el HTML. Si el script se inyecta
+     después, dice que no está instalado. Va aquí, con la política ya puesta. -->
+<script async src="https://scripts.simpleanalyticscdn.com/latest.js" data-collect-dnt="true" data-allow-params="seed,reto" data-metadata-collector="saMetadata"></script>
 <title data-i18n="app.titulo">Solitario</title>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -475,7 +478,6 @@
 <button id="btn-skip-win" class="btn-skip-win" type="button" hidden data-i18n="dlg.victoria.omitir">Omitir</button>
 <div id="confetti" class="confetti" aria-hidden="true"></div>
 
-<!-- Simple Analytics se engancha desde src/analitica.js. En local no se carga. -->
 <script type="module" src="src/main.js"></script>
 </body>
 </html>

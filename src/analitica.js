@@ -2,29 +2,16 @@
 // lo que asocia la visita con el panel. No se manda el nombre del jugador ni lo
 // que hay en la partida guardada; sí cómo se juega, para poder verlo después.
 //
-// En local no se carga el script. Si se cargara, cada prueba y cada `npm run dev`
-// contarían como una visita. Los eventos se encolan igual: cuando el script
-// llega, vacía esa cola.
+// El script va en el HTML (`latest.js`). Inyectarlo desde aquí hacía que el
+// comprobador de Simple Analytics no lo viera: mira la página que descarga, no
+// lo que el módulo añade después. Los eventos se encolan por si el script aún
+// no ha llegado; cuando llega, vacía esa cola.
 
-const SCRIPT = 'https://scripts.simpleanalyticscdn.com/latest.js';
 const MARCA = Symbol.for('solitario.analitica');
 
 const CLAVES_PROHIBIDAS = new Set([
   'player', 'playername', 'nombre', 'email', 'correo', 'mail',
 ]);
-
-/** localhost, 127.0.0.1 y un hostname vacío (file://, pruebas) no se miden. */
-export function esLocal(hostname = '') {
-  const h = String(hostname).trim().toLowerCase().replace(/^\[|\]$/g, '');
-  return h === '' || h === 'localhost' || h === '127.0.0.1' || h === '::1' || h.endsWith('.localhost');
-}
-
-/** El script real solo en un navegador de verdad, fuera de local. */
-export function debeMedir({ hostname = '', userAgent = '', webdriver = false } = {}) {
-  if (webdriver) return false;
-  if (/jsdom/i.test(userAgent)) return false;
-  return !esLocal(hostname);
-}
 
 /**
  * Simple Analytics solo guarda texto, números finitos, booleanos y fechas.
@@ -193,8 +180,8 @@ export function alSalir(fn) {
 }
 
 /**
- * Carga el script y escucha lo que el propio HTML no anota: enlaces que se van
- * del sitio, la red y el cierre de la pestaña.
+ * Escucha lo que el propio HTML no anota: enlaces que se van del sitio, la red
+ * y el cierre de la pestaña. El script de medición ya está en `index.html`.
  *
  * No se usa `auto-events.js`. Ese script escribe un `onclick` en cada enlace, y
  * la política de seguridad no permite manejadores en línea. El clic se escucha
@@ -203,26 +190,8 @@ export function alSalir(fn) {
 export function montar({
   document: doc = globalThis.document,
   destino = globalThis,
-  hostname = globalThis.location?.hostname ?? '',
-  userAgent = globalThis.navigator?.userAgent ?? '',
-  webdriver = globalThis.navigator?.webdriver === true,
 } = {}) {
   activarOyentes(doc, destino);
-  if (!debeMedir({ hostname, userAgent, webdriver })) return;
-  if (!doc?.head?.append || !doc.createElement) return;
-  if (doc.querySelector?.('script[src*="simpleanalyticscdn.com/latest"]')) return;
-
-  asegurarCola();
-  const script = doc.createElement('script');
-  script.async = true;
-  script.src = SCRIPT;
-  // Con Do Not Track activo el script, por defecto, no apunta la visita.
-  script.dataset.collectDnt = 'true';
-  // `seed` y `reto` son la mano compartida, no un identificador de la persona.
-  // Los utm ya se recogen solos; un clic de anuncio (gclid, fbclid) no.
-  script.dataset.allowParams = 'seed,reto';
-  script.dataset.metadataCollector = 'saMetadata';
-  doc.head.append(script);
 }
 
 function activarOyentes(doc, destino) {

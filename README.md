@@ -308,9 +308,9 @@ jugador— se cuentan con Simple Analytics. Si `localStorage` está bloqueado
 (modo privado, cuota llena), el juego sigue funcionando en memoria y solo se
 pierde el historial al cerrar.
 
-El script (`latest.js`) solo se carga fuera de localhost, para que las pruebas
-y `npm run dev` no ensucien el panel. En el panel hay que dar de alta el dominio
-(`solitario.raulmar.com`). Se anota la visita con el tiempo en la página, el
+El script (`latest.js`) está en el HTML: el comprobador de Simple Analytics mira
+esa página y no un script añadido después. En el panel hay que dar de alta el
+dominio (`solitario.raulmar.com`). Se anota la visita con el tiempo en la página, el
 scroll y los parámetros `seed` y `reto`, y también la partida: empezar, retomar,
 ganar, perder, atascarse, pista, deshacer, remate, ajustes, reto, compartir,
 instalar y el enlace de apolar. El nombre del jugador no se envía. Quien tenga
